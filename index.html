@@ -1,2114 +1,1233 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>কোডমিস্ত্রি — কোড এজেন্ট</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#050505">
+<meta name="color-scheme" content="dark">
+<title>Anvil — Premium AI Coding Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-/* ============ বেস থিম ============ */
-:root{
-  --bg:#0B0D10; --panel:#11141A; --panel2:#161B22; --line:#232935; --line2:#1B2029;
-  --text:#E9ECF1; --mut:#8B94A3; --dim:#5C6572;
-  --acc:#F2A33C; --acc-h:#FFB85C; --acc-ink:#1B1206;
-  --ok:#5FBF7A; --err:#E5645F;
-  --code-bg:#0D1015;
-  --font-ui:'Space Grotesk','Hind Siliguri',sans-serif;
-  --font-code:'JetBrains Mono','Hind Siliguri',monospace;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%}
-body{
-  background:var(--bg); color:var(--text);
-  font-family:var(--font-ui); font-size:15px;
-  display:flex; flex-direction:column; overflow:hidden;
-}
-::selection{background:var(--acc); color:var(--acc-ink)}
-::-webkit-scrollbar{width:10px;height:10px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:#242B37;border-radius:10px;border:3px solid var(--bg)}
-button{font-family:inherit; cursor:pointer}
-:focus-visible{outline:2px solid var(--acc); outline-offset:2px; border-radius:6px}
-.ic{width:16px;height:16px;flex:none}
-.spin{animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ============ টপবার ============ */
-.topbar{
-  height:60px; flex:none; display:flex; align-items:center; justify-content:space-between;
-  padding:0 18px; border-bottom:1px solid var(--line2); background:var(--panel);
-}
-.brand{display:flex; align-items:center; gap:12px}
-.brand-txt b{display:block; font-size:16.5px; letter-spacing:.2px}
-.brand-txt span{display:block; font-size:11.5px; color:var(--mut); margin-top:1px}
-.top-right{display:flex; align-items:center; gap:12px}
-.chip-stat{
-  display:flex; align-items:center; gap:7px; font-family:var(--font-code); font-size:12px;
-  color:var(--mut); background:var(--panel2); border:1px solid var(--line2);
-  padding:6px 11px; border-radius:999px;
-}
-.chip-stat b{color:var(--acc)}
-.live{display:flex; align-items:center; gap:7px; font-size:12px; color:var(--mut)}
-.live i{width:8px;height:8px;border-radius:50%;background:var(--ok);position:relative}
-.live i::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1px solid var(--ok);animation:ping 1.8s ease-out infinite}
-@keyframes ping{0%{transform:scale(.5);opacity:.9}80%,100%{transform:scale(1.5);opacity:0}}
-.btn{
-  display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line);
-  background:transparent; color:var(--text); border-radius:9px; padding:8px 13px;
-  font-size:13px; transition:background .15s,border-color .15s,color .15s;
-}
-.btn:hover{background:var(--panel2)}
-.btn.arm{border-color:var(--err); color:var(--err)}
-.btn.mini{padding:6px 10px; font-size:12.5px; border-radius:8px}
-.btn.mini:disabled{opacity:.35; pointer-events:none}
-.btn.mini.acc{color:var(--acc); border-color:#4a3a1e}
-.btn.mini.acc:hover{background:#1c1710}
-.btn.mini.acc.on{background:var(--acc); color:var(--acc-ink); border-color:var(--acc)}
-
-/* ============ মোবাইল সেগমেন্ট ============ */
-.seg{display:none; flex:none; margin:0; border-bottom:1px solid var(--line2); background:var(--panel)}
-.seg button{
-  flex:1; background:none; border:0; color:var(--mut); font-size:13.5px; padding:11px 0;
-  border-bottom:2px solid transparent; display:flex; align-items:center; justify-content:center; gap:7px;
-}
-.seg button.active{color:var(--text); border-bottom-color:var(--acc)}
-.seg b{
-  background:var(--acc); color:var(--acc-ink); font-size:10.5px; min-width:17px; height:17px;
-  border-radius:99px; display:inline-flex; align-items:center; justify-content:center; padding:0 5px;
+/* ============ 1. TOKENS & RESET (PREMIUM UI) ============ */
+:root {
+  --bg: #050505; 
+  --bg2: #0a0a0c; 
+  --surface: #121214; 
+  --surface2: #1c1c1f; 
+  --surface3: #27272a;
+  --border: rgba(255, 255, 255, 0.08); 
+  --border2: rgba(255, 255, 255, 0.12);
+  --text: #f4f4f5; 
+  --text2: #a1a1aa; 
+  --text3: #71717a;
+  
+  /* Premium Gradients and Accents */
+  --accent: #6366f1; 
+  --accent-secondary: #a855f7;
+  --accent-grad: linear-gradient(135deg, #6366f1, #a855f7);
+  --accent-dim: rgba(99, 102, 241, 0.15); 
+  --accent-line: rgba(99, 102, 241, 0.4);
+  
+  --warn: #fbbf24; --warn-dim: rgba(251, 191, 36, 0.15);
+  --err: #f87171; --err-dim: rgba(248, 113, 113, 0.15);
+  
+  --radius: 20px; 
+  --radius-sm: 12px;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --sans: 'Sora', sans-serif;
+  --shadow-glow: 0 8px 30px rgba(99, 102, 241, 0.2);
+  --shadow-panel: 0 16px 40px rgba(0, 0, 0, 0.4);
+  --glass: rgba(18, 18, 20, 0.75);
+  --nav-h: 68px;
 }
 
-/* ============ স্টেজ ============ */
-.stage{flex:1; min-height:0; display:flex; --chat-w:460px}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overscroll-behavior: none; }
+body {
+  background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.6;
+  overflow: hidden; -webkit-font-smoothing: antialiased; letter-spacing: -0.01em;
+}
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; transition: all 0.2s ease; }
+textarea, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
 
-/* ============ চ্যাট প্যানেল ============ */
-.chat{
-  width:var(--chat-w); flex:0 0 auto; min-width:300px;
-  display:flex; flex-direction:column; border-right:1px solid var(--line2); min-height:0;
-}
-.chat-log{
-  flex:1; overflow-y:auto; padding:22px 18px 10px; min-height:0;
-  background-image:radial-gradient(rgba(233,236,241,.035) 1px, transparent 1px);
-  background-size:26px 26px;
-}
-.msg{display:flex; gap:11px; margin-bottom:22px; animation:rise .35s cubic-bezier(.2,.7,.3,1)}
-@keyframes rise{from{opacity:0; transform:translateY(10px)}}
-.msg.user{flex-direction:row-reverse}
-.avatar{
-  width:30px;height:30px;flex:none;border-radius:9px;overflow:hidden;
-  display:flex;align-items:center;justify-content:center;
-}
-.avatar.usr{background:var(--panel2);border:1px solid var(--line);color:var(--mut)}
-.m-body{min-width:0; max-width:100%}
-.m-head{display:flex; align-items:baseline; gap:9px; margin-bottom:6px}
-.msg.user .m-head{justify-content:flex-end}
-.m-head b{font-size:12.5px}
-.m-head .m-time{font-family:var(--font-code); font-size:10.5px; color:var(--dim)}
-.m-text{white-space:pre-wrap; line-height:1.7; font-size:14.5px; word-break:break-word}
-.msg.user .m-text{
-  display:inline-block; background:var(--panel2); border:1px solid var(--line);
-  border-radius:14px 14px 4px 14px; padding:10px 14px; max-width:85%;
-}
-.m-text.typing{cursor:pointer}
-.m-text.typing::after{
-  content:''; display:inline-block; width:8px; height:1em; background:var(--acc);
-  margin-left:3px; vertical-align:-2px; animation:blink 1s steps(2) infinite;
-}
-@keyframes blink{50%{opacity:0}}
-.m-out{margin-top:12px}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+svg.ic { width: 20px; height: 20px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.hidden { display: none !important; }
 
-/* চ্যাটের ফাইল কার্ড */
-.fc-list{margin-top:14px; display:grid; gap:10px; max-width:430px}
-.file-card{
-  position:relative; overflow:hidden; display:flex; align-items:center; gap:12px; width:100%;
-  text-align:left; padding:12px 14px; background:var(--panel2); border:1px solid var(--line);
-  border-radius:12px; color:var(--text); transition:transform .15s, border-color .15s;
-  animation:pop .35s cubic-bezier(.2,.8,.3,1.1);
-}
-@keyframes pop{from{opacity:0; transform:translateY(10px) scale(.97)}}
-.file-card:hover{transform:translateY(-1px); border-color:var(--acc)}
-.fc-ic{
-  width:36px;height:36px;flex:none;border-radius:10px;display:flex;align-items:center;justify-content:center;
-}
-.fc-info{display:flex;flex-direction:column;gap:2px;min-width:0}
-.fc-name{font-family:var(--font-code); font-size:13px; font-weight:600}
-.fc-meta{font-family:var(--font-code); font-size:11px; color:var(--mut)}
-.fc-state{margin-left:auto; display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--mut); flex:none}
-.file-card.done .fc-state{color:var(--ok)}
-.fc-bar{position:absolute; left:14px; right:14px; bottom:0; height:2px; background:var(--line2); overflow:hidden; opacity:0}
-.file-card:not(.done) .fc-bar{opacity:1}
-.fc-bar::after{content:''; display:block; width:40%; height:100%; background:var(--acc); animation:scan 1s linear infinite}
-@keyframes scan{from{transform:translateX(-110%)}to{transform:translateX(380%)}}
+/* ============ 2. APP SHELL ============ */
+#app { display: flex; height: 100vh; height: 100dvh; width: 100%; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); position: relative; }
 
-/* চ্যাট খালি অবস্থা */
-.empty-chat{text-align:center; padding-top:7vh; animation:rise .4s ease}
-.empty-chat h2{font-size:21px; margin:16px 0 8px}
-.empty-chat p{color:var(--mut); font-size:13.5px; line-height:1.7}
-.suggs{display:flex; flex-wrap:wrap; gap:9px; justify-content:center; margin-top:22px}
-.sugg{
-  display:flex; align-items:center; gap:8px; padding:9px 15px; border-radius:999px;
-  background:var(--panel); border:1px solid var(--line); color:var(--text); font-size:13px;
-  transition:border-color .15s,color .15s,transform .15s;
+/* ---- Sidebar ---- */
+#sidebar {
+  width: 280px; flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; z-index: 60;
 }
-.sugg:hover{border-color:var(--acc); color:var(--acc); transform:translateY(-1px)}
-.sugg .ic{width:15px;height:15px}
+@media(max-width: 899px) {
+  #sidebar { position: fixed; inset: 0 auto 0 0; transform: translateX(-102%); transition: transform .35s cubic-bezier(.3,.9,.3,1); box-shadow: var(--shadow-panel); }
+  #sidebar.open { transform: translateX(0); }
+}
+#sidebarBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(3px); z-index: 55; opacity: 0; pointer-events: none; transition: opacity .3s; }
+#sidebarBackdrop.show { opacity: 1; pointer-events: auto; }
 
-/* ইনপুট */
-.chat-input{flex:none; padding:13px 14px 8px; border-top:1px solid var(--line2); background:var(--panel)}
-.input-wrap{
-  display:flex; align-items:flex-end; gap:9px; background:var(--panel2);
-  border:1px solid var(--line); border-radius:13px; padding:9px 9px 9px 14px;
-  transition:border-color .15s;
+.side-brand { display: flex; align-items: center; gap: 14px; padding: 24px 20px 16px; }
+.logo-mark {
+  width: 38px; height: 38px; border-radius: 12px; background: var(--surface2); 
+  border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; 
+  color: #fff; background-image: var(--accent-grad); box-shadow: var(--shadow-glow);
 }
-.input-wrap:focus-within{border-color:var(--acc)}
-textarea{
-  flex:1; background:none; border:0; resize:none; color:var(--text);
-  font-family:var(--font-ui); font-size:14.5px; line-height:1.5; max-height:140px; outline:none;
-}
-textarea::placeholder{color:var(--dim)}
-.send-btn{
-  width:38px;height:38px;flex:none;border:0;border-radius:10px;background:var(--acc);color:var(--acc-ink);
-  display:flex;align-items:center;justify-content:center;transition:background .15s,opacity .15s,transform .1s;
-}
-.send-btn:hover{background:var(--acc-h)}
-.send-btn:active{transform:scale(.93)}
-.send-btn:disabled{opacity:.35; pointer-events:none}
-.chat-hint{font-family:var(--font-code); font-size:10.5px; color:var(--dim); text-align:center; padding:7px 0 5px}
+.logo-mark svg { width: 20px; height: 20px; stroke-width: 2.5; }
+.brand-name { font-weight: 700; font-size: 17px; letter-spacing: -0.02em; color: #fff; }
+.brand-sub { font-size: 10.5px; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; font-weight: 600;}
 
-/* ============ স্প্লিটার ============ */
-.splitter{flex:none; width:10px; cursor:col-resize; position:relative; touch-action:none}
-.splitter::after{
-  content:''; position:absolute; top:0; bottom:0; left:4px; width:2px;
-  background:var(--line2); transition:background .15s;
+.side-nav { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.side-nav .nav-item { 
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; 
+  color: var(--text2); font-size: 14px; font-weight: 500; width: 100%; text-align: left; 
 }
-.splitter:hover::after, body.dragging .splitter::after{background:var(--acc)}
-body.dragging{cursor:col-resize; user-select:none}
+.side-nav .nav-item:hover { background: var(--surface); color: var(--text); }
+.side-nav .nav-item.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; border: 1px solid var(--accent-line); }
+.side-nav .nav-item.active svg { color: var(--accent); }
 
-/* ============ ওয়ার্কস্পেস ============ */
-.work{flex:1; min-width:0; display:flex; flex-direction:column; min-height:0}
-.work-head{
-  height:46px; flex:none; display:flex; align-items:stretch; border-bottom:1px solid var(--line2);
-  background:var(--panel);
-}
-.tabs{display:flex; overflow-x:auto; flex:1; min-width:0; scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab{
-  display:flex; align-items:center; gap:8px; padding:0 12px 0 14px; font-family:var(--font-code);
-  font-size:12.5px; color:var(--mut); cursor:pointer; white-space:nowrap; user-select:none;
-  border-right:1px solid var(--line2); box-shadow:inset 0 -2px 0 transparent;
-  animation:pop .25s ease; transition:color .15s, background .15s;
-}
-.tab:hover{color:var(--text); background:var(--panel2)}
-.tab.active{color:var(--text); background:var(--code-bg); box-shadow:inset 0 -2px 0 var(--acc)}
-.t-dot{width:8px;height:8px;border-radius:50%;flex:none}
-.t-x{
-  background:none;border:0;color:var(--dim);display:flex;padding:3px;border-radius:5px;transition:color .12s,background .12s;
-}
-.t-x:hover{color:var(--text); background:var(--line2)}
-.t-x .ic{width:12px;height:12px}
-.w-actions{display:flex; align-items:center; gap:8px; padding:0 12px; flex:none}
-.work-meta{
-  flex:none; display:flex; align-items:center; gap:10px; padding:8px 14px;
-  border-bottom:1px solid var(--line2); background:var(--code-bg);
-  font-family:var(--font-code); font-size:11.5px; color:var(--mut);
-}
-.work.is-empty .work-meta{display:none}
-.wm-left{display:flex; align-items:center; gap:9px; min-width:0}
-#wmName{color:var(--text); font-size:12px}
-.lang-chip{
-  font-size:10px; padding:2px 7px; border-radius:5px; font-weight:700; letter-spacing:.5px;
-  color:var(--acc-ink); background:var(--acc);
-}
-.work-body{flex:1; min-height:0; position:relative}
-.work-body > *{position:absolute; inset:0}
+.side-sec { padding: 18px 20px 8px; display: flex; align-items: center; justify-content: space-between; }
+.side-sec h3 { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); font-weight: 700; }
+#historyList { flex: 1; overflow-y: auto; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 2px; }
+.hist-item { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; }
+.hist-item:hover { background: var(--surface); }
+.hist-item.active { background: var(--surface2); }
+.hist-main { flex: 1; min-width: 0; text-align: left; }
+.hist-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); display: block; }
+.hist-item:not(.active) .hist-title { color: var(--text2); }
+.hist-meta { font-size: 11px; color: var(--text3); display: block; margin-top: 2px; }
+.hist-acts { display: none; gap: 4px; }
+.hist-item:hover .hist-acts, .hist-item:focus-within .hist-acts { display: flex; }
+.hact { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text3); }
+.hact:hover { color: var(--text); background: var(--surface3); }
+.hact svg { width: 14px; height: 14px; }
 
-/* কোড ভিউয়ার */
-.code-scroll{overflow:auto; display:flex; background:var(--code-bg)}
-.code-scroll.wipe{animation:wipe .55s cubic-bezier(.3,.6,.2,1)}
-@keyframes wipe{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 -2% 0)}}
-.gutter{
-  position:sticky; left:0; z-index:1; flex:none; text-align:right; padding:16px 12px 40px 18px;
-  font-family:var(--font-code); font-size:12.5px; line-height:1.7; color:#3D4654;
-  background:var(--code-bg); border-right:1px solid var(--line2); user-select:none;
+/* ---- Topbar ---- */
+#topbar {
+  flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 12px 20px;
+  padding-top: calc(12px + env(safe-area-inset-top));
+  border-bottom: 1px solid var(--border); background: var(--glass); backdrop-filter: blur(20px); z-index: 30;
 }
-.code-pre{
-  padding:16px 26px 40px 16px; font-family:var(--font-code); font-size:12.5px; line-height:1.7;
-  color:#B9C2CC; white-space:pre; min-width:0;
+.tbtn { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text2); background: var(--surface); border: 1px solid var(--border); }
+.tbtn:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); transform: translateY(-1px); }
+#btnMenu { display: flex; }
+@media(min-width: 900px) { #btnMenu { display: none; } }
+.tspacer { flex: 1; }
+.model-chip {
+  display: flex; align-items: center; gap: 8px; max-width: 44vw; font-size: 13px; font-weight: 600; color: var(--text2);
+  background: var(--surface); border: 1px solid var(--border); padding: 8px 16px; border-radius: 99px; transition: all .2s;
 }
-.tk-t{color:#FF8A5C} .tk-a{color:#E8C468} .tk-s{color:#A8C98A} .tk-c{color:#576273; font-style:italic}
-.tk-k{color:#E8798A} .tk-n{color:#6EC3A9} .tk-f{color:#7FB4D8} .tk-p{color:#C9A26D}
-.tk-v{color:#E8A2B0} .tk-sel{color:#FF9E6B} .tk-prop{color:#D8B26E} .tk-at{color:#E8798A}
+.model-chip:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+.model-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); flex-shrink: 0; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+.model-chip.on .dot { background: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+.model-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* প্রিভিউ */
-.preview-view{display:flex; flex-direction:column}
-.pv-bar{
-  flex:none; display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:8px 12px; background:var(--panel2); border-bottom:1px solid var(--line2);
-}
-.pv-note{font-size:12px; color:var(--mut)}
-.pv-tools{display:flex; gap:5px}
-.icon-btn{
-  width:30px;height:30px;display:flex;align-items:center;justify-content:center;
-  background:none;border:1px solid var(--line);border-radius:8px;color:var(--mut);transition:all .13s;
-}
-.icon-btn:hover{color:var(--text); background:var(--line2)}
-.icon-btn.active{color:var(--acc); border-color:var(--acc)}
-.pv-stage{flex:1; min-height:0; display:flex; justify-content:center; background:#08090C; padding:16px}
-#pvFrame{
-  width:100%; height:100%; border:0; border-radius:12px; background:#fff;
-  box-shadow:0 14px 40px rgba(0,0,0,.5); transition:width .3s ease;
-}
-#pvFrame.mob{width:392px; max-width:100%}
+/* ---- Views ---- */
+#views { flex: 1; min-height: 0; position: relative; }
+.view { position: absolute; inset: 0; display: none; flex-direction: column; min-height: 0; }
+.view.active { display: flex; animation: viewIn .3s cubic-bezier(.3,.9,.3,1); }
+@keyframes viewIn { from { opacity: 0; transform: translateY(10px) scale(0.99); } to { opacity: 1; transform: none; } }
+.view-head { padding: 24px 24px 12px; flex-shrink: 0; }
+.view-head h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.view-head p { font-size: 14px; color: var(--text2); margin-top: 4px; }
+.view-scroll { flex: 1; overflow-y: auto; min-height: 0; padding: 0 24px calc(24px + env(safe-area-inset-bottom)); }
 
-/* ওয়ার্কস্পেস খালি অবস্থা */
-.work-empty{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; padding:20px}
-.work.is-empty .work-empty{display:flex}
-.work:not(.is-empty) .work-empty{display:none}
-.term{
-  width:100%; max-width:400px; background:var(--panel2); border:1px solid var(--line);
-  border-radius:14px; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.35);
-}
-.term-bar{
-  display:flex; align-items:center; gap:6px; padding:10px 13px; border-bottom:1px solid var(--line2);
-  background:var(--panel);
-}
-.term-bar i{width:10px;height:10px;border-radius:50%;background:#2A313D}
-.term-bar span{margin-left:auto; font-family:var(--font-code); font-size:10.5px; color:var(--dim)}
-.term-body{padding:16px 17px; font-family:var(--font-code); font-size:12.5px; line-height:2}
-.term-body .tp{color:var(--acc)}
-.term-body .plus{color:var(--ok)}
-.cursor{display:inline-block; width:9px; height:16px; background:var(--acc); vertical-align:-3px; animation:blink 1.1s steps(2) infinite}
-.we-hint{color:var(--dim); font-size:12.5px; text-align:center; max-width:300px; line-height:1.7}
+/* ============ 3. WORKSPACE ============ */
+.ws-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr; }
+@media(min-width: 1200px) { .ws-grid { grid-template-columns: minmax(0,1fr) 300px; } }
+.ws-col { display: flex; flex-direction: column; min-height: 0; min-width: 0; position: relative; }
+#wsAside { display: none; border-left: 1px solid var(--border); background: var(--bg2); overflow-y: auto; padding: 20px; min-height: 0; }
+@media(min-width: 1200px) { #wsAside { display: block; } }
+#wsAside h4 { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); margin-bottom: 14px; font-weight: 700; }
 
-/* ফ্ল্যাশ (চ্যাট কার্ডে ক্লিক করলে) */
-.work.flash{animation:flashline .7s ease}
-@keyframes flashline{0%{box-shadow:inset 0 0 0 2px var(--acc)}100%{box-shadow:inset 0 0 0 2px transparent}}
+/* Duo board */
+#duoBoard { padding: 16px 20px 0; flex-shrink: 0; }
+.duo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.duo-card[data-status="working"] { border-color: var(--accent); box-shadow: var(--shadow-glow); }
+.duo-card[data-status="error"] { border-color: var(--err); }
+.dc-top { display: flex; align-items: center; gap: 12px; }
+.dc-glyph { width: 38px; height: 38px; border-radius: 12px; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--text2); flex-shrink: 0; }
+.duo-card[data-status="working"] .dc-glyph { color: #fff; background: var(--accent-grad); }
+.dc-name { font-size: 14px; font-weight: 700; }
+.dc-role { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.dc-status { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text3); white-space: nowrap; }
+.dc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.duo-card[data-status="working"] .dc-dot { background: var(--accent); animation: pulse 1.5s ease infinite; }
+.duo-card[data-status="done"] .dc-dot { background: #10b981; }
+.duo-card[data-status="error"] .dc-dot { background: var(--err); }
+.duo-card[data-status="working"] .dc-status { color: var(--accent); }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 var(--accent-dim); } 50% { box-shadow: 0 0 0 6px var(--accent-dim); } }
+.dc-task { margin-top: 12px; font-size: 13px; color: var(--text2); border-top: 1px solid var(--border); padding-top: 12px; min-height: 16px; }
+.duo-link { display: flex; flex-direction: column; align-items: center; height: 26px; position: relative; }
+.duo-link::before { content: ""; width: 2px; flex: 1; background: var(--border2); }
+.duo-link svg { width: 16px; height: 16px; color: var(--text3); position: absolute; bottom: -4px; background: var(--bg); }
+.duo-card + .duo-card { margin-top: 24px; }
 
-/* ============ টোস্ট ============ */
-.toasts{position:fixed; right:18px; bottom:18px; display:flex; flex-direction:column; gap:9px; z-index:99}
-.toast{
-  display:flex; align-items:center; gap:9px; padding:11px 15px; background:var(--panel2);
-  border:1px solid var(--line); border-radius:12px; font-size:13px;
-  box-shadow:0 12px 32px rgba(0,0,0,.45); opacity:0; transform:translateY(10px);
-  transition:opacity .25s, transform .25s;
-}
-.toast.in{opacity:1; transform:none}
-.toast .ic{color:var(--ok)}
-.toast.err .ic{color:var(--err)}
+/* Top Agent Files Bar (Premium Design) */
+.agent-files-bar { flex-shrink: 0; margin: 16px 20px 0; border: 1px solid var(--border); background: var(--surface); border-radius: 24px; overflow: hidden; box-shadow: var(--shadow-panel); backdrop-filter: blur(10px); }
+.af-head { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+.af-agent-icon { width: 38px; height: 38px; border-radius: 12px; background: var(--accent-dim); border: 1px solid var(--accent-line); display: flex; align-items: center; justify-content: center; color: var(--accent); flex-shrink: 0; }
+.af-agent-icon svg { width: 20px; height: 20px; }
+.af-head-main { min-width: 0; flex: 1; }
+.af-title { font-size: 14px; font-weight: 700; color: #fff; }
+.af-sub { font-size: 12px; color: var(--text2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.af-status { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 1.5s ease infinite; flex-shrink: 0; box-shadow: 0 0 10px var(--accent); }
+.agent-files-bar.ready .af-status { animation: none; background: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+.agent-files-bar.ready .af-sub { color: #10b981; font-weight: 500; }
+.agent-file-tabs { display: flex; gap: 10px; overflow-x: auto; padding: 14px 18px; background: var(--bg); }
+.agent-file-tab { flex: 0 0 auto; min-width: 160px; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border2); border-radius: 14px; background: var(--surface2); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 600; text-align: left; transition: all 0.2s; }
+.agent-file-tab:hover { border-color: var(--accent); background: var(--accent-dim); transform: translateY(-2px); box-shadow: var(--shadow-glow); }
+.agent-file-tab svg { color: var(--accent); flex-shrink: 0; }
+.agent-file-tab span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-file-tab .aft-ext { font-size: 10px; color: var(--text3); font-weight: 700; margin-left: auto; background: var(--surface); padding: 2px 6px; border-radius: 6px; }
 
-/* ============ মোবাইল ============ */
-@media (max-width:920px){
-  .splitter{display:none}
-  .stage{flex-direction:column}
-  .chat,.work{width:100% !important; flex:1 !important; min-width:0; border-right:0}
-  .chat,.work{display:none}
-  body.view-chat .chat{display:flex}
-  body.view-work .work{display:flex}
-  .seg{display:flex}
-  .brand-txt span{display:none}
-  .chip-stat{display:none}
-  .w-actions .btn span{display:none}
-  .w-actions .btn{padding:6px 8px}
+/* Code Viewer (Modal) */
+.code-viewer { position: absolute; z-index: 50; inset: 20px; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 24px; background: var(--bg); box-shadow: 0 30px 60px rgba(0,0,0,0.7); overflow: hidden; animation: viewIn 0.3s cubic-bezier(.3,.9,.3,1); }
+.code-viewer[hidden] { display: none; }
+.cv-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.cv-name-wrap { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.cv-name-wrap strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); color: #fff;}
+.cv-name-wrap span:last-child { font-size: 10px; font-weight: 700; color: var(--accent); background: var(--accent-dim); padding: 3px 8px; border-radius: 6px; }
+.cv-dot { width: 12px; height: 12px; border-radius: 50%; background: #ef4444; position: relative; box-shadow: 20px 0 0 #fbbf24, 40px 0 0 #10b981; margin-right: 40px; }
+.cv-code { flex: 1; margin: 0; padding: 20px; overflow: auto; font: 13px/1.6 var(--mono); white-space: pre; color: #e2e8f0; background: #000; }
+.bg-agent-msg { display: none !important; }
+
+/* Messages */
+#messages { flex: 1; overflow-y: auto; min-height: 0; padding: 20px 20px 140px; }
+.msg { margin-bottom: 24px; animation: msgIn .3s cubic-bezier(.3,.9,.3,1); }
+@keyframes msgIn { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+.msg.user { display: flex; flex-direction: column; align-items: flex-end; }
+.msg .u-bubble { 
+  max-width: 85%; background: var(--accent-grad); border: none; border-radius: 24px 24px 6px 24px; 
+  padding: 14px 20px; white-space: pre-wrap; word-break: break-word; font-size: 15px; color: #fff;
+  box-shadow: var(--shadow-glow); line-height: 1.6;
 }
-@media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
+.msg .att-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-bottom: 8px; max-width: 85%; }
+.att-chip { display: flex; align-items: center; gap: 8px; font-size: 12px; font-family: var(--mono); color: var(--text); background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; max-width: 240px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.att-chip svg { width: 14px; height: 14px; color: var(--accent); }
+.att-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ai-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ai-glyph { width: 28px; height: 28px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text); }
+.ai-glyph svg { width: 14px; height: 14px; }
+.ai-label { font-size: 14px; font-weight: 700; color: #fff; }
+.ai-label.review { color: var(--warn); }
+.ai-time { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-left: auto; }
+.ai-body { max-width: 100%; min-width: 0; color: var(--text); line-height: 1.65; }
+@media(min-width: 900px) { .ai-body { max-width: calc(100% - 60px); } }
+
+/* Markdown Styling Premium */
+.md { font-size: 15px; word-break: break-word; }
+.md p { margin: 0 0 14px; }
+.md p:last-child { margin-bottom: 0; }
+.md h1, .md h2, .md h3, .md h4 { margin: 24px 0 12px; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
+.md h1 { font-size: 22px; } .md h2 { font-size: 19px; } .md h3 { font-size: 17px; } .md h4 { font-size: 15px; }
+.md ul, .md ol { margin: 0 0 14px; padding-left: 24px; }
+.md li { margin: 6px 0; }
+.md blockquote { border-left: 4px solid var(--accent); background: var(--surface); padding: 12px 16px; border-radius: 0 12px 12px 0; margin: 0 0 14px; color: var(--text2); font-style: italic; }
+.md hr { border: 0; border-top: 1px solid var(--border); margin: 20px 0; }
+.md a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-line); transition: all 0.2s; }
+.md a:hover { color: #fff; border-bottom-color: #fff; }
+.md code:not(pre code) { font-family: var(--mono); font-size: 13px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; color: #fff; }
+.md .codeblock { margin: 16px 0; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: #000; box-shadow: var(--shadow-panel); }
+.cb-head { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.cb-lang { font-size: 11px; font-family: var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); flex: 1; font-weight: 600; }
+.cb-copy { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); padding: 6px 12px; border-radius: 8px; font-family: var(--mono); font-weight: 600; background: var(--surface); border: 1px solid var(--border); transition: all 0.2s; }
+.cb-copy:hover { background: var(--surface3); color: #fff; border-color: var(--border2); }
+.cb-copy svg { width: 14px; height: 14px; }
+.codeblock pre { padding: 16px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px; line-height: 1.6; color: #e2e8f0; }
+.md.streaming::after { content: ""; display: inline-block; width: 8px; height: 18px; background: var(--accent); margin-left: 6px; vertical-align: -2px; border-radius: 2px; animation: blink 1s steps(1) infinite; box-shadow: 0 0 10px var(--accent); }
+
+/* Working / progress panel */
+.work-panel { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); margin-bottom: 16px; overflow: hidden; }
+.wp-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; text-align: left; background: rgba(255,255,255,0.02); }
+.wp-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+.work-panel[data-state="active"] .wp-dot { background: var(--accent); animation: pulse 1.5s ease infinite; }
+.work-panel[data-state="done"] .wp-dot { background: #10b981; }
+.work-panel[data-state="error"] .wp-dot { background: var(--err); }
+.wp-title { font-size: 13px; font-weight: 600; flex: 1; color: var(--text); }
+.work-panel[data-state="active"] .wp-title { color: var(--accent); }
+.wp-chev { color: var(--text3); transition: transform .3s ease; }
+.work-panel[data-open] .wp-chev { transform: rotate(180deg); }
+.wp-steps { list-style: none; padding: 4px 16px 14px; display: none; }
+.work-panel[data-open] .wp-steps { display: block; }
+.wp-steps li { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--text3); padding: 5px 0; font-family: var(--mono); }
+.wp-steps li .si { width: 16px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.wp-steps li .si svg { width: 14px; height: 14px; }
+.wp-steps li.done { color: var(--text2); }
+.wp-steps li.done .si { color: #10b981; }
+.wp-steps li.active { color: var(--accent); font-weight: 500; }
+.wp-steps li.active .si .spin { width: 12px; height: 12px; border: 2px solid var(--accent-line); border-top-color: var(--accent); border-radius: 50%; animation: rot .8s linear infinite; display: block; }
+@keyframes rot { to { transform: rotate(360deg); } }
+
+/* AI actions */
+.ai-actions { display: flex; gap: 8px; margin-top: 12px; }
+.mact { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text3); padding: 6px 12px; border-radius: 8px; font-family: var(--mono); border: 1px solid transparent; transition: all 0.2s; }
+.mact:hover { color: var(--text); background: var(--surface2); border-color: var(--border); }
+
+/* ============ 4. COMPOSER (Premium Floating) ============ */
+#composerWrap { 
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 20px; background: linear-gradient(to top, var(--bg) 60%, transparent); 
+  z-index: 40; display: flex; flex-direction: column; align-items: center; pointer-events: none;
 }
+#composerWrap > * { pointer-events: auto; width: 100%; max-width: 860px; }
+#attachRow { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.composer-box {
+  background: var(--glass); backdrop-filter: blur(24px); border: 1px solid var(--border2); 
+  border-radius: 28px; padding: 10px 10px 10px 20px; box-shadow: var(--shadow-panel);
+  transition: border-color .3s, box-shadow .3s; display: flex; flex-direction: column;
+}
+.composer-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-dim), var(--shadow-panel); }
+#input {
+  width: 100%; background: none; border: 0; resize: none; outline: none; font-size: 16px; line-height: 1.6;
+  max-height: 200px; padding: 8px 4px 4px; color: #fff; font-family: var(--sans);
+}
+#input::placeholder { color: var(--text3); }
+.composer-tools { display: flex; align-items: center; gap: 8px; padding-top: 8px; }
+.cbtn { width: 40px; height: 40px; border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--text2); background: var(--surface); border: 1px solid var(--border); transition: all .2s; flex-shrink: 0; }
+.cbtn:hover { background: var(--surface2); color: #fff; border-color: var(--border2); transform: translateY(-2px); }
+.cbtn.mic-on { color: #fff; background: var(--err); border-color: var(--err); animation: pulse 1.5s ease infinite; }
+.ctools-right { margin-left: auto; display: flex; align-items: center; gap: 8px; min-width: 0; }
+#charCount { font-size: 11px; font-family: var(--mono); color: var(--text3); padding-right: 4px; }
+.mini-chip { font-size: 12px; font-weight: 600; color: var(--text2); background: var(--surface2); border: 1px solid var(--border); padding: 8px 14px; border-radius: 99px; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: all .2s; }
+.mini-chip:hover { color: #fff; border-color: var(--border2); background: var(--surface3); }
+#sendBtn {
+  width: 44px; height: 44px; border-radius: 16px; background: var(--text); color: var(--bg); display: flex; align-items: center;
+  justify-content: center; transition: all .2s; flex-shrink: 0; box-shadow: 0 4px 15px rgba(255,255,255,0.15);
+}
+#sendBtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,255,255,0.25); }
+#sendBtn:active { transform: scale(0.95); }
+#sendBtn:disabled { background: var(--surface3); color: var(--text3); box-shadow: none; cursor: not-allowed; }
+#sendBtn.stop { background: var(--err); color: #fff; box-shadow: 0 4px 15px rgba(239,68,68,0.3); }
+#sendBtn svg { width: 20px; height: 20px; }
+.composer-note { text-align: center; font-size: 11px; color: var(--text3); margin-top: 12px; pointer-events: none; }
+
+/* Empty State (Premium) */
+#emptyState { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; min-height: 0; }
+.es-glyph { width: 64px; height: 64px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; color: #fff; background-image: var(--accent-grad); box-shadow: var(--shadow-glow); margin-bottom: 24px; }
+.es-glyph svg { width: 32px; height: 32px; stroke-width: 2; }
+#emptyState h1 { font-size: 32px; font-weight: 400; letter-spacing: -0.03em; line-height: 1.3; color: #fff; }
+#emptyState h1 b { font-weight: 700; }
+#emptyState h1 .accent { color: var(--accent); }
+#emptyState .es-sub { font-size: 15px; color: var(--text2); margin: 12px 0 32px; max-width: 400px; line-height: 1.6; }
+.quick-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 540px; }
+.quick { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 99px; padding: 12px 20px; transition: all .2s; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.quick:hover { border-color: var(--accent-line); background: var(--surface2); transform: translateY(-2px); box-shadow: var(--shadow-glow); }
+.quick:active { transform: scale(0.97); }
+.quick svg { width: 16px; height: 16px; color: var(--accent); }
+
+/* ============ 5. FILES VIEW ============ */
+#dropzone {
+  border: 2px dashed var(--border2); border-radius: 24px; padding: 40px 20px; display: flex; flex-direction: column;
+  align-items: center; gap: 12px; text-align: center; transition: all .3s ease; margin-bottom: 24px; background: rgba(255,255,255,0.01);
+}
+#dropzone:hover, #dropzone.drag { border-color: var(--accent); background: var(--accent-dim); transform: scale(0.99); }
+#dropzone svg { width: 32px; height: 32px; color: var(--accent); }
+#dropzone .dz-t { font-size: 16px; font-weight: 700; color: #fff; }
+#dropzone .dz-s { font-size: 12.5px; color: var(--text3); font-family: var(--mono); max-width: 400px; line-height: 1.6; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 600; padding: 12px 20px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: all .2s; }
+.btn:hover { background: var(--surface3); transform: translateY(-1px); border-color: var(--border2); }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--text); border-color: var(--text); color: var(--bg); }
+.btn.primary:hover { background: #fff; box-shadow: 0 4px 15px rgba(255,255,255,0.2); }
+.btn.danger { color: #fff; background: var(--err); border-color: var(--err); }
+.btn.danger:hover { background: #dc2626; box-shadow: 0 4px 15px rgba(239,68,68,0.3); }
+.btn svg { width: 16px; height: 16px; }
+
+/* Buttons & Settings Cards */
+.set-card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; margin-bottom: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+.set-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+.set-head h3 { font-size: 15px; font-weight: 700; color: #fff; }
+.set-head p { font-size: 12.5px; color: var(--text3); margin-top: 4px; }
+.prov-card { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; gap: 14px; align-items: flex-start; transition: background 0.2s; }
+.prov-card:hover { background: rgba(255,255,255,0.01); }
+.prov-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border2); margin-top: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+.prov-card.active .prov-radio { border-color: var(--accent); }
+.prov-card.active .prov-radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+/* Toggle Switch */
+.switch { width: 44px; height: 26px; border-radius: 99px; background: var(--surface3); position: relative; transition: all .3s; flex-shrink: 0; border: 1px solid var(--border); cursor: pointer; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--text2); transition: all .3s cubic-bezier(0.4, 0.0, 0.2, 1); }
+.switch[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+.switch[aria-checked="true"]::after { transform: translateX(18px); background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+
+/* Modals */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 100; display: flex; align-items: center; justify-content: center; animation: fadeIn .3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal { background: var(--bg); border: 1px solid var(--border2); border-radius: 28px; width: 100%; max-width: 560px; max-height: 90vh; display: flex; flex-direction: column; animation: modalIn .4s cubic-bezier(.3,.9,.3,1); box-shadow: var(--shadow-panel); overflow: hidden; }
+@keyframes modalIn { from { transform: translateY(20px) scale(0.95); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-head { display: flex; align-items: center; gap: 12px; padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.modal-head h3 { font-size: 18px; font-weight: 700; color: #fff; flex: 1; }
+.modal-body { padding: 24px; overflow-y: auto; flex: 1; min-height: 0; }
+.modal-foot { display: flex; gap: 12px; justify-content: flex-end; padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface); }
+
+/* Form Fields */
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+.field input, .field select { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 15px; color: #fff; outline: none; transition: all .2s; }
+.field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); background: var(--surface2); }
+
+/* Setup & Error Cards */
+.err-card { border: 1px solid rgba(248,113,113,0.3); background: var(--err-dim); border-radius: 16px; padding: 16px 20px; margin-top: 10px; }
+.setup-card { border: 1px solid var(--border); background: var(--surface); border-radius: 20px; padding: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+
+/* Result panel */
+.result-panel { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); margin-top: 16px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+.rp-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+
+/* Toasts */
+#toasts { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+.toast { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 14px; padding: 12px 20px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow-panel); animation: toastIn .3s cubic-bezier(.3,.9,.3,1); color: #fff; }
+.toast svg { width: 18px; height: 18px; }
+
 </style>
 </head>
-<body class="view-chat">
+<body>
 
-<header class="topbar">
-  <div class="brand">
-    <span id="logoTop"></span>
-    <div class="brand-txt">
-      <b>কোডমিস্ত্রি</b>
-      <span>কোড বলবেন — ফাইল পাবেন, ফাইলে ক্লিক করলেই কোড</span>
+<!-- ============ SVG ICON LIBRARY ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-logo" viewBox="0 0 24 24"><path d="m7 8 4 4-4 4"/><path d="M13 16h4"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H6l-3 3V11.5A8.5 8.5 0 0 1 11.5 3h1A8.5 8.5 0 0 1 21 11.5Z"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="m7 9 3 3-3 3M13 15h4"/></symbol>
+  <symbol id="i-duo" viewBox="0 0 24 24"><circle cx="7.5" cy="7.5" r="3.5"/><circle cx="16.5" cy="16.5" r="3.5"/><path d="m10.3 10.3 3.4 3.4"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><circle cx="15" cy="6" r="2.2"/><circle cx="9" cy="12" r="2.2"/><circle cx="13" cy="18" r="2.2"/><path d="M4 6h8.5M18.5 6H20M4 12h2.5M11.5 12H20M4 18h6.5M15.5 18H20"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2.5"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><path d="m21.2 11.8-8.9 8.9a5.4 5.4 0 0 1-7.6-7.6l9.3-9.3a3.6 3.6 0 0 1 5.1 5.1l-9 9a1.8 1.8 0 0 1-2.6-2.6l8.3-8.3"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M15 5.5A2.5 2.5 0 0 0 12.5 3h-6A3.5 3.5 0 0 0 3 6.5v6A2.5 2.5 0 0 0 5.5 15"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-img" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m5 19 5-5 3 3 3-3 3 3"/></symbol>
+  <symbol id="i-zip" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="5" rx="1.5"/><path d="M6 8v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8M10 12h1.5M12.5 15H14M10 18h1.5"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5M14 11v5"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="m4 20 1.2-4.2L17 4a2.1 2.1 0 0 1 3 3L8.2 18.8Z M14.5 6.5l3 3"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3.2-6.9M21 3v6h-6"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20Z M12 10v4M12 17.2h.01"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a13.5 13.5 0 0 1 0 18 13.5 13.5 0 0 1 0-18"/></symbol>
+</svg>
+
+<div id="app">
+  <!-- Sidebar -->
+  <aside id="sidebar" aria-label="Sidebar">
+    <div class="side-brand">
+      <div class="logo-mark"><svg class="ic"><use href="#i-logo"/></svg></div>
+      <div><div class="brand-name">Anvil</div><div class="brand-sub">Workspace</div></div>
+    </div>
+    <nav class="side-nav" aria-label="Sections">
+      <button class="nav-item" data-mode="chat"><svg class="ic"><use href="#i-chat"/></svg>Chat</button>
+      <button class="nav-item" data-mode="files"><svg class="ic"><use href="#i-folder"/></svg>Files</button>
+      <button class="nav-item" data-mode="settings"><svg class="ic"><use href="#i-sliders"/></svg>Settings</button>
+    </nav>
+    <div class="side-sec"><h3>History</h3><button class="hact" id="btnNewChatSide" aria-label="New chat"><svg class="ic"><use href="#i-plus"/></svg></button></div>
+    <div id="historyList" role="list"></div>
+  </aside>
+  <div id="sidebarBackdrop"></div>
+
+  <div class="main">
+    <!-- Topbar -->
+    <header id="topbar">
+      <button class="tbtn" id="btnMenu" aria-label="Open history"><svg class="ic"><use href="#i-menu"/></svg></button>
+      <span class="tspacer"></span>
+      <button class="model-chip" id="modelChip" aria-label="Switch provider"><span class="dot"></span><span id="modelChipTxt">Set up AI</span></button>
+      <button class="tbtn" id="btnNewChat" aria-label="New chat"><svg class="ic"><use href="#i-plus"/></svg></button>
+    </header>
+
+    <div id="views">
+      <!-- ======== WORKSPACE (Chat / Agent) ======== -->
+      <section class="view active" id="viewWorkspace" aria-label="Workspace">
+        <div class="ws-grid">
+          <div class="ws-col">
+            
+            <!-- Dynamic Agent Files Bar -->
+            <div id="agentFilesBar" class="agent-files-bar" hidden aria-label="Code Agent files">
+              <div class="af-head">
+                <span class="af-agent-icon"><svg class="ic"><use href="#i-term"/></svg></span>
+                <div class="af-head-main"><div class="af-title">Code Generated</div><div class="af-sub" id="agentFileStatus">Agent is working...</div></div>
+                <span class="af-status"></span>
+              </div>
+              <div id="agentFileTabs" class="agent-file-tabs"></div>
+            </div>
+
+            <!-- Code Viewer Modal Overlay -->
+            <div id="codeViewer" class="code-viewer" hidden role="dialog" aria-modal="true" aria-label="Code viewer">
+              <div class="cv-head">
+                <div class="cv-name-wrap"><span class="cv-dot"></span><strong id="cvName">index.html</strong><span id="cvLang">HTML</span></div>
+                <button class="tbtn" id="cvClose" aria-label="Close code viewer"><svg class="ic"><use href="#i-x"/></svg></button>
+              </div>
+              <pre id="cvCode" class="cv-code"><code></code></pre>
+            </div>
+
+            <div id="duoBoard" hidden>
+              <!-- Duo Agent UI details kept intact but styled better via CSS -->
+              <div class="duo-card" id="duoCardA" data-status="idle">
+                <div class="dc-top">
+                  <span class="dc-glyph"><svg class="ic"><use href="#i-term"/></svg></span>
+                  <div><div class="dc-name">Coding Agent</div><div class="dc-role">Implementation</div></div>
+                  <span class="dc-status"><span class="dc-dot"></span><span class="dc-stxt">Idle</span></span>
+                </div>
+                <div class="dc-task">Waiting for a request</div>
+              </div>
+              <div class="duo-link"><svg class="ic"><use href="#i-arrowdn"/></svg></div>
+              <div class="duo-card" id="duoCardB" data-status="idle">
+                <div class="dc-top">
+                  <span class="dc-glyph"><svg class="ic"><use href="#i-eye"/></svg></span>
+                  <div><div class="dc-name">Review Agent</div><div class="dc-role">Validation</div></div>
+                  <span class="dc-status"><span class="dc-dot"></span><span class="dc-stxt">Idle</span></span>
+                </div>
+                <div class="dc-task">Waiting for implementation</div>
+              </div>
+              <div id="duoSummary" hidden></div>
+            </div>
+
+            <div id="messages" aria-live="polite">
+              <div id="emptyState">
+                <div class="es-glyph"><svg class="ic"><use href="#i-logo"/></svg></div>
+                <h1>Build something <b>amazing</b><span class="accent">.</span></h1>
+                <p class="es-sub" id="esSub">Attach a project or describe what you want to build, fix or improve.</p>
+                <div class="quick-grid">
+                  <button class="quick" data-prompt="Build a modern responsive landing page for a productivity app with HTML, CSS and JavaScript."><svg class="ic"><use href="#i-plus"/></svg>Build a website</button>
+                  <button class="quick" data-prompt="Fix the bugs in my uploaded project and make sure everything works."><svg class="ic"><use href="#i-term"/></svg>Fix my code</button>
+                  <button class="quick" data-prompt="Create a mobile app UI for a habit tracker with bottom navigation, cards and dark theme."><svg class="ic"><use href="#i-img"/></svg>App UI</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="composerWrap">
+              <div id="attachRow"></div>
+              <div class="composer-box" id="composerBox">
+                <textarea id="input" rows="1" enterkeyhint="send" placeholder="Describe what to build or fix…" aria-label="Message input"></textarea>
+                <div class="composer-tools">
+                  <button class="cbtn" id="btnAttach" aria-label="Attach files"><svg class="ic"><use href="#i-clip"/></svg></button>
+                  <button class="cbtn" id="btnMic" aria-label="Voice input"><svg class="ic"><use href="#i-mic"/></svg></button>
+                  <div class="ctools-right">
+                    <span id="charCount" aria-hidden="true"></span>
+                    <button class="mini-chip" id="composerModel" aria-label="Select provider">Model</button>
+                    <button id="sendBtn" aria-label="Send message" disabled>
+                      <svg class="ic" id="sendIcon"><use href="#i-send"/></svg>
+                      <svg class="ic hidden" id="stopIcon"><use href="#i-stop"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <p class="composer-note">Anvil can make mistakes — always review generated code.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== FILES VIEW ======== -->
+      <section class="view" id="viewFiles" aria-label="Files">
+        <div class="view-head"><h2>Files</h2><p>Attach code or a ZIP — it becomes the agent's source of truth.</p></div>
+        <div class="view-scroll">
+          <div id="dropzone" role="button" tabindex="0" aria-label="Upload files">
+            <svg class="ic"><use href="#i-dl"/></svg>
+            <div class="dz-t">Tap to browse, or drop files here</div>
+            <div class="dz-s">ZIP · HTML · CSS · JS · TS · PY · JAVA · C++ · MD · PDF · Images</div>
+            <button class="btn" id="btnBrowse"><svg class="ic"><use href="#i-plus"/></svg>Browse files</button>
+          </div>
+          <div id="pendingSection" class="hidden">
+            <div class="sec-title"><h3>Pending attachments</h3></div>
+            <div id="pendingList" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+          <div id="projectSection" class="hidden">
+            <div class="sec-title"><h3>Project</h3></div>
+            <div class="proj-card set-card">
+              <div class="set-head">
+                <span class="proj-name" id="projName" style="font-weight:700;font-family:var(--mono);"></span>
+                <div>
+                  <span class="stat-chip" id="projFiles" style="margin-right:8px;font-size:12px"></span>
+                  <span class="stat-chip" id="projMod" style="font-size:12px"></span>
+                </div>
+              </div>
+              <div class="proj-tree" style="padding:16px"><div class="tree" id="projTree"></div></div>
+              <div class="proj-acts" style="padding:16px; border-top:1px solid var(--border); display:flex; gap:10px;">
+                <button class="btn primary" id="btnProjZip"><svg class="ic"><use href="#i-dl"/></svg>Download ZIP</button>
+                <button class="btn danger" id="btnProjClear"><svg class="ic"><use href="#i-trash"/></svg>Clear</button>
+              </div>
+            </div>
+          </div>
+          <div id="filesEmpty" class="info-card setup-card">
+            <h4 style="margin-bottom:8px">No project loaded yet.</h4>
+            <p style="color:var(--text2); font-size:13px; line-height:1.6">Upload a <code>.zip</code> and Anvil extracts the whole structure in your browser — or drop loose code files. The agent then treats those files as the source of truth.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== SETTINGS ======== -->
+      <section class="view" id="viewSettings" aria-label="Settings">
+        <div class="view-head"><h2>Settings</h2><p>Providers, preferences and data.</p></div>
+        <div class="view-scroll">
+          <div class="set-card">
+            <div class="set-head">
+              <div><h3>AI Providers</h3><p>OpenAI-compatible endpoints</p></div>
+              <button class="btn primary" id="btnAddProvider"><svg class="ic"><use href="#i-plus"/></svg>Add</button>
+            </div>
+            <div id="providerList"></div>
+          </div>
+          <div class="set-card">
+            <div class="set-head"><div><h3>Workspace Behavior</h3><p>Preferences</p></div></div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;">
+              <div style="flex:1">
+                <div style="font-size:14px;font-weight:600">Analyze dropped files immediately</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:4px">Send an analysis request automatically after a project is dropped</div>
+              </div>
+              <button class="switch" id="tgAutoAnalyze" role="switch" aria-checked="false" aria-label="Analyze dropped files immediately"></button>
+            </div>
+          </div>
+          <div class="set-card">
+            <div class="set-head"><div><h3>Security & Data</h3><p>Storage management</p></div></div>
+            <div style="padding:16px 20px; font-size:13px; color:var(--text2); border-bottom:1px solid var(--border)">
+              <b>API keys stay local.</b> Configuration is stored only in this browser's <code>localStorage</code>.
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px; gap:16px">
+              <span style="font-size:13px; color:var(--text2)"><b>Danger zone.</b> Erase all chats, providers and projects.</span>
+              <button class="btn danger" id="btnClearData" style="flex-shrink:0"><svg class="ic"><use href="#i-trash"/></svg>Erase Data</button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
-  <div class="top-right">
-    <span class="chip-stat" id="fileChip"></span>
-    <span class="live"><i></i> অনলাইন</span>
-    <button class="btn" id="newChat"></button>
-  </div>
-</header>
-
-<div class="seg" id="seg">
-  <button data-v="chat" class="active">চ্যাট</button>
-  <button data-v="work">ওয়ার্কস্পেস <b id="segBadge" hidden>0</b></button>
 </div>
 
-<main class="stage" id="stage">
-
-  <!-- চ্যাট -->
-  <section class="chat">
-    <div class="chat-log" id="chatLog"></div>
-    <div class="chat-input">
-      <div class="input-wrap">
-        <textarea id="input" rows="1" placeholder="যা বানাতে চান লিখুন... যেমন: ক্যালকুলেটর বানাও"></textarea>
-        <button class="send-btn" id="send" aria-label="পাঠান"></button>
-      </div>
-      <div class="chat-hint">Enter — পাঠান &nbsp;·&nbsp; Shift+Enter — নতুন লাইন &nbsp;·&nbsp; টাইপিং-এ ক্লিক করলে স্কিপ</div>
-    </div>
-  </section>
-
-  <div class="splitter" id="splitter" title="টেনে সাইজ বদলান (ডাবল ক্লিক = রিসেট)"></div>
-
-  <!-- ওয়ার্কস্পেস -->
-  <section class="work is-empty" id="workPane">
-    <div class="work-head">
-      <div class="tabs" id="tabs"></div>
-      <div class="w-actions">
-        <button class="btn mini" id="actCopy"></button>
-        <button class="btn mini" id="actDl"></button>
-        <button class="btn mini acc" id="actPv"></button>
-      </div>
-    </div>
-    <div class="work-meta">
-      <span class="wm-left">
-        <span class="lang-chip" id="wmLang">HTML</span>
-        <b id="wmName">—</b>
-        <span id="wmInfo"></span>
-      </span>
-    </div>
-    <div class="work-body">
-      <div class="code-scroll" id="codeScroll">
-        <pre class="gutter" id="gutter"></pre>
-        <pre class="code-pre" id="codePre"></pre>
-      </div>
-      <div class="preview-view" id="previewView" hidden>
-        <div class="pv-bar">
-          <span class="pv-note" id="pvNote"></span>
-          <div class="pv-tools">
-            <button class="icon-btn" id="pvReload" title="রিলোড"></button>
-            <button class="icon-btn active" id="pvDesk" title="ডেস্কটপ ভিউ"></button>
-            <button class="icon-btn" id="pvMob" title="মোবাইল ভিউ"></button>
-          </div>
-        </div>
-        <div class="pv-stage">
-          <iframe id="pvFrame" sandbox="allow-scripts allow-forms allow-modals allow-same-origin" title="লাইভ প্রিভিউ"></iframe>
-        </div>
-      </div>
-      <div class="work-empty" id="workEmpty">
-        <div class="term">
-          <div class="term-bar"><i></i><i></i><i></i><span>mistri — কারুকাজ</span></div>
-          <div class="term-body">
-            <p><span class="tp">$</span> mistri "ক্যালকুলেটর বানাও"</p>
-            <p><span class="plus">+</span> index.html &nbsp;তৈরি</p>
-            <p><span class="plus">+</span> style.css &nbsp;&nbsp;তৈরি</p>
-            <p><span class="plus">+</span> script.js &nbsp;&nbsp;তৈরি</p>
-            <p><span class="cursor"></span></p>
-          </div>
-        </div>
-        <p class="we-hint">চ্যাটে যা বানাতে চান লিখুন — তৈরি হওয়া কোড ফাইলগুলো এখানে এসে জমা হবে। ফাইলে ক্লিক করলেই পুরো কোড খুলবে।</p>
-      </div>
-    </div>
-  </section>
-
-</main>
-
-<div class="toasts" id="toasts"></div>
+<div id="toasts" aria-live="polite"></div>
+<div id="modalRoot"></div>
+<input type="file" id="fileInput" class="hidden" multiple accept=".zip,.html,.htm,.css,.js,.mjs,.ts,.jsx,.tsx,.json,.xml,.py,.java,.kt,.kts,.c,.h,.cpp,.cc,.hpp,.cs,.php,.rb,.go,.rs,.swift,.sql,.md,.txt,.yml,.yaml,.sh,.png,.jpg,.jpeg,.gif,.webp,.svg,.pdf">
 
 <script>
-/* ================================================================
-   কোডমিস্ত্রি — লোকাল কোড-এজেন্ট চ্যাট
-   এজেন্ট কোড বানালে সেটা স্ক্রিনে সরাসরি না এসে
-   ফাইল (index.html / style.css / script.js / index.php) হয়ে জমা হয়।
-   ================================================================ */
-
-/* ---------- ছোট হেল্পার ---------- */
-const $ = s => document.querySelector(s);
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-let __seq = 1;
-const uid = () => __seq++;
-const bnNum = n => String(n).replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[d]);
-function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function el(tag, cls){ const n = document.createElement(tag); if(cls) n.className = cls; return n; }
-function timeNow(){ return new Date().toLocaleTimeString('bn-BD',{hour:'2-digit',minute:'2-digit'}); }
-
-/* ---------- আইকন লাইব্রেরি (ইনলাইন SVG) ---------- */
-const ICONS = {
-  send:'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>',
-  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
-  check:'<path d="M20 6 9 17l-5-5"/>',
-  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
-  play:'<path d="M6 4l14 8-14 8z" fill="currentColor" stroke="none"/>',
-  reload:'<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>',
-  x:'<path d="M18 6 6 18M6 6l12 12"/>',
-  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
-  file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
-  code:'<path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/>',
-  desktop:'<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
-  phone:'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M12 18h.01"/>',
-  refresh:'<path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
-  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/>',
-  list:'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>',
-  lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
-  clock:'<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-  monitor:'<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
-  loader:'<path d="M21 12a9 9 0 1 1-9-9"/>',
-  alert:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>'
+'use strict';
+/* =====================================================================
+   CONFIG & UTILS
+===================================================================== */
+const APP_NAME='Anvil', STORE_KEY='anvil.workspace.v1';
+const LIMITS={
+  maxFileMB:10, maxImageMB:4, maxZipEntries:400, maxZipEntryMB:25, maxZipTotalMB:60,
+  maxProjChars:140000, maxFileChars:24000, maxHistoryMsgs:24, maxHistoryChars:52000,
+  maxAssistantInCtx:4000, reviewFileChars:6000,
+  idleTimeoutMs:90000, testTimeoutMs:15000, streamRenderMs:150,
+  maxPersistProj:1200000, maxPersistBinB64:700000, maxChats:60, maxCodeBlocks:300
 };
-function icon(name, extra){
-  return '<svg class="ic '+(extra||'')+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICONS[name]+'</svg>';
-}
-function logoSVG(size){
-  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 40 40" aria-hidden="true">'
-    +'<rect width="40" height="40" rx="11" fill="#F2A33C"/>'
-    +'<path d="M15 8h7l6 6v15a3 3 0 0 1-3 3H15a3 3 0 0 1-3-3V11a3 3 0 0 1 3-3z" fill="#14100A"/>'
-    +'<path d="M22 8v6h6" fill="none" stroke="#F2A33C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
-    +'<path d="m17 21-2.6 2.6L17 26.2M23 21l2.6 2.6-2.6 2.6" fill="none" stroke="#F2A33C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-}
+const TEXT_EXTS=new Set(['html','htm','css','js','mjs','ts','jsx','tsx','json','xml','py','java','kt','kts','c','h','cpp','cc','hpp','cs','php','rb','go','rs','swift','sql','md','txt','yml','yaml','sh']);
+const EXT_LANG={html:'HTML',htm:'HTML',css:'CSS',js:'JavaScript',mjs:'JavaScript',ts:'TypeScript',jsx:'JSX',tsx:'TSX',json:'JSON',xml:'XML',py:'Python',java:'Java',kt:'Kotlin',kts:'Kotlin',c:'C',h:'C',cpp:'C++',cc:'C++',hpp:'C++',cs:'C#',php:'PHP',rb:'Ruby',go:'Go',rs:'Rust',swift:'Swift',sql:'SQL',md:'Markdown',txt:'Text',yml:'YAML',yaml:'YAML',sh:'Shell',zip:'ZIP',pdf:'PDF',svg:'SVG',png:'Image',jpg:'Image',jpeg:'Image',gif:'Image',webp:'Image'};
+const MODE_LABEL={chat:'Chat',agent:'Code Agent',duo:'Duo Agent',files:'Files',settings:'Settings'};
 
-const EXT = {
-  html:{ c:'#F0713C', b:'rgba(240,113,60,.12)', label:'HTML' },
-  php: { c:'#9C8CD9', b:'rgba(156,140,217,.12)', label:'PHP'  },
-  css: { c:'#4E9CC9', b:'rgba(78,156,201,.12)', label:'CSS'  },
-  js:  { c:'#EFD35B', b:'rgba(239,211,91,.12)', label:'JS'   }
+const CHAT_SYSTEM = `You are ${APP_NAME}, the direct chat assistant inside a developer workspace. Reply directly and naturally. NEVER describe internal processing steps, agents, providers, streaming, validation, analysis, or workflow phases. Do not show source code in the normal chat response. If the user asks you to create code, build a website, create a design, fix/update/modify code, or otherwise change project files, the UI will route that task to a background coding agent; do not generate code in the chat itself. For ordinary questions, just answer the user directly. Use concise Markdown.`;
+const AGENT_SYSTEM = `You are ${APP_NAME}, a coding agent operating inside a developer workspace. You behave like a careful code-maintenance engineer.
+GENERAL RULES
+- Answer concisely.
+- Use Markdown. Use fenced code blocks for explanations and snippets.
+PROJECT RULES (when a PROJECT CONTEXT is provided)
+- The project files in the context are the single source of truth.
+- When modifying, fix the EXISTING project.
+- Always output the COMPLETE updated content of every file you touch.
+OUTPUT FORMAT
+- One fenced block per file, with the path after the language.
+- Never output partial files, diffs, or "... rest unchanged ..." comments.
+- Do not repeat files that did not change.`;
+const REVIEW_SYSTEM = `You are the Review Agent. Check the produced files for correctness. Respond VERDICT: PASS or VERDICT: ISSUES followed by a list. Maximum 5 items.`;
+
+const state={
+  mode:'chat',
+  chats:[], activeChatId:null,
+  providers:[], activeProviderId:null,
+  attachments:[], project:null,
+  streaming:false, abortCtl:null, error:null,
+  duoRun:false, backgroundAgent:null, duoJob:null,
+  settings:{autoAnalyze:false}, ui:{nearBottom:true}
+};
+let msgEls=new Map(), codeStore=new Map(), saveTimer=null, storageWarned=false;
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const DOM = {
+  sidebar:$('#sidebar'), backdrop:$('#sidebarBackdrop'), btnMenu:$('#btnMenu'),
+  modelChip:$('#modelChip'), modelChipTxt:$('#modelChipTxt'),
+  viewWs:$('#viewWorkspace'), viewFiles:$('#viewFiles'), viewSettings:$('#viewSettings'),
+  messages:$('#messages'), emptyState:$('#emptyState'), agentFilesBar:$('#agentFilesBar'), agentFileStatus:$('#agentFileStatus'), agentFileTabs:$('#agentFileTabs'), codeViewer:$('#codeViewer'), cvName:$('#cvName'), cvLang:$('#cvLang'), cvCode:$('#cvCode'), cvClose:$('#cvClose'),
+  duoBoard:$('#duoBoard'), duoSummary:$('#duoSummary'), input:$('#input'), sendBtn:$('#sendBtn'), sendIcon:$('#sendIcon'), stopIcon:$('#stopIcon'),
+  charCount:$('#charCount'), attachRow:$('#attachRow'), fileInput:$('#fileInput'), btnAttach:$('#btnAttach'), btnMic:$('#btnMic'), composerModel:$('#composerModel'), historyList:$('#historyList'),
+  dropzone:$('#dropzone'), btnBrowse:$('#btnBrowse'), pendingSection:$('#pendingSection'), pendingList:$('#pendingList'), projectSection:$('#projectSection'), projName:$('#projName'), projFiles:$('#projFiles'), projMod:$('#projMod'), projTree:$('#projTree'), filesEmpty:$('#filesEmpty'),
+  providerList:$('#providerList'), tgAutoAnalyze:$('#tgAutoAnalyze'), toasts:$('#toasts'), modalRoot:$('#modalRoot'), btnProjZip:$('#btnProjZip'), btnProjClear:$('#btnProjClear'), btnAddProvider:$('#btnAddProvider'), btnClearData:$('#btnClearData'), btnNewChat:$('#btnNewChat'), btnNewChatSide:$('#btnNewChatSide'), duoCardA:$('#duoCardA'), duoCardB:$('#duoCardB')
 };
 
-/* ================================================================
-   এজেন্টের বানানো কোড টেমপ্লেট — আসল, চালানো-যায় এমন কোড
-   ================================================================ */
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const extOf=name=>{const m=/\.([a-z0-9]+)$/i.exec(name.trim());return m?m[1].toLowerCase():''};
+const langLabel=p=>EXT_LANG[extOf(p)]||'File';
+function fmtSize(n){if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KB';return (n/1048576).toFixed(1)+' MB'}
+function fmtTime(ts){const d=new Date(ts);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+function fmtDay(ts){const d=new Date(ts),t=new Date();return d.toDateString()===t.toDateString()?'Today':d.toLocaleDateString([],{month:'short',day:'numeric'})}
+function sanitizePath(p){const parts=String(p).replace(/\\/g,'/').split('/').filter(s=>s&&s!=='.'&&s!=='..').map(s=>s.replace(/[\x00-\x1f\x7f`"'<>|:*?]/g,'_').slice(0,64)).slice(0,8);return parts.length?parts.join('/'):null;}
+function iconFor(name){const e=extOf(name); if(e==='zip')return 'i-zip'; if(['png','jpg','jpeg','gif','webp'].includes(e))return 'i-img'; if(e==='pdf')return 'i-file'; return 'i-file';}
 
-const CALC_HTML = `<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ক্যালকুলেটর</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <main class="calc">
-    <header class="calc-top">
-      <span class="calc-brand">CALC-01</span>
-      <output id="display">0</output>
-    </header>
-
-    <section class="calc-keys" id="keys">
-      <button class="key fn" data-k="C">C</button>
-      <button class="key fn" data-k="neg">±</button>
-      <button class="key fn" data-k="pct">%</button>
-      <button class="key op" data-k="/">÷</button>
-
-      <button class="key" data-k="7">7</button>
-      <button class="key" data-k="8">8</button>
-      <button class="key" data-k="9">9</button>
-      <button class="key op" data-k="*">×</button>
-
-      <button class="key" data-k="4">4</button>
-      <button class="key" data-k="5">5</button>
-      <button class="key" data-k="6">6</button>
-      <button class="key op" data-k="-">−</button>
-
-      <button class="key" data-k="1">1</button>
-      <button class="key" data-k="2">2</button>
-      <button class="key" data-k="3">3</button>
-      <button class="key op" data-k="+">+</button>
-
-      <button class="key zero" data-k="0">0</button>
-      <button class="key" data-k=".">.</button>
-      <button class="key eq" data-k="=">=</button>
-    </section>
-  </main>
-
-  <script src="script.js"><\/script>
-</body>
-</html>`;
-
-const CALC_CSS = `/* ক্যালকুলেটর স্টাইল — গাঢ় ওয়ার্কশপ থিম */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: #101318;
-  font-family: "Hind Siliguri", sans-serif;
-  color: #e9ecf1;
+function toast(msg,type='info',ms=3400){
+  const t=document.createElement('div');t.className='toast '+type;
+  const ic=type==='error'?'i-alert':(type==='success'?'i-check':'i-clock');
+  t.innerHTML=`<svg class="ic"><use href="#${ic}"/></svg><span>${esc(msg)}</span>`;
+  DOM.toasts.appendChild(t); setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(-10px)';setTimeout(()=>t.remove(),300)},ms);
+}
+function copyText(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+  const ta=document.createElement('textarea');ta.value=text;ta.style.cssText='position:fixed;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(e){}
+  ta.remove(); return ok?Promise.resolve():Promise.reject(new Error('Clipboard unavailable'));
 }
 
-.calc {
-  width: 320px;
-  background: #171b22;
-  border: 1px solid #262d3a;
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+/* Modal System */
+const modalStack=[];
+function openModal({title,body,foot,onClose}){
+  const bd=document.createElement('div');bd.className='modal-backdrop';bd.setAttribute('role','dialog');
+  const m=document.createElement('div');m.className='modal';
+  m.innerHTML=`<div class="modal-head"><h3>${esc(title)}</h3><button class="tbtn" data-close aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button></div>`;
+  const b=document.createElement('div');b.className='modal-body';
+  if(typeof body==='string')b.innerHTML=body;else b.appendChild(body); m.appendChild(b);
+  if(foot){const f=document.createElement('div');f.className='modal-foot';typeof foot==='string'?f.innerHTML=foot:f.appendChild(foot);m.appendChild(f);}
+  bd.appendChild(m);
+  const close=()=>{bd.remove();const i=modalStack.indexOf(rec);if(i>=0)modalStack.splice(i,1);if(onClose)onClose();};
+  const rec={bd,close};modalStack.push(rec);
+  bd.addEventListener('click',e=>{if(e.target===bd)close()}); m.querySelector('[data-close]').addEventListener('click',close);
+  DOM.modalRoot.appendChild(bd);
+  const fi=b.querySelector('input,textarea,select,button');if(fi)setTimeout(()=>fi.focus(),60);
+  return {el:m,body:b,close};
 }
-
-.calc-top {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-  padding: 10px 8px 18px;
-}
-
-.calc-brand {
-  font-size: 11px;
-  letter-spacing: 3px;
-  color: #f2a33c;
-  font-weight: 700;
-}
-
-#display {
-  font-size: 40px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  word-break: break-all;
-  text-align: right;
-}
-
-.calc-keys {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-
-.key {
-  height: 58px;
-  border: 1px solid #262d3a;
-  border-radius: 12px;
-  background: #1d232c;
-  color: #e9ecf1;
-  font-size: 20px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform .08s ease, background .15s ease;
-}
-
-.key:hover { background: #232a35; }
-.key:active { transform: scale(.94); }
-
-.key.fn { background: #232a35; color: #f2a33c; }
-.key.op { background: #2a2318; color: #f2a33c; }
-.key.eq { background: #f2a33c; color: #191104; border-color: #f2a33c; }
-.key.zero { grid-column: span 2; }`;
-
-const CALC_JS = `// ক্যালকুলেটর লজিক — চেইন ক্যালকুলেশন সাপোর্টসহ
-const display = document.getElementById("display");
-const keys = document.getElementById("keys");
-
-let current = "0";   // এখনকার সংখ্যা
-let previous = null; // আগের সংখ্যা
-let operator = null; // চলমান অপারেটর
-let fresh = true;    // নতুন সংখ্যা লেখা শুরু হবে কি না
-
-function calculate(a, b, op) {
-  if (op === "+") return a + b;
-  if (op === "-") return a - b;
-  if (op === "*") return a * b;
-  if (op === "/") return b === 0 ? NaN : a / b;
-  return b;
-}
-
-function format(n) {
-  if (!isFinite(n)) return "ত্রুটি";
-  return String(Math.round(n * 1e10) / 1e10);
-}
-
-function press(k) {
-  if (k >= "0" && k <= "9") {
-    current = fresh || current === "0" ? k : current + k;
-    fresh = false;
-  } else if (k === ".") {
-    if (fresh) { current = "0."; fresh = false; }
-    else if (!current.includes(".")) current += ".";
-  } else if (k === "C") {
-    current = "0"; previous = null; operator = null; fresh = true;
-  } else if (k === "neg") {
-    current = format(-parseFloat(current));
-  } else if (k === "pct") {
-    current = format(parseFloat(current) / 100);
-  } else if (k === "=") {
-    if (operator !== null && previous !== null) {
-      current = format(calculate(previous, parseFloat(current), operator));
-      previous = null; operator = null; fresh = true;
-    }
-  } else { // অপারেটর
-    if (operator !== null && !fresh) {
-      current = format(calculate(previous, parseFloat(current), operator));
-    }
-    previous = parseFloat(current);
-    operator = k;
-    fresh = true;
-  }
-  display.textContent = current;
-}
-
-keys.addEventListener("click", function (e) {
-  const key = e.target.closest(".key");
-  if (key) press(key.dataset.k);
-});
-
-// কীবোর্ড সাপোর্ট
-document.addEventListener("keydown", function (e) {
-  const map = { Enter: "=", Escape: "C", "%": "pct" };
-  const k = map[e.key] || e.key;
-  if (/^[0-9.+\\-*\\/=]$/.test(k) || k === "C" || k === "pct") {
-    e.preventDefault();
-    press(k);
-  }
-});`;
-
-const TODO_HTML = `<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>টু-ডু লিস্ট</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <main class="app">
-    <header class="app-head">
-      <h1>আজকের কাজ</h1>
-      <span id="count" class="count">০টি বাকি</span>
-    </header>
-
-    <form id="form" class="add-row">
-      <input id="input" type="text" placeholder="নতুন কাজ লিখুন..." autocomplete="off">
-      <button type="submit">যোগ করুন</button>
-    </form>
-
-    <p id="error" class="error" hidden>কিছু একটা লিখতে হবে!</p>
-
-    <ul id="list" class="list"></ul>
-
-    <footer class="filters">
-      <button class="chip active" data-f="all">সব</button>
-      <button class="chip" data-f="active">বাকি</button>
-      <button class="chip" data-f="done">সম্পন্ন</button>
-      <button id="clear" class="chip danger">সম্পন্নগুলো মুছুন</button>
-    </footer>
-  </main>
-
-  <script src="script.js"><\/script>
-</body>
-</html>`;
-
-const TODO_CSS = `* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  min-height: 100vh;
-  display: grid;
-  place-items: start center;
-  background: #101318;
-  color: #e9ecf1;
-  font-family: "Hind Siliguri", sans-serif;
-  padding: 40px 16px;
-}
-
-.app { width: 100%; max-width: 440px; }
-
-.app-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 18px;
-}
-
-h1 { font-size: 24px; }
-.count { font-size: 13px; color: #f2a33c; }
-
-.add-row { display: flex; gap: 8px; }
-
-#input {
-  flex: 1;
-  padding: 11px 14px;
-  background: #171b22;
-  border: 1px solid #262d3a;
-  border-radius: 10px;
-  color: #e9ecf1;
-  font-size: 15px;
-  font-family: inherit;
-  outline: none;
-}
-#input:focus { border-color: #f2a33c; }
-
-.add-row button {
-  padding: 0 18px;
-  background: #f2a33c;
-  color: #191104;
-  border: 0;
-  border-radius: 10px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.error { color: #e88a86; font-size: 13px; margin-top: 8px; }
-
-.list { list-style: none; margin-top: 18px; display: grid; gap: 8px; }
-
-.item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: #171b22;
-  border: 1px solid #262d3a;
-  border-radius: 12px;
-}
-.item span { flex: 1; }
-.item.done span { text-decoration: line-through; color: #5c6572; }
-.item input[type="checkbox"] { accent-color: #f2a33c; width: 17px; height: 17px; }
-
-.item button {
-  background: none;
-  border: 0;
-  color: #8b94a3;
-  font-family: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.item button:hover { color: #e88a86; }
-
-.filters { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
-
-.chip {
-  padding: 7px 13px;
-  background: #171b22;
-  border: 1px solid #262d3a;
-  border-radius: 999px;
-  color: #aab2bf;
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
-}
-.chip.active { border-color: #f2a33c; color: #f2a33c; }
-.chip.danger:hover { border-color: #e88a86; color: #e88a86; }`;
-
-const TODO_JS = `// টু-ডু অ্যাপ — localStorage এ সেভ হয়, রিলোডেও তালিকা থাকবে
-const store = {
-  load() {
-    try { return JSON.parse(localStorage.getItem("mistri-todos") || "[]"); }
-    catch (e) { return []; }
-  },
-  save(data) {
-    try { localStorage.setItem("mistri-todos", JSON.stringify(data)); }
-    catch (e) { /* স্যান্ডবক্স হলে চুপচাপ এগিয়ে যাই */ }
-  }
-};
-
-const form = document.getElementById("form");
-const input = document.getElementById("input");
-const list = document.getElementById("list");
-const count = document.getElementById("count");
-const errorEl = document.getElementById("error");
-const filters = document.querySelector(".filters");
-
-let todos = store.load();
-let filter = "all";
-
-function render() {
-  const shown = todos.filter(function (t) {
-    if (filter === "active") return !t.done;
-    if (filter === "done") return t.done;
-    return true;
+function confirmDialog(title,msg,confirmLabel='Confirm',danger=true){
+  return new Promise(res=>{
+    const foot=document.createElement('div');
+    const c=document.createElement('button');c.className='btn';c.textContent='Cancel';
+    const ok=document.createElement('button');ok.className='btn '+(danger?'danger':'primary');ok.textContent=confirmLabel;
+    foot.append(c,ok);
+    const md=openModal({title,body:`<p style="font-size:14px;color:var(--text2)">${esc(msg)}</p>`,foot,onClose:()=>res(false)});
+    c.addEventListener('click',()=>{res(false);md.close()}); ok.addEventListener('click',()=>{res(true);md.close()});
   });
-
-  list.innerHTML = "";
-  shown.forEach(function (t) {
-    const li = document.createElement("li");
-    li.className = "item" + (t.done ? " done" : "");
-
-    const box = document.createElement("input");
-    box.type = "checkbox";
-    box.checked = t.done;
-    box.addEventListener("change", function () {
-      t.done = box.checked;
-      store.save(todos); render();
-    });
-
-    const span = document.createElement("span");
-    span.textContent = t.text;
-
-    const del = document.createElement("button");
-    del.textContent = "মুছুন";
-    del.addEventListener("click", function () {
-      todos = todos.filter(function (x) { return x.id !== t.id; });
-      store.save(todos); render();
-    });
-
-    li.append(box, span, del);
-    list.appendChild(li);
-  });
-
-  const left = todos.filter(function (t) { return !t.done; }).length;
-  count.textContent = left + "টি বাকি";
 }
 
-form.addEventListener("submit", function (e) {
-  e.preventDefault();
-  const text = input.value.trim();
-  if (!text) { errorEl.hidden = false; return; }
-  errorEl.hidden = true;
-  todos.unshift({ id: Date.now(), text: text, done: false });
-  input.value = "";
-  store.save(todos); render();
-});
-
-filters.addEventListener("click", function (e) {
-  const chip = e.target.closest(".chip");
-  if (!chip) return;
-  if (chip.id === "clear") {
-    todos = todos.filter(function (t) { return !t.done; });
-  } else {
-    filter = chip.dataset.f;
-    document.querySelectorAll(".chip").forEach(function (c) {
-      c.classList.toggle("active", c === chip);
-    });
-  }
-  store.save(todos); render();
-});
-
-render();`;
-
-const CLOCK_HTML = `<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ডিজিটাল ঘড়ি</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <main class="clock">
-    <svg class="ring" viewBox="0 0 120 120" aria-hidden="true">
-      <circle class="ring-bg" cx="60" cy="60" r="54"></circle>
-      <circle id="ring" class="ring-fg" cx="60" cy="60" r="54" pathLength="100"></circle>
-    </svg>
-
-    <div class="readout">
-      <time id="time">--:--:--</time>
-      <span id="ampm">--</span>
-    </div>
-
-    <p id="date" class="date">তারিখ লোড হচ্ছে...</p>
-  </main>
-
-  <script src="script.js"><\/script>
-</body>
-</html>`;
-
-const CLOCK_CSS = `* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: #0c0e12;
-  color: #e9ecf1;
-  font-family: "JetBrains Mono", monospace;
+/* Persistence */
+function save(){
+  try{
+    let projectOut=null; if(state.project) projectOut={name:state.project.name,files:[]};
+    const chats=state.chats.slice(0,LIMITS.maxChats).map(c=>({...c,messages:(c.messages||[]).map(m=>{
+      const out={id:m.id,role:m.role,content:m.content,ts:m.ts,label:m.label,kind:m.kind,error:m.error,stopped:m.stopped,setup:m.setup};
+      if(m.attachments)out.attachments=m.attachments.map(a=>({id:a.id,name:a.name,size:a.size,ext:a.ext,note:a.note,inProject:!!a.inProject}));
+      if(m.fileBlocks)out.fileBlocks=m.fileBlocks.map(b=>({path:b.path,lang:b.lang,content:b.content}));
+      return out;
+    })}));
+    localStorage.setItem(STORE_KEY,JSON.stringify({v:1,chats,activeChatId:state.activeChatId,providers:state.providers,activeProviderId:state.activeProviderId,settings:state.settings}));
+  }catch(e){if(!storageWarned){storageWarned=true;toast('Storage is full — history may not persist.','error');}}
 }
-
-.clock { position: relative; text-align: center; padding: 44px 14px; }
-
-.ring {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-.ring circle { fill: none; stroke-width: 2.5; }
-.ring-bg { stroke: #1d232c; }
-.ring-fg {
-  stroke: #f2a33c;
-  stroke-linecap: round;
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-}
-
-.readout {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 12px;
-  font-size: clamp(44px, 12vw, 84px);
-  font-weight: 700;
-  letter-spacing: 2px;
-  font-variant-numeric: tabular-nums;
-}
-
-#ampm { font-size: 18px; color: #f2a33c; letter-spacing: 0; }
-
-.date {
-  margin-top: 14px;
-  color: #8b94a3;
-  font-size: 14px;
-  font-family: "Hind Siliguri", sans-serif;
-}`;
-
-const CLOCK_JS = `// ডিজিটাল ঘড়ি — প্রতি সেকেন্ডে আপডেট হয়
-const timeEl = document.getElementById("time");
-const dateEl = document.getElementById("date");
-const ampmEl = document.getElementById("ampm");
-const ring = document.getElementById("ring");
-
-const pad = n => String(n).padStart(2, "0");
-
-function tick() {
-  const now = new Date();
-
-  let h = now.getHours();
-  const ampm = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-
-  timeEl.textContent = pad(h) + ":" + pad(now.getMinutes()) + ":" + pad(now.getSeconds());
-  ampmEl.textContent = ampm;
-
-  dateEl.textContent = now.toLocaleDateString("bn-BD", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric"
-  });
-
-  // সেকেন্ড অনুযায়ী রিং ভরতে থাকে
-  ring.style.strokeDashoffset = 100 - (now.getSeconds() / 60) * 100;
-}
-
-tick();
-setInterval(tick, 1000);`;
-
-const LOGIN_HTML = `<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>লগইন</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <main class="card">
-    <h1>স্বাগতম ফিরে আসায়</h1>
-    <p class="sub">অ্যাকাউন্টে প্রবেশ করতে সাইন ইন করুন</p>
-
-    <div id="notice" class="notice" hidden></div>
-
-    <form id="login-form">
-      <label>
-        ইমেইল
-        <input id="email" type="text" placeholder="you@mail.com">
-      </label>
-      <label>
-        পাসওয়ার্ড
-        <input id="password" type="password" placeholder="কমপক্ষে ৬ অক্ষর">
-      </label>
-      <button type="submit">লগইন করুন</button>
-    </form>
-
-    <p class="foot">অ্যাকাউন্ট নেই? <a href="#">রেজিস্টার করুন</a></p>
-  </main>
-
-  <script src="script.js"><\/script>
-</body>
-</html>`;
-
-const LOGIN_CSS = `* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: #0f1216;
-  font-family: "Hind Siliguri", sans-serif;
-  color: #e9ecf1;
-  padding: 20px;
-}
-
-.card {
-  width: 100%;
-  max-width: 380px;
-  background: #171b22;
-  border: 1px solid #262d3a;
-  border-radius: 16px;
-  padding: 34px 30px;
-}
-
-h1 { font-size: 22px; margin-bottom: 4px; }
-.sub { color: #8b94a3; font-size: 14px; margin-bottom: 22px; }
-
-.notice {
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 14px;
-  margin-bottom: 18px;
-}
-.notice.ok  { background: #14261a; color: #6fca8b; border: 1px solid #1f4029; }
-.notice.err { background: #2a1517; color: #e88a86; border: 1px solid #4a2224; }
-
-label {
-  display: block;
-  font-size: 13px;
-  color: #aab2bf;
-  margin-bottom: 14px;
-}
-
-input {
-  width: 100%;
-  margin-top: 6px;
-  padding: 11px 13px;
-  background: #10141a;
-  border: 1px solid #262d3a;
-  border-radius: 10px;
-  color: #e9ecf1;
-  font-size: 15px;
-  font-family: inherit;
-  outline: none;
-  transition: border-color .15s;
-}
-input:focus { border-color: #f2a33c; }
-
-button {
-  width: 100%;
-  margin-top: 6px;
-  padding: 12px;
-  background: #f2a33c;
-  color: #191104;
-  border: 0;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background .15s;
-}
-button:hover { background: #ffb85c; }
-
-.foot { margin-top: 20px; font-size: 13px; color: #8b94a3; text-align: center; }
-.foot a { color: #f2a33c; text-decoration: none; }`;
-
-const LOGIN_JS = `// লগইন ভ্যালিডেশন — ক্লায়েন্ট সাইড ডেমো
-const form = document.getElementById("login-form");
-const email = document.getElementById("email");
-const pass = document.getElementById("password");
-const notice = document.getElementById("notice");
-
-form.addEventListener("submit", function (e) {
-  e.preventDefault();
-  const msg = validate();
-  notice.textContent = msg.text;
-  notice.className = "notice " + (msg.ok ? "ok" : "err");
-  notice.hidden = false;
-});
-
-function validate() {
-  if (!email.value.trim() || !pass.value) {
-    return { ok: false, text: "সব ফিল্ড পূরণ করুন।" };
-  }
-  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.value.trim())) {
-    return { ok: false, text: "সঠিক ইমেইল ঠিকানা দিন।" };
-  }
-  if (pass.value.length < 6) {
-    return { ok: false, text: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" };
-  }
-  return { ok: true, text: "লগইন সফল! (ডেমো — আসল প্রজেক্টে সার্ভারে যাচাই করুন)" };
-}`;
-
-const LOGIN_PHP = `<?php
-// সিম্পল লগইন হ্যান্ডলার — ডেমো, আসল প্রজেক্টে ডাটাবেজ যোগ করবেন
- $error = "";
- $email = "";
- $done  = false;
-
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $email = trim($_POST["email"] ?? "");
-    $pass  = $_POST["password"] ?? "";
-
-    if ($email === "" || $pass === "") {
-        $error = "সব ফিল্ড পূরণ করুন।";
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "সঠিক ইমেইল ঠিকানা দিন।";
-    } elseif (strlen($pass) < 6) {
-        $error = "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।";
-    } else {
-        $done = true; // এখানে ডাটাবেজ চেক করে সেশন শুরু করবেন
+const saveSoon=(()=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>save(),400)}})();
+function load(){
+  try{
+    const raw=localStorage.getItem(STORE_KEY);if(!raw)return;
+    const d=JSON.parse(raw);
+    if(Array.isArray(d.chats)){
+      state.chats=d.chats.filter(c=>c&&c.id).slice(0,LIMITS.maxChats);
+      for(const c of state.chats) for(const m of c.messages||[]) {if(m.pending){m.pending=false;m.stopped=true;}}
     }
-}
-?>
-<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>লগইন</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <main class="card">
-    <h1>স্বাগতম ফিরে আসায়</h1>
-    <p class="sub">অ্যাকাউন্টে প্রবেশ করতে সাইন ইন করুন</p>
-
-    <?php if ($done): ?>
-      <div class="notice ok">লগইন সফল! স্বাগতম, <?= htmlspecialchars($email) ?></div>
-    <?php elseif ($error !== ""): ?>
-      <div class="notice err"><?= htmlspecialchars($error) ?></div>
-    <?php endif; ?>
-
-    <form method="POST" action="">
-      <label>
-        ইমেইল
-        <input type="text" name="email" value="<?= htmlspecialchars($email) ?>" placeholder="you@mail.com">
-      </label>
-      <label>
-        পাসওয়ার্ড
-        <input type="password" name="password" placeholder="কমপক্ষে ৬ অক্ষর">
-      </label>
-      <button type="submit">লগইন করুন</button>
-    </form>
-
-    <p class="foot">অ্যাকাউন্ট নেই? <a href="#">রেজিস্টার করুন</a></p>
-  </main>
-
-</body>
-</html>`;
-
-const LANDING_HTML = `<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>নেবুলা স্টুডিও</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <nav class="nav">
-    <span class="logo">NEBULA</span>
-    <div class="links">
-      <a href="#work">কাজ</a>
-      <a href="#service">সার্ভিস</a>
-      <a href="#contact">যোগাযোগ</a>
-    </div>
-  </nav>
-
-  <header class="hero">
-    <p class="kicker">ডিজিটাল ডিজাইন স্টুডিও</p>
-    <h1>আইডিয়াকে বানাই<br>স্মরণীয় প্রোডাক্ট</h1>
-    <p class="lead">ব্র্যান্ড, ওয়েব ও প্রোডাক্ট ডিজাইন — এক দলে, এক ছন্দে।</p>
-    <a class="cta" href="#contact">প্রজেক্ট শুরু করুন</a>
-  </header>
-
-  <section id="work" class="strip">
-    <div class="stat"><b>১২০+</b><span>সম্পন্ন প্রজেক্ট</span></div>
-    <div class="stat"><b>৯ বছর</b><span>অভিজ্ঞতা</span></div>
-    <div class="stat"><b>৯৮%</b><span>সন্তুষ্ট ক্লায়েন্ট</span></div>
-  </section>
-
-  <section id="service" class="cards">
-    <article class="card reveal">
-      <h3>ব্র্যান্ড আইডেন্টিটি</h3>
-      <p>লোগো থেকে গাইডলাইন — পুরো পরিচয় একসাথে।</p>
-    </article>
-    <article class="card reveal">
-      <h3>ওয়েব ডিজাইন</h3>
-      <p>দ্রুত, রেসপনসিভ আর রূপান্তর-বান্ধব ওয়েবসাইট।</p>
-    </article>
-    <article class="card reveal">
-      <h3>প্রোডাক্ট UI</h3>
-      <p>অ্যাপ ও ড্যাশবোর্ডের জন্য পরিষ্কার ইন্টারফেস।</p>
-    </article>
-  </section>
-
-  <footer id="contact" class="foot">
-    <p>নতুন প্রজেক্টের আইডিয়া আছে?</p>
-    <a href="mailto:hello@nebula.studio">hello@nebula.studio</a>
-  </footer>
-
-  <script src="script.js"><\/script>
-</body>
-</html>`;
-
-const LANDING_CSS = `* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body { background: #0e1116; color: #e9ecf1; font-family: "Hind Siliguri", sans-serif; }
-
-.nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 18px 6vw;
-  border-bottom: 1px solid #1c222c;
-}
-.logo { font-weight: 700; letter-spacing: 4px; color: #f2a33c; }
-.links a { color: #aab2bf; text-decoration: none; margin-left: 22px; font-size: 14px; }
-.links a:hover { color: #f2a33c; }
-
-.hero { text-align: center; padding: 96px 6vw 72px; }
-.kicker { color: #f2a33c; letter-spacing: 3px; font-size: 13px; margin-bottom: 16px; }
-h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.2; margin-bottom: 16px; }
-.lead { color: #8b94a3; font-size: 17px; margin-bottom: 30px; }
-
-.cta {
-  display: inline-block;
-  background: #f2a33c;
-  color: #191104;
-  text-decoration: none;
-  font-weight: 700;
-  padding: 13px 26px;
-  border-radius: 12px;
-  transition: background .15s;
-}
-.cta:hover { background: #ffb85c; }
-
-.strip {
-  display: flex;
-  justify-content: center;
-  gap: 6vw;
-  padding: 34px 6vw;
-  border-block: 1px solid #1c222c;
-  text-align: center;
-}
-.stat b { display: block; font-size: 28px; color: #f2a33c; }
-.stat span { color: #8b94a3; font-size: 13px; }
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 18px;
-  padding: 56px 6vw;
+    state.activeChatId=d.activeChatId||null;
+    if(Array.isArray(d.providers))state.providers=d.providers.filter(p=>p&&p.id);
+    state.activeProviderId=d.activeProviderId||null;
+    if(d.settings)state.settings={...state.settings,...d.settings};
+    if(state.activeChatId&&!state.chats.some(c=>c.id===state.activeChatId))state.activeChatId=state.chats[0]?.id||null;
+  }catch(e){}
 }
 
-.card {
-  border: 1px solid #1c222c;
-  background: #12161d;
-  border-radius: 16px;
-  padding: 26px;
-  opacity: 0;
-  transform: translateY(18px);
-  transition: opacity .5s ease, transform .5s ease;
-}
-.card.show { opacity: 1; transform: none; }
-.card h3 { margin-bottom: 8px; font-size: 18px; }
-.card p { color: #8b94a3; line-height: 1.7; font-size: 14px; }
-
-.foot { text-align: center; padding: 60px 6vw; border-top: 1px solid #1c222c; }
-.foot p { color: #8b94a3; margin-bottom: 8px; }
-.foot a { color: #f2a33c; font-size: 20px; text-decoration: none; }
-
-@media (max-width: 640px) { .strip { flex-direction: column; gap: 22px; } }`;
-
-const LANDING_JS = `// স্ক্রল করলে কার্ডগুলো ভেসে ওঠে
-const io = new IntersectionObserver(function (entries) {
-  entries.forEach(function (en) {
-    if (en.isIntersecting) {
-      en.target.classList.add("show");
-      io.unobserve(en.target);
+/* Providers & Setup */
+const activeProvider=()=>state.providers.find(p=>p.id===state.activeProviderId)||null;
+async function requestCompletion({messages,onDelta,ctl,flag}){
+  const p=activeProvider(); if(!p)throw new Error('No AI provider configured.');
+  const url=window.ANVIL_PROXY_URL || 'https://anvil-ai.onrender.com/api/chat';
+  const mkBody=stream=>({baseURL:p.baseURL,apiKey:p.apiKey||'',model:p.model||'default',messages,stream,temperature:0.7});
+  let t=setTimeout(()=>{flag.timedOut=true;try{ctl.abort()}catch(e){}},LIMITS.idleTimeoutMs);
+  const guard={reset(){clearTimeout(t);t=setTimeout(()=>{flag.timedOut=true;try{ctl.abort()}catch(e){}},LIMITS.idleTimeoutMs)},cancel(){flag.done=true;clearTimeout(t)}};
+  try{
+    let res=await fetch(url,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(mkBody(true))});
+    if(res.status===400){
+      let detail='';try{const j=await res.clone().json();detail=j.error?.message||''}catch(e){}
+      if(/stream/i.test(detail)){ res=await fetch(url,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(mkBody(false))}); guard.reset(); }
     }
-  });
-}, { threshold: .2 });
-
-document.querySelectorAll(".reveal").forEach(function (elx) { io.observe(elx); });
-
-// নেভ লিংকে মসৃণ স্ক্রল
-document.querySelectorAll('a[href^="#"]').forEach(function (a) {
-  a.addEventListener("click", function (e) {
-    const t = document.querySelector(a.getAttribute("href"));
-    if (t) { e.preventDefault(); t.scrollIntoView({ behavior: "smooth" }); }
-  });
-});`;
-
-/* জেনেরিক স্টার্টার (যখন নির্দিষ্ট ব্লুপ্রিন্ট নেই) */
-function starterHtml(title){
-  return `<!DOCTYPE html>
-<html lang="bn">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escHtml(title)}</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <main class="wrap">
-    <p class="tag">কোডমিস্ত্রি স্টার্টার</p>
-    <h1>${escHtml(title)}</h1>
-    <p class="sub">বেস স্ট্রাকচার তৈরি — এখান থেকে শুরু করে যেকোনো দিকে এগোনো যায়।</p>
-    <button id="demo-btn">আমাকে চাপুন</button>
-    <p id="demo-out" class="out">JS কানেক্ট করা আছে — বাটনে চাপ দিয়ে দেখুন</p>
-  </main>
-
-  <script src="script.js"><\/script>
-</body>
-</html>`;
-}
-
-const STARTER_CSS = `* { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: #101318;
-  color: #e9ecf1;
-  font-family: "Hind Siliguri", sans-serif;
-  padding: 24px;
-}
-
-.wrap { text-align: center; max-width: 480px; }
-
-.tag {
-  display: inline-block;
-  font-size: 12px;
-  letter-spacing: 2px;
-  color: #f2a33c;
-  border: 1px solid #3a2f1c;
-  background: #1c1710;
-  padding: 5px 12px;
-  border-radius: 999px;
-  margin-bottom: 18px;
-}
-
-h1 { font-size: 30px; margin-bottom: 10px; }
-.sub { color: #8b94a3; margin-bottom: 26px; line-height: 1.7; }
-
-button {
-  padding: 11px 22px;
-  background: #f2a33c;
-  color: #191104;
-  border: 0;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-}
-button:hover { background: #ffb85c; }
-
-.out { margin-top: 16px; color: #6fca8b; font-size: 14px; min-height: 22px; }`;
-
-const STARTER_JS = `// স্টার্টার স্ক্রিপ্ট — এখান থেকে শুরু করুন
-const btn = document.getElementById("demo-btn");
-const out = document.getElementById("demo-out");
-
-let clicks = 0;
-const bn = n => String(n).replace(/\\d/g, d => "০১২৩৪৫৬৭৮৯"[d]);
-
-btn.addEventListener("click", function () {
-  clicks++;
-  out.textContent = "বাটনে " + bn(clicks) + " বার চাপ লাগল।";
-});`;
-
-/* PHP রূপান্তর: index.html → index.php (সার্ভার হেডার + টাইটেল ভ্যারিয়েবল) */
-function toPhp(html, title){
-  const head = '<?php\n// ' + title + ' — PHP এন্ট্রি পয়েন্ট\n// সার্ভার সাইড লজিক এখানে যোগ করতে পারেন\n$title = "' + title + '";\n$today = date("d-m-Y");\n?>\n\n';
-  return head
-    + html.replace(/<title>[\s\S]*?<\/title>/, () => '<title><?= $title ?></title>')
-          .replace(/<body>/, () => '<body>\n\n  <p style="position:fixed;top:12px;right:16px;font-size:12px;color:#8b94a3">সার্ভার তারিখ: <?= $today ?></p>');
-}
-
-/* ---------- ফাইল ফ্যাক্টরি ---------- */
-function F(name, lang, code){
-  return {
-    name, lang, code,
-    lines: code.split('\n').length,
-    kb: +(new Blob([code]).size / 1024).toFixed(1)
-  };
-}
-
-function genCalc(php){
-  const files = [ F('index.html','html',CALC_HTML), F('style.css','css',CALC_CSS), F('script.js','js',CALC_JS) ];
-  if (php) files[0] = F('index.php','php', toPhp(CALC_HTML, 'ক্যালকুলেটর'));
-  return files;
-}
-function genTodo(php){
-  const files = [ F('index.html','html',TODO_HTML), F('style.css','css',TODO_CSS), F('script.js','js',TODO_JS) ];
-  if (php) files[0] = F('index.php','php', toPhp(TODO_HTML, 'টু-ডু লিস্ট'));
-  return files;
-}
-function genClock(php){
-  const files = [ F('index.html','html',CLOCK_HTML), F('style.css','css',CLOCK_CSS), F('script.js','js',CLOCK_JS) ];
-  if (php) files[0] = F('index.php','php', toPhp(CLOCK_HTML, 'ডিজিটাল ঘড়ি'));
-  return files;
-}
-function genLogin(php){
-  return php
-    ? [ F('index.php','php',LOGIN_PHP), F('style.css','css',LOGIN_CSS) ]
-    : [ F('index.html','html',LOGIN_HTML), F('style.css','css',LOGIN_CSS), F('script.js','js',LOGIN_JS) ];
-}
-function genLanding(php){
-  const files = [ F('index.html','html',LANDING_HTML), F('style.css','css',LANDING_CSS), F('script.js','js',LANDING_JS) ];
-  if (php) files[0] = F('index.php','php', toPhp(LANDING_HTML, 'ল্যান্ডিং পেজ'));
-  return files;
-}
-function genStarter(title, php){
-  const files = [ F('index.html','html',starterHtml(title)), F('style.css','css',STARTER_CSS), F('script.js','js',STARTER_JS) ];
-  if (php) files[0] = F('index.php','php', toPhp(starterHtml(title), title));
-  return files;
-}
-
-/* ================================================================
-   সিনট্যাক্স হাইলাইটার (হালকা, কাস্টম)
-   ================================================================ */
-const LANGS = {
-  js: {
-    re: /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|\b(const|let|var|function|return|if|else|for|while|new|class|extends|import|export|of|in|this|typeof|async|await|try|catch|finally|throw|switch|case|break|continue|default|do|delete)\b|\b(true|false|null|undefined|NaN)\b|\b(\d+(?:\.\d+)?)\b|([A-Za-z_$][\w$]*)(?=\s*\()/g,
-    cls: ['tk-c','tk-s','tk-k','tk-n','tk-n','tk-f']
-  },
-  css: {
-    re: /(\/\*[\s\S]*?\*\/)|("[^"]*"|'[^']*')|(@[\w-]+)|([^{}\/;]+(?=\s*\{))|([a-zA-Z-]+(?=\s*:))|(#[0-9a-fA-F]{3,8})\b|\b(\d+(?:\.\d+)?(?:px|rem|em|%|vh|vw|s|ms|deg|fr)?)\b/g,
-    cls: ['tk-c','tk-s','tk-at','tk-sel','tk-prop','tk-n','tk-n']
-  },
-  php: {
-    re: /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")|(\$\w+)|\b(function|return|if|elseif|else|foreach|while|as|new|class|public|private|require|include|isset|empty|echo|true|false|null|and|or)\b|\b(trim|strlen|filter_var|htmlspecialchars|date|preg_match|str_replace|count|in_array|implode|explode|array)\b|\b(\d+(?:\.\d+)?)\b/g,
-    cls: ['tk-c','tk-s','tk-v','tk-k','tk-f','tk-n']
-  }
-};
-
-function genericHl(code, lang){
-  const L = LANGS[lang];
-  L.re.lastIndex = 0;
-  let out = '', last = 0, m;
-  while ((m = L.re.exec(code))){
-    if (m.index > last) out += escHtml(code.slice(last, m.index));
-    let cls = '';
-    for (let g = 1; g < m.length; g++){
-      if (m[g] !== undefined){ cls = L.cls[g-1]; break; }
-    }
-    out += '<span class="'+cls+'">'+escHtml(m[0])+'</span>';
-    last = m.index + m[0].length;
-    if (m[0].length === 0) L.re.lastIndex++;
-  }
-  out += escHtml(code.slice(last));
-  return out;
-}
-
-function hlTag(tag){
-  let s = escHtml(tag);
-  // অ্যাট্রিবিউট আর ভ্যালু (আগে, যাতে ভ্যালুর ভেতরে ঢুকতে না পারে)
-  s = s.replace(/ ([\w-]+)(=)("[^"]*"|'[^']*')/g, ' <span class="tk-a">$1</span>$2<span class="tk-s">$3</span>');
-  // ট্যাগের নাম
-  s = s.replace(/^(&lt;\/?)([a-zA-Z][\w-]*)/, '$1<span class="tk-t">$2</span>');
-  return s;
-}
-
-function hlHTML(code){
-  let out = '', last = 0, m;
-  const re = /(<!--[\s\S]*?-->)|(<!DOCTYPE[^>]*>)|(<[a-zA-Z\/!][^>]*>)/g;
-  while ((m = re.exec(code))){
-    out += escHtml(code.slice(last, m.index));
-    if (m[1]) out += '<span class="tk-c">'+escHtml(m[0])+'</span>';
-    else if (m[2]) out += '<span class="tk-k">'+escHtml(m[0])+'</span>';
-    else out += hlTag(m[0]);
-    last = m.index + m[0].length;
-  }
-  out += escHtml(code.slice(last));
-  return out;
-}
-
-function hlPhpBlock(block){
-  const open = block.match(/^<\?(?:php|=)?/)[0];
-  const hasClose = block.endsWith('?>');
-  const inner = block.slice(open.length, hasClose ? -2 : undefined);
-  return '<span class="tk-p">'+escHtml(open)+'</span>'
-       + genericHl(inner, 'php')
-       + (hasClose ? '<span class="tk-p">?></span>' : '');
-}
-
-function highlight(code, lang){
-  if (lang === 'html') return hlHTML(code);
-  if (lang === 'php'){
-    let out = '', last = 0, m;
-    const re = /<\?(?:php|=)?[\s\S]*?(?:\?>|$)/g;
-    while ((m = re.exec(code))){
-      out += hlHTML(code.slice(last, m.index));
-      out += hlPhpBlock(m[0]);
-      last = m.index + m[0].length;
-    }
-    out += hlHTML(code.slice(last));
-    return out;
-  }
-  return genericHl(code, lang);
-}
-
-/* ================================================================
-   অ্যাপ স্টেট ও DOM
-   ================================================================ */
-const state = {
-  files: new Map(),     // id → {id, pid, name, lang, code, lines, kb, revealed}
-  activeId: null,
-  generating: false,
-  viewMode: 'code',
-  lastDoc: ''
-};
-
-const chatLog   = $('#chatLog');
-const input     = $('#input');
-const sendBtn   = $('#send');
-const tabsEl    = $('#tabs');
-const workPane  = $('#workPane');
-const codeScroll= $('#codeScroll');
-const codePre   = $('#codePre');
-const gutter    = $('#gutter');
-const previewView = $('#previewView');
-const codeView  = codeScroll; // কোড ভিউ = code-scroll কন্টেইনার
-const pvFrame   = $('#pvFrame');
-const pvNote    = $('#pvNote');
-const toastsEl  = $('#toasts');
-
-sendBtn.innerHTML   = icon('send');
- $('#actCopy').innerHTML = icon('copy')+'<span>কপি</span>';
- $('#actDl').innerHTML   = icon('download')+'<span>ডাউনলোড</span>';
- $('#newChat').innerHTML = icon('refresh')+'<span>নতুন চ্যাট</span>';
- $('#pvReload').innerHTML= icon('reload');
- $('#pvDesk').innerHTML  = icon('desktop');
- $('#pvMob').innerHTML   = icon('phone');
- $('#logoTop').innerHTML = logoSVG(34);
- $('#fileChip').innerHTML= icon('file')+' ফাইল <b id="fileCount">০</b>';
-updatePvBtn();
-
-const activeFile = () => state.files.get(state.activeId);
-const projectFiles = pid => [...state.files.values()].filter(f => f.pid === pid);
-
-/* ---------- টোস্ট ---------- */
-function toast(msg, type){
-  const t = el('div', 'toast' + (type === 'err' ? ' err' : ''));
-  t.innerHTML = icon(type === 'err' ? 'alert' : 'check') + '<span>'+escHtml(msg)+'</span>';
-  toastsEl.appendChild(t);
-  requestAnimationFrame(() => t.classList.add('in'));
-  setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 300); }, 2800);
-}
-
-/* ---------- চ্যাট রেন্ডারিং ---------- */
-function scrollChat(){ chatLog.scrollTop = chatLog.scrollHeight; }
-
-function renderChatEmpty(){
-  chatLog.innerHTML = ''
-    + '<div class="empty-chat" id="chatEmpty">'
-    +   logoSVG(58)
-    +   '<h2>কী বানাবো, বলুন?</h2>'
-    +   '<p>কোড বললেই আলাদা ফাইল হয়ে তৈরি হবে —<br>ফাইলে ক্লিক করলেই পুরো কোড খুলবে</p>'
-    +   '<div class="suggs">'
-    +     suggBtn('grid','ক্যালকুলেটর','একটা ক্যালকুলেটর বানাও')
-    +     suggBtn('list','টু-ডু লিস্ট','টু-ডু লিস্ট অ্যাপ বানাও')
-    +     suggBtn('lock','PHP লগইন','PHP লগইন ফর্ম বানাও')
-    +     suggBtn('clock','ডিজিটাল ঘড়ি','ডিজিটাল ঘড়ি বানাও')
-    +     suggBtn('monitor','ল্যান্ডিং পেজ','একটা ল্যান্ডিং পেজ বানাও')
-    +   '</div>'
-    + '</div>';
-}
-function suggBtn(ic, label, q){
-  return '<button class="sugg" data-q="'+escHtml(q)+'">'+icon(ic)+escHtml(label)+'</button>';
-}
-
-function addUserMsg(text){
-  const m = el('div','msg user');
-  m.innerHTML = '<div class="m-body"><div class="m-head"><b>আপনি</b><span class="m-time">'+timeNow()+'</span></div>'
-              + '<div class="m-text">'+escHtml(text)+'</div></div>'
-              + '<div class="avatar usr">'+icon('user')+'</div>';
-  chatLog.appendChild(m);
-  scrollChat();
-}
-
-function addAgentMsg(){
-  const m = el('div','msg agent');
-  m.innerHTML = '<div class="avatar">'+logoSVG(30)+'</div>'
-              + '<div class="m-body">'
-              +   '<div class="m-head"><b>কোডমিস্ত্রি</b><span class="m-time">'+timeNow()+'</span></div>'
-              +   '<div class="m-text"></div>'
-              +   '<div class="fc-list"></div>'
-              + '</div>';
-  chatLog.appendChild(m);
-  scrollChat();
-  return { textEl: m.querySelector('.m-text'), fcList: m.querySelector('.fc-list') };
-}
-
-/* টাইপরাইটার — টাইপিংয়ের সময় টেক্সটে ক্লিক করলে স্কিপ হয় */
-let liveType = null;
-function typeText(elx, text){
-  return new Promise(resolve => {
-    elx.classList.add('typing');
-    let i = 0;
-    liveType = { finish(){ i = text.length; } };
-    (function step(){
-      if (i >= text.length){
-        elx.textContent = text;
-        elx.classList.remove('typing');
-        liveType = null;
-        resolve();
-        return;
+    guard.reset(); if(!res.ok)throw new Error('Provider Error '+res.status);
+    if(!res.body) { const j=await res.json(); const txt=j.choices?.[0]?.message?.content||''; onDelta(txt); return txt; }
+    
+    const reader=res.body.getReader(),dec=new TextDecoder();let buf='',full='';
+    while(true){
+      const {done,value}=await reader.read();if(done)break; guard.reset();
+      buf+=dec.decode(value,{stream:true});
+      let nl;
+      while((nl=buf.indexOf('\n'))>=0){
+        const line=buf.slice(0,nl).trim();buf=buf.slice(nl+1);
+        if(!line.startsWith('data:'))continue;
+        const payload=line.slice(5).trim(); if(payload==='[DONE]')continue;
+        let j;try{j=JSON.parse(payload)}catch(e){continue}
+        const d=j.choices?.[0]?.delta?.content; if(d){full+=d;onDelta(d);}
       }
-      i = Math.min(text.length, i + 2);
-      elx.textContent = text.slice(0, i);
-      scrollChat();
-      setTimeout(step, 15 + Math.random()*18);
-    })();
+    }
+    return full;
+  }finally{guard.cancel();}
+}
+
+function renderProviders(){
+  DOM.providerList.innerHTML='';
+  if(!state.providers.length){DOM.providerList.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">No providers yet. Add an OpenAI-compatible endpoint.</div>';}
+  for(const p of state.providers){
+    const card=document.createElement('div');card.className='prov-card'+(p.id===state.activeProviderId?' active':'');
+    card.innerHTML=`<span class="prov-radio" aria-hidden="true"></span>
+      <div style="flex:1;cursor:pointer">
+        <div style="font-weight:700;font-size:14px;color:#fff">${esc(p.name)}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">${esc(p.model)}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="hact" data-act="del"><svg class="ic"><use href="#i-trash"/></svg></button>
+      </div>`;
+    card.querySelector('[data-act=del]').addEventListener('click',async()=>{
+      if(!await confirmDialog('Delete provider',`Remove "${p.name}"?`,'Delete'))return;
+      state.providers=state.providers.filter(x=>x.id!==p.id); if(state.activeProviderId===p.id)state.activeProviderId=state.providers[0]?.id||null;
+      save();renderProviders();renderModelChip();
+    });
+    card.querySelector('div[style*="cursor:pointer"]').addEventListener('click',()=>{
+      state.activeProviderId=p.id;save();renderProviders();renderModelChip();toast(`Active provider: ${p.name}`,'success');
+    });
+    DOM.providerList.appendChild(card);
+  }
+}
+function providerForm(){
+  const body=document.createElement('div');
+  body.innerHTML=`<div class="field"><label>Name</label><input id="pf-name" placeholder="My Endpoint"></div>
+    <div class="field"><label>Base URL</label><input id="pf-url" placeholder="https://example.com/v1"></div>
+    <div class="field"><label>API Key</label><input id="pf-key" type="password" placeholder="sk-..."></div>
+    <div class="field"><label>Model</label><input id="pf-model" placeholder="model-name"></div>`;
+  const foot=document.createElement('div');
+  const cancel=document.createElement('button');cancel.className='btn';cancel.textContent='Cancel';
+  const saveB=document.createElement('button');saveB.className='btn primary';saveB.textContent='Add';
+  foot.append(cancel,saveB);
+  const md=openModal({title:'Add Provider',body,foot});
+  cancel.addEventListener('click',md.close);
+  saveB.addEventListener('click',()=>{
+    const g=id=>body.querySelector(id).value.trim();
+    if(!g('#pf-name') || !g('#pf-url'))return toast('Name and URL required','error');
+    const obj={id:uid(),name:g('#pf-name'),baseURL:g('#pf-url'),apiKey:g('#pf-key'),model:g('#pf-model')};
+    state.providers.push(obj); if(!state.activeProviderId)state.activeProviderId=obj.id;
+    save();renderProviders();renderModelChip();md.close();toast('Provider added','success');
   });
 }
-
-/* ---------- ওয়ার্কস্পেস: ট্যাব, কোড ভিউ ---------- */
-function ensureTab(id){
-  if (tabsEl.querySelector('.tab[data-id="'+id+'"]')) return;
-  const f = state.files.get(id);
-  const ext = EXT[f.lang];
-  const t = el('div','tab');
-  t.dataset.id = id;
-  t.innerHTML = '<i class="t-dot" style="background:'+ext.c+'"></i><span>'+escHtml(f.name)+'</span>'
-              + '<button class="t-x" title="বন্ধ করুন">'+icon('x')+'</button>';
-  tabsEl.appendChild(t);
+function renderModelChip(){
+  const p=activeProvider();
+  DOM.modelChip.classList.toggle('on',!!p);
+  DOM.modelChipTxt.textContent=p?(p.model||p.name):'Set up AI';
+  DOM.composerModel.textContent=p?(p.model||p.name):'Model';
 }
 
-function openFile(id){
-  const f = state.files.get(id);
-  if (!f) return;
-  ensureTab(id);
-  state.activeId = id;
-  tabsEl.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.id === id));
-  const at = tabsEl.querySelector('.tab.active');
-  if (at) at.scrollIntoView({ inline:'nearest', block:'nearest' });
-
-  workPane.classList.remove('is-empty');
-  previewView.hidden = true;
-  codeView.hidden = false;
-  if (state.viewMode !== 'code'){ state.viewMode = 'code'; updatePvBtn(); }
-
-  codePre.innerHTML = highlight(f.code, f.lang);
-  gutter.textContent = Array.from({length: f.lines}, (_, i) => i+1).join('\n');
-
-  if (!f.revealed){
-    codeScroll.classList.remove('wipe');
-    void codeScroll.offsetWidth; // রিস্টার্ট
-    codeScroll.classList.add('wipe');
-    f.revealed = true;
-  }
-
-  $('#wmLang').textContent = EXT[f.lang].label;
-  $('#wmLang').style.background = EXT[f.lang].c;
-  $('#wmLang').style.color = '#14100A';
-  $('#wmName').textContent = f.name;
-  $('#wmInfo').textContent = bnNum(f.lines)+' লাইন · '+bnNum(f.kb)+' KB';
-
-  updateActions();
-  if (matchMedia('(max-width:920px)').matches) setView('work');
+/* Chat & History */
+const activeChat=()=>state.chats.find(c=>c.id===state.activeChatId)||null;
+function newChat(){
+  if(state.streaming)return toast('Stop current response first','error');
+  const c={id:uid(),title:'New chat',mode:'chat',createdAt:Date.now(),messages:[]};
+  state.chats.unshift(c);state.activeChatId=c.id;
+  save();renderHistory();renderMessages();closeDrawer();
+  DOM.input.focus();
 }
-
-function closeTab(id, ev){
-  ev.stopPropagation();
-  const t = tabsEl.querySelector('.tab[data-id="'+id+'"]');
-  if (t) t.remove();
-  if (state.activeId === id){
-    const rest = [...tabsEl.querySelectorAll('.tab')];
-    if (rest.length) openFile(rest[rest.length-1].dataset.id);
-    else showWorkEmpty();
+function selectChat(id){
+  if(state.streaming)return toast('Stop current response first','error');
+  state.activeChatId=id; save();renderHistory();renderMessages();closeDrawer();
+}
+function renderHistory(){
+  DOM.historyList.innerHTML='';
+  for(const c of state.chats){
+    const it=document.createElement('div');it.className='hist-item'+(c.id===state.activeChatId?' active':'');
+    it.innerHTML=`<button class="hist-main"><span class="hist-title">${esc(c.title)}</span><span class="hist-meta">${fmtDay(c.createdAt)}</span></button>
+      <span class="hist-acts"><button class="hact" data-del><svg class="ic"><use href="#i-trash"/></svg></button></span>`;
+    it.querySelector('.hist-main').addEventListener('click',()=>selectChat(c.id));
+    it.querySelector('[data-del]').addEventListener('click',async e=>{
+      e.stopPropagation(); if(await confirmDialog('Delete chat',`Delete "${c.title}"?`)) {
+        state.chats=state.chats.filter(x=>x.id!==c.id); if(state.activeChatId===c.id)state.activeChatId=state.chats[0]?.id||null;
+        if(!state.chats.length)newChat(); else {save();renderHistory();renderMessages();}
+      }
+    });
+    DOM.historyList.appendChild(it);
   }
 }
+function closeDrawer(){DOM.sidebar.classList.remove('open');DOM.backdrop.classList.remove('show');}
 
-function showWorkEmpty(){
-  state.activeId = null;
-  codeView.hidden = true;
-  previewView.hidden = true;
-  workPane.classList.add('is-empty');
-  tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  updateActions();
-}
-
-/* ---------- প্রিভিউ ---------- */
-function buildSrc(htmlFile, files){
-  let doc = htmlFile.code;
-  if (htmlFile.lang === 'php'){
-    // সার্ভার ছাড়া চলে না — তাই প্রিভিউতে শুধু UI অংশ
-    doc = doc.replace(/<\?php[\s\S]*?(?:\?>|$)/g, '')
-             .replace(/<\?=[\s\S]*?(?:\?>|$)/g, '');
+/* Markdown rendering */
+let codeSeq=0;
+function renderMarkdown(src){
+  const blocks=[];
+  const text=src.replace(/```([^\n]*)\n([\s\S]*?)(?:```|$)/g,(m,info,code)=>{
+    blocks.push({info:info.trim(),code:code.replace(/\n$/,'')});return `\u0000B${blocks.length-1}\u0000`;
+  });
+  const stash=[];
+  const inline=s=>{
+    s=s.replace(/`([^`\n]+)`/g,(m,c)=>{stash.push(`<code>${c}</code>`);return `\u0001${stash.length-1}\u0001`;});
+    s=s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    s=s.replace(/(^|[\s(])\*([^*\n]+)\*/g,'$1<em>$2</em>');
+    s=s.replace(/\u0001(\d+)\u0001/g,(m,i)=>stash[+i]);
+    return s;
+  };
+  const lines=esc(text).split('\n'); let html='',para=[],list=null;
+  const flushP=()=>{if(para.length){html+=`<p>${para.map(inline).join('<br>')}</p>`;para=[]}};
+  const flushL=()=>{if(list){html+=`<${list.tag}>${list.items.map(i=>`<li>${inline(i)}</li>`).join('')}</${list.tag}>`;list=null}};
+  for(const line of lines){
+    const t=line.trim(); const bm=/^\u0000B(\d+)\u0000$/.exec(t);
+    if(bm){flushP();flushL();
+      const id='c'+(++codeSeq); codeStore.set(id,blocks[+bm[1]].code);
+      let label=blocks[+bm[1]].info||'code'; const pm=/^(?:[A-Za-z0-9+#.+-]+)?[:\s]([^\s`]+\.[A-Za-z0-9]+)$/.exec(blocks[+bm[1]].info); if(pm)label=pm[1];
+      html+=`<div class="codeblock"><div class="cb-head"><span class="cb-lang">${esc(label)}</span><button class="cb-copy" data-copy-code="${id}"><svg class="ic"><use href="#i-copy"/></svg>Copy</button></div><pre><code>${esc(blocks[+bm[1]].code)}</code></pre></div>`;
+      continue;
+    }
+    if(!t){flushP();flushL();continue;}
+    const h=/^(#{1,4})\s+(.*)$/.exec(t); if(h){flushP();flushL();html+=`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`;continue;}
+    if(/^(---+|\*\*\*+)$/.test(t)){flushP();flushL();html+='<hr>';continue;}
+    if(/^&gt;\s?/.test(t)){flushP();flushL();html+=`<blockquote>${inline(t.replace(/^&gt;\s?/,''))}</blockquote>`;continue;}
+    const ul=/^[-*]\s+(.*)$/.exec(t); const ol=/^\d+[.)]\s+(.*)$/.exec(t);
+    if(ul){flushP();if(!list||list.tag!=='ul'){flushL();list={tag:'ul',items:[]}}list.items.push(ul[1]);continue;}
+    if(ol){flushP();if(!list||list.tag!=='ol'){flushL();list={tag:'ol',items:[]}}list.items.push(ol[1]);continue;}
+    flushL();para.push(line);
   }
-  const css = files.filter(f => f.lang === 'css').map(f => f.code).join('\n\n');
-  const js  = files.filter(f => f.lang === 'js').map(f => f.code).join('\n\n');
-  if (css) doc = doc.replace(/<link[^>]*rel="stylesheet"[^>]*>/i, () => '<style>\n'+css+'\n</style>');
-  if (js)  doc = doc.replace(/<script[^>]*src="script\.js"[^>]*><\/script>/i, () => '<scr'+'ipt>\n'+js+'\n</scr'+'ipt>');
-  return doc;
+  flushP();flushL(); return html;
 }
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-copy-code]'); if(!b)return;
+  const code=codeStore.get(b.dataset.copyCode); if(code==null)return;
+  copyText(code).then(()=>{b.innerHTML='<svg class="ic"><use href="#i-check"/></svg>Copied';setTimeout(()=>{b.innerHTML='<svg class="ic"><use href="#i-copy"/></svg>Copy'},1400);});
+});
 
-function showPreview(){
-  const f = activeFile();
-  if (!f) return;
-  const files = projectFiles(f.pid);
-  const html = files.find(x => x.lang === 'html' || x.lang === 'php');
-  if (!html){ toast('প্রিভিউয়ের জন্য HTML ফাইল নেই', 'err'); return; }
-  state.lastDoc = buildSrc(html, files);
-  codeView.hidden = true;
-  previewView.hidden = false;
-  pvNote.textContent = html.lang === 'php'
-    ? 'PHP সার্ভার ছাড়া চলে না — প্রিভিউতে শুধু UI অংশটা দেখানো হচ্ছে'
-    : 'লাইভ প্রিভিউ — তৈরি করা কোড সরাসরি চলছে';
-  pvFrame.srcdoc = state.lastDoc;
-  state.viewMode = 'preview';
-  updatePvBtn();
-}
-
-function backToCode(){
-  previewView.hidden = true;
-  if (state.activeId) codeView.hidden = false;
-  state.viewMode = 'code';
-  updatePvBtn();
-}
-
-function updatePvBtn(){
-  const b = $('#actPv');
-  b.innerHTML = state.viewMode === 'preview'
-    ? icon('code')+'<span>কোড</span>'
-    : icon('play')+'<span>প্রিভিউ</span>';
-  b.classList.toggle('on', state.viewMode === 'preview');
-}
-
-function updateActions(){
-  const has = !!activeFile();
-  $('#actCopy').disabled = !has;
-  $('#actDl').disabled = !has;
-  const f = activeFile();
-  const canPv = has && projectFiles(f.pid).some(x => x.lang === 'html' || x.lang === 'php');
-  $('#actPv').disabled = !canPv;
-}
-
-/* ---------- কপি ও ডাউনলোড ---------- */
-async function copyText(t){
-  try { await navigator.clipboard.writeText(t); return true; }
-  catch (e){
-    const ta = el('textarea');
-    ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select();
-    let ok = false;
-    try { ok = document.execCommand('copy'); } catch (_){}
-    ta.remove();
-    return ok;
+/* Extraction & File Rendering Engine (New Logic) */
+function extractFileBlocks(text){
+  const blocks=[];let m;
+  const re=/```([^\n]*)\n([\s\S]*?)```/g;
+  let fileIndex = 1;
+  while((m=re.exec(text))){
+    const originalMatch = m[0];
+    const info=m[1].trim();let path=null,lang='';
+    let pm=/^([A-Za-z0-9+#.+-]+)[ \t:]+([^\s`]+\.[A-Za-z0-9]+)$/.exec(info);
+    if(pm){lang=pm[1];path=pm[2];}
+    else{
+      pm=/^([^\s`]*[\/ ])?([^\s`]+\.[A-Za-z0-9]+)$/.exec(info);
+      if(pm&&TEXT_EXTS.has(extOf(pm[2]))){path=pm[2];lang=extOf(pm[2]);}
+      else {
+        let rawLang = info.split(/[\s:]+/)[0] || '';
+        lang = rawLang.toLowerCase();
+        let ext = null;
+        if(lang === 'javascript' || lang === 'js' || lang === 'jsx' || lang === 'mjs') ext = 'js';
+        else if(lang === 'typescript' || lang === 'ts' || lang === 'tsx') ext = 'ts';
+        else if(lang === 'python' || lang === 'py') ext = 'py';
+        else if(lang === 'html' || lang === 'htm') ext = 'html';
+        else if(lang === 'css' || lang === 'scss' || lang === 'less') ext = 'css';
+        else if(lang === 'php') ext = 'php';
+        else if(lang === 'java') ext = 'java';
+        else if(lang === 'cpp' || lang === 'c++' || lang === 'c' || lang === 'h') ext = 'cpp';
+        else if(lang === 'cs' || lang === 'c#') ext = 'cs';
+        else if(lang === 'sql') ext = 'sql';
+        else if(lang === 'xml') ext = 'xml';
+        else if(lang === 'yaml' || lang === 'yml') ext = 'yaml';
+        else if(lang === 'json') ext = 'json';
+        else if(lang === 'rust' || lang === 'rs') ext = 'rs';
+        else if(lang === 'go') ext = 'go';
+        else if(lang === 'swift') ext = 'swift';
+        else if(lang === 'kotlin' || lang === 'kt') ext = 'kt';
+        else if(lang === 'ruby' || lang === 'rb') ext = 'rb';
+        else if(lang === 'dart') ext = 'dart';
+        
+        if (!ext) continue; 
+        path = `code_${fileIndex}.${ext}`;
+        fileIndex++;
+      }
+    }
+    const sp=sanitizePath(path||'');
+    if(sp)blocks.push({
+      path:sp, lang:lang||extOf(sp), content:m[2].replace(/\n$/,''), originalMatch: originalMatch
+    });
   }
+  return blocks;
 }
 
-function downloadFile(f){
-  const blob = new Blob([f.code], { type:'text/plain;charset=utf-8' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = f.name;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-/* ---------- ফাইল ম্যাটেরিয়ালাইজেশন (চ্যাটে কার্ড + ওয়ার্কস্পেসে ট্যাব) ---------- */
-async function materialize(listEl, files, pid){
-  let firstId = null;
-  for (const f of files){
-    const id = 'f' + uid();
-    state.files.set(id, { ...f, id, pid, revealed:false });
-
-    const ext = EXT[f.lang];
-    const card = el('button','file-card');
-    card.dataset.id = id;
-    card.innerHTML = '<span class="fc-ic" style="background:'+ext.b+';color:'+ext.c+'">'+icon('file')+'</span>'
-      + '<span class="fc-info"><span class="fc-name">'+escHtml(f.name)+'</span>'
-      + '<span class="fc-meta">'+ext.label+' · '+bnNum(f.lines)+' লাইন · '+bnNum(f.kb)+' KB</span></span>'
-      + '<span class="fc-state">'+icon('loader','spin')+'<span>লেখা হচ্ছে…</span></span>'
-      + '<i class="fc-bar"></i>';
-    listEl.appendChild(card);
-    scrollChat();
-
-    await sleep(480 + Math.random()*560);
-
-    card.classList.add('done');
-    card.querySelector('.fc-state').innerHTML = icon('check')+'<span>সম্পন্ন</span>';
-    ensureTab(id);
-    updateFileCount();
-    if (!state.activeId) openFile(id); // প্রথম ফাইল সাথে সাথে ভিউয়ারে
-    if (!firstId) firstId = id;
+function stripFileBlocks(text,blocks){
+  let out=text;
+  for(const b of blocks){
+    if(b.originalMatch) {
+      out=out.replace(b.originalMatch, `**\`${b.path}\`** — code generated (see file tabs above).`);
+    } else {
+      out=out.replace(new RegExp('```[^\\n]*'+b.path.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'[\\s\\S]*?```'),`**\`${b.path}\`** — code generated (see file tabs above).`);
+    }
   }
-  return firstId;
+  return out;
 }
 
-function updateFileCount(){
-  const n = state.files.size;
-  $('#fileCount').textContent = bnNum(n);
-  const badge = $('#segBadge');
-  badge.textContent = bnNum(n);
-  badge.hidden = n === 0;
+function showAgentFileTabs(blocks){
+  if(!DOM.agentFilesBar||!DOM.agentFileTabs)return;
+  const list=(blocks||[]).filter(b=>b&&b.path&&b.content!=null);
+  DOM.agentFileTabs.innerHTML='';
+  if(!list.length){
+    DOM.agentFilesBar.hidden=true;
+    return;
+  }
+  for(const b of list){
+    const btn=document.createElement('button');btn.className='agent-file-tab';btn.type='button';
+    const ext=extOf(b.path).toUpperCase() || 'FILE';
+    btn.innerHTML=`<svg class="ic"><use href="#${iconFor(b.path)}"/></svg><span>${esc(b.path)}</span><span class="aft-ext">${esc(ext)}</span>`;
+    btn.addEventListener('click',()=>openGeneratedCode(b));
+    DOM.agentFileTabs.appendChild(btn);
+  }
+  DOM.agentFilesBar.hidden=false;
+  DOM.agentFilesBar.classList.add('ready');
+  if(DOM.agentFileStatus)DOM.agentFileStatus.textContent=`${list.length} file${list.length===1?'':'s'} ready — click to view`;
 }
-
-/* ================================================================
-   এজেন্টের বুদ্ধি — রিকোয়েস্ট পার্স করে প্ল্যান বানানো
-   ================================================================ */
-const PROJECTS = {
-  calc: {
-    gen: genCalc,
-    intro: 'ক্যালকুলেটর — দারুণ! বানাচ্ছি একটা প্রিমিয়াম ডার্ক ক্যালকুলেটর: HTML স্ট্রাকচার, CSS স্টাইল আর JS লজিক — তিনটা আলাদা ফাইলে গুছিয়ে। কীবোর্ড দিয়েও চালানো যাবে, ধাপে ধাপে চেইন ক্যালকুলেশনও করা যাবে।',
-    outro: 'তিনটা ফাইলই তৈরি! উপরের কার্ডে বা পাশের ট্যাবে ক্লিক করলে পুরো কোড খুলবে — আর “প্রিভিউ” চাপলে ক্যালকুলেটরটা সরাসরি চালিয়ে দেখতে পারবেন।'
-  },
-  todo: {
-    gen: genTodo,
-    intro: 'টু-ডু অ্যাপ বানাচ্ছি — কাজ যোগ, সম্পন্ন চিহ্নিত, ফিল্টার (সব / বাকি / সম্পন্ন), আর localStorage সেভ: রিলোড দিলেও তালিকা গায়েব হবে না। ফাইল তিনটা: index.html, style.css, script.js।',
-    outro: 'তৈরি! প্রিভিউ খুলে কয়েকটা কাজ যোগ করে দেখুন — ফিল্টার আর ডিলিটও কাজ করছে দেখবেন।'
-  },
-  clock: {
-    gen: genClock,
-    intro: 'ডিজিটাল ঘড়ি বানাচ্ছি — সেকেন্ড অনুযায়ী ভরতে থাকা প্রগ্রেস রিং, বাংলা তারিখ আর AM/PM সহ। ফাইল: index.html, style.css, script.js।',
-    outro: 'হয়ে গেছে! প্রিভিউতে ঘড়িটা লাইভ চলছে দেখুন — প্রতি সেকেন্ডে রিং ভরতে থাকবে।'
-  },
-  login: {
-    gen: genLogin,
-    intro: 'লগইন ফর্ম বানাচ্ছি — ইমেইল ও পাসওয়ার্ড ভ্যালিডেশন, এরর/সাকসেস মেসেজসহ, পরিচ্ছন্ন ডার্ক কার্ড ডিজাইনে। ফাইল: index.html, style.css, script.js।',
-    introPhp: 'PHP লগইন ফর্ম বানাচ্ছি — সার্ভার সাইড POST হ্যান্ডলার, ভ্যালিডেশন আর htmlspecialchars দিয়ে আউটপুট স্যানিটাইজ — সব index.php এর ভেতরে। সাথে style.css।',
-    outro: 'তৈরি! ফাইলে ক্লিক করে পুরো কোড দেখুন।',
-    outroPhp: 'তৈরি! index.php চালাতে XAMPP বা Laragon-এর মতো সার্ভার লাগবে — প্রিভিউতে শুধু UI অংশটা দেখাবে, PHP লজিকটা কোডে দেখুন।'
-  },
-  landing: {
-    gen: genLanding,
-    intro: 'ল্যান্ডিং পেজ বানাচ্ছি — হিরো সেকশন, স্ট্যাট স্ট্রিপ, স্ক্রল করলে ভেসে ওঠা সার্ভিস কার্ড, স্মুথ স্ক্রল নেভিগেশনসহ। ফাইল: index.html, style.css, script.js।',
-    outro: 'সব ফাইল রেডি! প্রিভিউ খুলে স্ক্রল করুন — কার্ডগুলো ভেসে উঠবে।'
-  }
-};
-
-const GREET_TEXT = 'হ্যালো! বলুন কী বানাতে চান — ক্যালকুলেটর, টু-ডু, ঘড়ি, লগইন ফর্ম, PHP পেজ বা ল্যান্ডিং পেজ। যা বানাবো, সব আলাদা ফাইল হয়ে (index.html, style.css, script.js, index.php) পাশের ওয়ার্কস্পেসে জমা হবে — ফাইলে ক্লিক করলেই কোড খুলবে।';
-
-const HELP_TEXT = 'আমি যা যা পারি — সব কোড আলাদা ফাইল হিসেবে তৈরি হয়, পাশের ওয়ার্কস্পেসে ফাইলে ক্লিক করলেই খোলে:\n\n• "ক্যালকুলেটর বানাও" — HTML + CSS + JS\n• "টু-ডু লিস্ট দাও" — localStorage সহ\n• "ডিজিটাল ঘড়ি করো" — লাইভ সময় ও রিং\n• "লগইন ফর্ম দাও" — ভ্যালিডেশনসহ\n• "PHP লগইন ফর্ম বানাও" — index.php + POST হ্যান্ডলার\n• "ল্যান্ডিং পেজ বানাও" — সম্পূর্ণ ডিজাইন\n\n"প্রিভিউ" বাটন চেপে বানানো কোড সরাসরি চালিয়েও দেখতে পারেন।';
-
-const WELCOME_TEXT = 'আসসালামু আলাইকুম! আমি কোডমিস্ত্রি — আপনার কোড বানানোর মিস্ত্রি। শুধু বলুন কী দরকার, আমি কোডগুলো আলাদা আলাদা ফাইল হিসেবে বানিয়ে পাশের ওয়ার্কস্পেসে সাজিয়ে দেব। ফাইলে ক্লিক করলেই পুরো কোড খুলে যাবে। নিচের চিপগুলো থেকেও শুরু করতে পারেন।';
-
-function extractTitle(raw){
-  let t = raw.trim()
-    .replace(/(আমাকে|একটা|একটি|প্লিজ|please|বানাও|বানায়ে দাও|তৈরি করো|তৈরি করে দাও|তৈরি করুন|করে দাও|দাও|দিন|লিখে দাও|লিখো|লিখুন|করো|করুন|চাই|make|create|build|give|me|a|an|the|php|পিএইচপি)/gi, ' ');
-  t = t.replace(/\s+/g, ' ').trim();
-  return t ? t.slice(0, 42) : 'নতুন প্রজেক্ট';
+function openGeneratedCode(file){
+  if(!DOM.codeViewer||!file)return;
+  DOM.cvName.textContent=file.path;DOM.cvLang.textContent=(file.lang||extOf(file.path)||'TEXT').toUpperCase();
+  DOM.cvCode.querySelector('code').textContent=file.content||'';
+  DOM.codeViewer.hidden=false;
 }
+function closeGeneratedCode(){if(DOM.codeViewer)DOM.codeViewer.hidden=true;}
+DOM.cvClose?.addEventListener('click',closeGeneratedCode);
+DOM.codeViewer?.addEventListener('click',e=>{if(e.target===DOM.codeViewer)closeGeneratedCode();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGeneratedCode();});
 
-function interpret(raw){
-  const t = raw.toLowerCase();
-  const php = /\bphp\b|পিএইচপি/.test(t);
-  const has = (...ws) => ws.some(w => t.includes(w));
+/* Streaming Logic Update */
+function makeStreamRenderer(getText,el){
+  let scheduled=false,last=0;
+  return()=>{
+    if(scheduled)return;scheduled=true;
+    const wait=Math.max(0,LIMITS.streamRenderMs-(performance.now()-last));
+    setTimeout(()=>{
+      scheduled=false;last=performance.now();
+      if(!el.isConnected)return;
+      const t=getText();
+      
+      const blocks = extractFileBlocks(t);
+      if (blocks.length > 0) showAgentFileTabs(blocks);
+      
+      let displayT = stripFileBlocks(t, blocks);
+      const parts = displayT.split('```');
+      if (parts.length % 2 === 0) displayT = parts.slice(0, -1).join('```') + '\n\n*Generating code...*\n';
 
-  if (has('ক্যালকুলেটর','calculator','হিসাব করা','ক্যালকুলেশন')) return plan('calc', php);
-  if (has('টুডু','টু-ডু','টু ডু','todo','to-do','কাজের তালিকা','টাস্ক')) return plan('todo', php);
-  if (has('ঘড়ি','clock','টাইমার')) return plan('clock', php);
-  if (has('লগইন','লগ ইন','login','সাইন ইন','signin','সাইন-ইন')) return plan('login', php);
-  if (has('ল্যান্ডিং','landing','হোমপেজ','ওয়েবসাইট','স্টুডিও','এজেন্সি','পোর্টফোলিও','portfolio')) return plan('landing', php);
-
-  if (/^(হ্যালো|হাই|হেলো|আসসালাম|সালাম|নমস্কার|হেই|hi|hello|hey|yo)\b/.test(t) || raw.trim() === 'হ্যালো'){
-    return { kind:'chat', text: GREET_TEXT };
-  }
-  if (has('সাহায্য','help','কী পারো','কি পারো','কী করতে পারো','কি করতে পারো','গাইড')){
-    return { kind:'chat', text: HELP_TEXT };
-  }
-
-  // ফলব্যাক: স্টার্টার স্ট্রাকচার
-  const title = extractTitle(raw);
-  return {
-    kind:'project',
-    files: genStarter(title, php),
-    intro: '“'+title+'” — এই বিষয়ে আমার কাছে রেডিমেড ব্লুপ্রিন্ট নেই, তাই একটা পরিচ্ছন্ন স্টার্টার স্ট্রাকচার বানিয়ে দিচ্ছি'+(php ? ' — index.php সহ' : '')+'। আরও নির্দিষ্ট চাইলে বলুন: ক্যালকুলেটর, টু-ডু, ঘড়ি, লগইন বা ল্যান্ডিং পেজ।',
-    outro: 'সব ফাইল তৈরি! কার্ডে বা ট্যাবে ক্লিক করলে পুরো কোড দেখা যাবে — কপি কিংবা ডাউনলোডও করা যাবে।'+(php ? ' index.php-টা সার্ভারে রেখে চালালে সবচেয়ে ভালো চলবে।' : '')
+      if(displayT.length>120000){el.classList.remove('streaming');el.textContent=displayT.slice(-20000);}
+      else{el.classList.add('streaming');el.innerHTML=renderMarkdown(displayT);}
+      scrollBottom();
+    },wait);
   };
 }
 
-function plan(key, php){
-  const P = PROJECTS[key];
-  return {
-    kind:'project',
-    files: P.gen(php),
-    intro: php && P.introPhp ? P.introPhp : P.intro,
-    outro: php && P.outroPhp ? P.outroPhp : P.outro
-  };
+/* Chat Messages */
+function addMessage({role,content='',attachments=[],pending=false,label='',kind=null}){
+  const chat=activeChat();if(!chat)return null;
+  const msg={id:uid(),role,content,attachments,pending,label,kind,ts:Date.now()};
+  chat.messages.push(msg); DOM.emptyState.classList.add('hidden');
+  const el=document.createElement('div');
+  el.className='msg '+role;el.id='m-'+msg.id;
+  if(role==='user'){
+    if(content){ const b=document.createElement('div');b.className='u-bubble';b.textContent=content; el.appendChild(b); }
+  }else{
+    el.innerHTML=`<div class="ai-head"><span class="ai-glyph"><svg class="ic"><use href="#i-logo"/></svg></span><span class="ai-label">${esc(label||APP_NAME)}</span><span class="ai-time">${fmtTime(msg.ts)}</span></div><div class="ai-body"></div><div class="ai-actions"></div>`;
+    if(pending){
+      const plain=document.createElement('div');plain.className='md streaming';el.querySelector('.ai-body').appendChild(plain);
+      msgEls.set(msg.id,{root:el,el:el.querySelector('.ai-body'),plain,actions:el.querySelector('.ai-actions')});
+    }else msgEls.set(msg.id,{root:el,el:el.querySelector('.ai-body'),plain:null,actions:el.querySelector('.ai-actions')});
+  }
+  DOM.messages.appendChild(el); scrollBottom(true);
+  return msg;
 }
+function scrollBottom(force){if(force||state.ui.nearBottom)DOM.messages.scrollTop=DOM.messages.scrollHeight;}
+DOM.messages.addEventListener('scroll',()=>{state.ui.nearBottom=DOM.messages.scrollHeight-DOM.messages.scrollTop-DOM.messages.clientHeight<90;},{passive:true});
 
-/* ================================================================
-   মূল সেন্ড-ফ্লো
-   ================================================================ */
-async function send(raw){
-  const text = raw.trim();
-  if (!text) return;
-  if (state.generating){ toast('একটু অপেক্ষা করুন — আগের কাজটা শেষ হোক', 'err'); return; }
-
-  state.generating = true;
-  updateSend();
-
-  addUserMsg(text);
-  const empty = $('#chatEmpty');
-  if (empty) empty.remove();
-  input.value = ''; autosize();
-
-  const p = interpret(text);
-  const am = addAgentMsg();
-
-  if (p.kind === 'chat'){
-    await typeText(am.textEl, p.text);
-    state.generating = false;
-    updateSend();
+function renderMessages(){
+  msgEls.forEach(r=>r.root.remove());msgEls.clear();
+  DOM.messages.querySelectorAll('.msg,.handoff').forEach(e=>e.remove());
+  const chat=activeChat();
+  if(!chat||!chat.messages.length){
+    DOM.emptyState.classList.remove('hidden');
+    if (DOM.agentFilesBar) DOM.agentFilesBar.hidden = true;
     return;
   }
-
-  await typeText(am.textEl, p.intro);
-  await sleep(260);
-
-  const pid = 'p' + uid();
-  await materialize(am.fcList, p.files, pid);
-
-  toast(bnNum(p.files.length)+'টি ফাইল তৈরি হয়েছে — ওয়ার্কস্পেসে দেখুন');
-  workPane.classList.remove('flash'); void workPane.offsetWidth; workPane.classList.add('flash');
-
-  const outEl = el('div','m-text m-out');
-  am.fcList.after(outEl);
-  await typeText(outEl, p.outro);
-
-  state.generating = false;
-  updateSend();
+  DOM.emptyState.classList.add('hidden');
+  
+  for(const m of chat.messages){
+    const el=document.createElement('div');
+    if(m.role==='user'&&m.kind==='handoff'){
+      el.className='handoff';el.id='m-'+m.id;
+      el.innerHTML=`<div class="handoff-pill" style="margin: 10px 0; color:var(--accent); font-weight:600; font-size:12px; display:flex; align-items:center; gap:8px"><svg class="ic"><use href="#i-duo"/></svg><span>${esc(m.content)}</span></div>`;
+      DOM.messages.appendChild(el);continue;
+    }
+    el.className='msg '+m.role;el.id='m-'+m.id;
+    if(m.role==='user'){
+      if(m.attachments?.length){
+        const chips=document.createElement('div');chips.className='att-chips';
+        for(const a of m.attachments){
+          const c=document.createElement('span');c.className='att-chip';
+          c.innerHTML=`<svg class="ic"><use href="#${iconFor(a.name)}"/></svg><span>${esc(a.name)}</span>`;
+          chips.appendChild(c);
+        }
+        el.appendChild(chips);
+      }
+      if(m.content){ const b=document.createElement('div');b.className='u-bubble';b.textContent=m.content; el.appendChild(b); }
+    }else if(m.setup){
+      el.innerHTML=`<div class="ai-head"><span class="ai-glyph"><svg class="ic"><use href="#i-sliders"/></svg></span><span class="ai-label">Setup required</span></div><div class="ai-body"><div class="setup-card"><h4>No AI provider configured</h4><p style="font-size:13px;color:var(--text2)">Add a provider in Settings to begin.</p></div></div>`;
+    }else{
+      el.innerHTML=`<div class="ai-head"><span class="ai-glyph"><svg class="ic"><use href="#i-logo"/></svg></span>
+        <span class="ai-label ${m.label==='Review Agent'?'review':''}">${esc(m.label||APP_NAME)}</span><span class="ai-time">${fmtTime(m.ts)}</span></div>
+        <div class="ai-body"></div><div class="ai-actions"></div>`;
+      const bodyEl=el.querySelector('.ai-body');
+      const blocks=m.fileBlocks||[];
+      const displayText=blocks.length?stripFileBlocks(m.content,extractFileBlocks(m.content)):m.content;
+      
+      if(m.error){
+        bodyEl.innerHTML=`<div class="err-card"><div class="et"><svg class="ic" style="width:15px;height:15px"><use href="#i-alert"/></svg>Request failed</div><div class="em">${esc(m.error)}</div></div>`;
+      }else{
+        const mdEl=document.createElement('div');mdEl.className='md';mdEl.innerHTML=renderMarkdown(displayText);
+        bodyEl.appendChild(mdEl);
+        if(m.stopped){const s=document.createElement('div');s.className='ai-time';s.style.marginTop='6px';s.textContent='— stopped';bodyEl.appendChild(s);}
+        const acts=el.querySelector('.ai-actions');
+        const cp=document.createElement('button');cp.className='mact'; cp.innerHTML='<svg class="ic"><use href="#i-copy"/></svg>Copy Text';
+        cp.addEventListener('click',()=>copyText(m.content).then(()=>toast('Copied','success'))); acts.appendChild(cp);
+      }
+    }
+    DOM.messages.appendChild(el);
+  }
+  
+  // Show file tabs for the active chat at the top
+  const lastBlocksMsg = [...chat.messages].reverse().find(m => m.role === 'assistant' && m.fileBlocks && m.fileBlocks.length > 0);
+  if (lastBlocksMsg) {
+    showAgentFileTabs(lastBlocksMsg.fileBlocks);
+  } else if (DOM.agentFilesBar) {
+    DOM.agentFilesBar.hidden = true;
+  }
+  scrollBottom(true);
 }
 
-/* ================================================================
-   ইভেন্ট বাইন্ডিং
-   ================================================================ */
-function updateSend(){
-  sendBtn.disabled = !input.value.trim() || state.generating;
+function finalizeAssistant(msg,{error=null,stopped=false}={}){
+  const refs=msgEls.get(msg.id); msg.pending=false; if(!refs)return;
+  if(error){ msg.error=error; refs.plain&&refs.plain.remove();
+    refs.el.innerHTML+=`<div class="err-card"><div class="et"><svg class="ic"><use href="#i-alert"/></svg>Request failed</div><div class="em">${esc(error)}</div></div>`;
+  }else{
+    const blocks=extractFileBlocks(msg.content);
+    refs.plain&&refs.plain.remove();
+    if(blocks.length){
+      msg.fileBlocks=blocks.map(b=>({path:b.path,lang:b.lang,content:b.content}));
+      showAgentFileTabs(msg.fileBlocks);
+      const displayText=stripFileBlocks(msg.content,blocks);
+      if(displayText.trim()){ const mdEl=document.createElement('div');mdEl.className='md';mdEl.innerHTML=renderMarkdown(displayText);refs.el.appendChild(mdEl); }
+    }else{
+      const mdEl=document.createElement('div');mdEl.className='md';mdEl.innerHTML=renderMarkdown(msg.content);refs.el.appendChild(mdEl);
+    }
+    if(stopped)msg.stopped=true;
+  }
+  msgEls.delete(msg.id); saveSoon();
 }
 
-function autosize(){
-  input.style.height = 'auto';
-  input.style.height = Math.min(input.scrollHeight, 140) + 'px';
+/* Agent Turn Engine */
+async function runAgentTurn(userMsg,modeOverride=null){
+  const mode=modeOverride||state.mode;
+  const aiMsg=addMessage({role:'assistant',pending:true,label:mode==='agent'?'Code Agent':''});
+  if(!aiMsg)return;
+  const refs=msgEls.get(aiMsg.id);
+  state.streaming=true; updateSendBtn();
+  const ctl=new AbortController(); state.abortCtl=ctl; const flag={timedOut:false,done:false};
+  
+  if(mode==='agent' && DOM.agentFilesBar) {
+      DOM.agentFilesBar.hidden=false; 
+      DOM.agentFilesBar.classList.remove('ready');
+      DOM.agentFileStatus.textContent='Agent is generating code...';
+  }
+
+  try{
+    const msgs=[{role:'system',content:mode==='agent'?AGENT_SYSTEM:CHAT_SYSTEM}];
+    const chat=activeChat();
+    if(chat){
+       const hist=chat.messages.filter(m=>!m.pending&&!m.error&&m.content).slice(-10);
+       for(const m of hist) msgs.push({role:m.role,content:m.content});
+    }
+    msgs.push({role:'user',content:userMsg.content});
+
+    const render=makeStreamRenderer(()=>aiMsg.content,refs.plain);
+    const text=await requestCompletion({messages:msgs,ctl,flag,onDelta:d=>{aiMsg.content+=d;render();}});
+    aiMsg.content=text; finalizeAssistant(aiMsg);
+  }catch(err){
+    finalizeAssistant(aiMsg,{error:err.name==='AbortError'?'Response stopped.':err.message});
+    if(mode==='agent' && DOM.agentFileStatus) DOM.agentFileStatus.textContent='Agent stopped.';
+  }finally{
+    state.streaming=false; state.abortCtl=null; updateSendBtn();
+  }
 }
 
-input.addEventListener('input', () => { autosize(); updateSend(); });
-input.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey){
-    e.preventDefault();
-    send(input.value);
+function handleSend(){
+  const text=DOM.input.value.trim();
+  if(!text&&!state.attachments.length)return;
+  state.attachments=[];
+  const chat=activeChat();
+  if(chat.title==='New chat'){chat.title=(text||'New chat').slice(0,40);renderHistory();}
+  save(); const userMsg=addMessage({role:'user',content:text});
+  DOM.input.value=''; updateComposer();
+  if(!activeProvider()){
+    const m={id:uid(),role:'assistant',content:'',pending:false,setup:true,ts:Date.now()}; chat.messages.push(m);
+    renderMessages(); return;
+  }
+  
+  // Decide Mode
+  const isCode = /\b(create|build|make|generate|write|code|website|app|page|html|css|js|python|ui)\b/i.test(text);
+  runAgentTurn(userMsg, isCode ? 'agent' : 'chat');
+}
+
+function updateComposer(){
+  const v=DOM.input.value; DOM.charCount.textContent=v.length>0?v.length:'';
+  DOM.input.style.height='auto'; DOM.input.style.height=Math.min(DOM.input.scrollHeight,200)+'px';
+  DOM.sendBtn.disabled=!(state.streaming||!!v.trim());
+}
+function updateSendBtn(){
+  const stop=state.streaming;
+  DOM.sendBtn.classList.toggle('stop',stop);
+  DOM.sendBtn.disabled=!(stop||!!DOM.input.value.trim());
+  DOM.sendBtn.innerHTML=stop?'<svg class="ic"><use href="#i-stop"/></svg>':'<svg class="ic"><use href="#i-send"/></svg>';
+}
+
+/* Event Listeners */
+DOM.btnMenu.addEventListener('click',()=>{DOM.sidebar.classList.add('open');DOM.backdrop.classList.add('show')});
+DOM.backdrop.addEventListener('click',closeDrawer);
+$$('.nav-item').forEach(b=>b.addEventListener('click',()=>{
+  $$('.nav-item').forEach(x=>x.classList.remove('active')); b.classList.add('active');
+  const m=b.dataset.mode;
+  DOM.viewWs.classList.toggle('active',m==='chat'||m==='agent');
+  DOM.viewFiles.classList.toggle('active',m==='files');
+  DOM.viewSettings.classList.toggle('active',m==='settings');
+  closeDrawer();
+}));
+DOM.btnNewChat.addEventListener('click',newChat);
+DOM.btnNewChatSide.addEventListener('click',newChat);
+DOM.sendBtn.addEventListener('click',()=>{if(state.streaming){state.abortCtl?.abort();}else{handleSend();}});
+DOM.input.addEventListener('input',updateComposer);
+DOM.input.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();if(!state.streaming)handleSend();}});
+$$('.quick').forEach(b=>b.addEventListener('click',()=>{DOM.input.value=b.dataset.prompt;updateComposer();DOM.input.focus();}));
+DOM.btnAddProvider.addEventListener('click',providerForm);
+DOM.btnClearData.addEventListener('click',async()=>{
+  if(await confirmDialog('Erase everything','This will wipe all data. Are you sure?')){
+    localStorage.removeItem(STORE_KEY); location.reload();
   }
 });
-sendBtn.addEventListener('click', () => send(input.value));
+DOM.modelChip.addEventListener('click',()=>{DOM.viewSettings.classList.add('active');DOM.viewWs.classList.remove('active');$$('.nav-item').forEach(x=>x.classList.toggle('active',x.dataset.mode==='settings'));});
 
-/* চ্যাটে ডেলিগেটেড ক্লিক: সাজেশন, স্কিপ, ফাইল কার্ড */
-chatLog.addEventListener('click', e => {
-  const s = e.target.closest('.sugg');
-  if (s){ send(s.dataset.q); return; }
-  if (liveType && e.target.closest('.typing')){ liveType.finish(); return; }
-  const card = e.target.closest('.file-card');
-  if (card){
-    openFile(card.dataset.id);
-    workPane.classList.remove('flash'); void workPane.offsetWidth; workPane.classList.add('flash');
-  }
-});
-
-/* ট্যাব: অ্যাক্টিভেট ও ক্লোজ */
-tabsEl.addEventListener('click', e => {
-  const x = e.target.closest('.t-x');
-  const tab = e.target.closest('.tab');
-  if (!tab) return;
-  if (x){ closeTab(tab.dataset.id, e); return; }
-  openFile(tab.dataset.id);
-});
-
-/* কপি / ডাউনলোড / প্রিভিউ */
- $('#actCopy').addEventListener('click', async () => {
-  const f = activeFile(); if (!f) return;
-  if (await copyText(f.code)){
-    const b = $('#actCopy'), old = b.innerHTML;
-    b.innerHTML = icon('check')+'<span>কপি হয়েছে</span>';
-    setTimeout(() => { b.innerHTML = old; }, 1500);
-    toast(f.name+' কপি হয়েছে');
-  } else toast('কপি করা গেল না', 'err');
-});
-
- $('#actDl').addEventListener('click', () => {
-  const f = activeFile(); if (!f) return;
-  downloadFile(f);
-  toast('ডাউনলোড শুরু হয়েছে — '+f.name);
-});
-
- $('#actPv').addEventListener('click', () => {
-  state.viewMode === 'preview' ? backToCode() : showPreview();
-});
-
- $('#pvReload').addEventListener('click', () => {
-  if (!state.lastDoc) return;
-  pvFrame.srcdoc = '';
-  requestAnimationFrame(() => { pvFrame.srcdoc = state.lastDoc; });
-});
- $('#pvDesk').addEventListener('click', () => {
-  pvFrame.classList.remove('mob');
-  $('#pvDesk').classList.add('active'); $('#pvMob').classList.remove('active');
-});
- $('#pvMob').addEventListener('click', () => {
-  pvFrame.classList.add('mob');
-  $('#pvMob').classList.add('active'); $('#pvDesk').classList.remove('active');
-});
-
-/* নতুন চ্যাট (দুই-ধাপ কনফার্ম — কোনো confirm() নেই) */
-let armT = null;
- $('#newChat').addEventListener('click', function(){
-  if (!this.classList.contains('arm')){
-    this.classList.add('arm');
-    this.querySelector('span').textContent = 'নিশ্চিত?';
-    armT = setTimeout(disarm, 2600);
-    return;
-  }
-  disarm();
-  resetSession();
-});
-function disarm(){
-  clearTimeout(armT);
-  const b = $('#newChat');
-  b.classList.remove('arm');
-  b.querySelector('span').textContent = 'নতুন চ্যাট';
+function init(){
+  load();
+  if(!state.chats.length)newChat();
+  renderHistory(); renderModelChip(); renderProviders();
+  updateComposer(); updateSendBtn();
 }
-function resetSession(){
-  state.files.clear();
-  state.activeId = null;
-  state.lastDoc = '';
-  tabsEl.innerHTML = '';
-  pvFrame.srcdoc = '';
-  backToCode();
-  showWorkEmpty();
-  renderChatEmpty();
-  updateFileCount();
-  updateActions();
-  toast('নতুন সেশন শুরু হয়েছে');
-}
-
-/* মোবাইল সেগমেন্ট */
-function setView(v){
-  document.body.classList.toggle('view-chat', v === 'chat');
-  document.body.classList.toggle('view-work', v === 'work');
-  $('#seg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.v === v));
-}
- $('#seg').addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (b) setView(b.dataset.v);
-});
-
-/* স্প্লিটার — টেনে প্যানেল সাইজ বদল */
-const splitter = $('#splitter');
-const stage = $('#stage');
-let dragging = false;
-splitter.addEventListener('pointerdown', e => {
-  dragging = true;
-  splitter.setPointerCapture(e.pointerId);
-  document.body.classList.add('dragging');
-});
-splitter.addEventListener('pointermove', e => {
-  if (!dragging) return;
-  const r = stage.getBoundingClientRect();
-  const w = Math.max(300, Math.min(e.clientX - r.left, r.width - 340));
-  stage.style.setProperty('--chat-w', w + 'px');
-});
-splitter.addEventListener('pointerup', () => {
-  dragging = false;
-  document.body.classList.remove('dragging');
-});
-splitter.addEventListener('dblclick', () => stage.style.setProperty('--chat-w', '460px'));
-
-/* ================================================================
-   ইনিশিয়ালাইজ
-   ================================================================ */
-renderChatEmpty();
-updateSend();
-autosize();
-setTimeout(async () => {
-  if (state.generating) return;
-  state.generating = true;
-  updateSend();
-  const am = addAgentMsg();
-  await typeText(am.textEl, WELCOME_TEXT);
-  state.generating = false;
-  updateSend();
-}, 500);
+init();
 </script>
 </body>
 </html>
