@@ -160,6 +160,13 @@ svg.ic{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke
 #duoSummary{margin-top:10px;text-align:center;font-size:11.5px;color:var(--text2);font-family:var(--mono)}
 
 /* Messages */
+
+.agent-files-bar{flex-shrink:0;margin:8px 12px 0;border:1px solid var(--border);background:var(--panel);border-radius:14px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.08)}
+.af-head{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--border)}
+.af-title{font-size:12px;font-weight:800}.af-sub{font-size:10px;color:var(--text3);margin-left:auto}
+.agent-file-tabs{display:flex;gap:7px;overflow-x:auto;padding:8px}.agent-file-tab{flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--text);cursor:pointer;font-size:11px;font-weight:700}.agent-file-tab:hover{border-color:rgba(76,195,138,.45)}.agent-file-tab .aft-ext{font-size:9px;color:var(--text3);font-weight:600}
+.code-viewer{position:absolute;z-index:50;inset:10px 10px 10px;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:16px;background:var(--bg);box-shadow:0 18px 60px rgba(0,0,0,.35);overflow:hidden}.code-viewer[hidden]{display:none}.cv-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--panel)}.cv-name-wrap{display:flex;align-items:center;gap:8px;min-width:0}.cv-name-wrap strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cv-name-wrap span:last-child{font-size:9px;color:var(--text3)}.cv-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}.cv-code{flex:1;margin:0;padding:14px;overflow:auto;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;color:var(--text);background:var(--bg2)}
+.bg-agent-msg{display:none!important}
 #messages{flex:1;overflow-y:auto;min-height:0;padding:18px 14px 14px}
 .msg{margin-bottom:18px;animation:msgIn .25s ease}
 @keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -564,6 +571,17 @@ svg.ic{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke
         <div class="ws-grid">
           <div class="ws-col">
             <div id="bgJobs" class="bg-jobs" hidden aria-live="polite"></div>
+            <div id="agentFilesBar" class="agent-files-bar" hidden aria-label="Generated code files">
+              <div class="af-head"><span class="af-title">Generated files</span><span class="af-sub">Agent output</span></div>
+              <div id="agentFileTabs" class="agent-file-tabs"></div>
+            </div>
+            <div id="codeViewer" class="code-viewer" hidden role="dialog" aria-modal="true" aria-label="Code viewer">
+              <div class="cv-head">
+                <div class="cv-name-wrap"><span class="cv-dot"></span><strong id="cvName">index.html</strong><span id="cvLang">HTML</span></div>
+                <button class="tbtn" id="cvClose" aria-label="Close code viewer">×</button>
+              </div>
+              <pre id="cvCode" class="cv-code"><code></code></pre>
+            </div>
             <div id="duoBoard" hidden>
               <div class="duo-card" id="duoCardA" data-status="idle">
                 <div class="dc-top">
@@ -803,7 +821,7 @@ const DOM={
   sidebar:$('#sidebar'), backdrop:$('#sidebarBackdrop'), btnMenu:$('#btnMenu'),
   modelChip:$('#modelChip'), modelChipTxt:$('#modelChipTxt'),
   viewWs:$('#viewWorkspace'), viewFiles:$('#viewFiles'), viewSettings:$('#viewSettings'),
-  messages:$('#messages'), emptyState:$('#emptyState'),
+  messages:$('#messages'), emptyState:$('#emptyState'), agentFilesBar:$('#agentFilesBar'), agentFileTabs:$('#agentFileTabs'), codeViewer:$('#codeViewer'), cvName:$('#cvName'), cvLang:$('#cvLang'), cvCode:$('#cvCode'), cvClose:$('#cvClose'),
   duoBoard:$('#duoBoard'), duoSummary:$('#duoSummary'), bgJobs:$('#bgJobs'),
   input:$('#input'), sendBtn:$('#sendBtn'), sendIcon:$('#sendIcon'), stopIcon:$('#stopIcon'),
   charCount:$('#charCount'), attachRow:$('#attachRow'), fileInput:$('#fileInput'),
@@ -1828,7 +1846,7 @@ function wpFinish(wp,stateLabel){
 /* ---- message DOM ---- */
 function addMessage({role,content='',attachments=[],pending=false,label='',kind=null}){
   const chat=activeChat();if(!chat)return null;
-  const msg={id:uid(),role,content,attachments,pending,label,kind,ts:Date.now()};
+  const msg={id:uid(),role,content,attachments,pending,label,kind,ts:Date.now(),background:false};
   chat.messages.push(msg);
   DOM.emptyState.classList.add('hidden');
   const el=document.createElement('div');
@@ -1909,6 +1927,31 @@ function resendLast(){
   if(state.mode==='duo')runDuo(lastUser);else runAgentTurn(lastUser,false);
 }
 
+function showAgentFileTabs(blocks){
+  if(!DOM.agentFilesBar||!DOM.agentFileTabs)return;
+  const list=(blocks||[]).filter(b=>b&&b.path&&b.content!=null);
+  if(!list.length)return;
+  DOM.agentFileTabs.innerHTML='';
+  for(const b of list){
+    const btn=document.createElement('button');btn.className='agent-file-tab';btn.type='button';
+    const ext=extOf(b.path).toUpperCase();
+    btn.innerHTML=`<svg class="ic" style="width:14px;height:14px"><use href="#${iconFor(b.path)}"/></svg><span>${esc(b.path)}</span><span class="aft-ext">${esc(ext)}</span>`;
+    btn.addEventListener('click',()=>openGeneratedCode(b));
+    DOM.agentFileTabs.appendChild(btn);
+  }
+  DOM.agentFilesBar.hidden=false;
+}
+function openGeneratedCode(file){
+  if(!DOM.codeViewer||!file)return;
+  DOM.cvName.textContent=file.path;DOM.cvLang.textContent=(file.lang||extOf(file.path)||'TEXT').toUpperCase();
+  const code=DOM.cvCode.querySelector('code');code.textContent=file.content||'';
+  DOM.codeViewer.hidden=false;
+}
+function closeGeneratedCode(){if(DOM.codeViewer)DOM.codeViewer.hidden=true;}
+DOM.cvClose?.addEventListener('click',closeGeneratedCode);
+DOM.codeViewer?.addEventListener('click',e=>{if(e.target===DOM.codeViewer)closeGeneratedCode();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGeneratedCode();});
+
 function finalizeAssistant(msg,{error=null,stopped=false}={}){
   const refs=msgEls.get(msg.id);if(!refs)return;
   msg.pending=false;
@@ -1925,24 +1968,31 @@ function finalizeAssistant(msg,{error=null,stopped=false}={}){
     refs.el.appendChild(card);
   }else{
     const blocks=extractFileBlocks(msg.content);
-    const displayText=blocks.length?stripFileBlocks(msg.content,blocks):msg.content;
     refs.plain&&refs.plain.remove();
-    const mdEl=document.createElement('div');mdEl.className='md';mdEl.innerHTML=renderMarkdown(displayText);
-    refs.el.insertBefore(mdEl,refs.panel);
     if(blocks.length){
       const applied=applyFileBlocks(blocks);
       msg.fileBlocks=blocks.map(b=>({path:b.path,lang:b.lang,content:b.content}));
-      const notes=parseChangesNote(msg.content);
-      const panel=buildResultPanel(applied,notes);
-      refs.el.appendChild(panel);refs.panel=panel;
+      showAgentFileTabs(msg.fileBlocks);
       renderProjectAll();
+      if(!msg.background){
+        const displayText=stripFileBlocks(msg.content,blocks);
+        if(displayText.trim()){
+          const mdEl=document.createElement('div');mdEl.className='md';mdEl.innerHTML=renderMarkdown(displayText);refs.el.insertBefore(mdEl,refs.panel);
+        }
+        const notes=parseChangesNote(msg.content);
+        const panel=buildResultPanel(applied,notes);refs.el.appendChild(panel);refs.panel=panel;
+      }
+    }else if(!msg.background){
+      const mdEl=document.createElement('div');mdEl.className='md';mdEl.innerHTML=renderMarkdown(msg.content);refs.el.insertBefore(mdEl,refs.panel);
     }
     if(stopped)msg.stopped=true;
     wpFinish(refs.wp,stopped?'Stopped':'Completed');
-    const cp=document.createElement('button');cp.className='mact';
-    cp.innerHTML='<svg class="ic" style="width:13px;height:13px"><use href="#i-copy"/></svg>Copy';
-    cp.addEventListener('click',()=>copyText(msg.content).then(()=>toast('Copied','success')).catch(()=>toast('Copy failed','error')));
-    refs.actions.appendChild(cp);
+    if(!msg.background){
+      const cp=document.createElement('button');cp.className='mact';
+      cp.innerHTML='<svg class="ic" style="width:13px;height:13px"><use href="#i-copy"/></svg>Copy';
+      cp.addEventListener('click',()=>copyText(msg.content).then(()=>toast('Copied','success')).catch(()=>toast('Copy failed','error')));
+      refs.actions.appendChild(cp);
+    }
   }
   msgEls.delete(msg.id);
   saveSoon();
@@ -1963,6 +2013,7 @@ function retryMessage(failedMsg){
 async function runAgentTurn(userMsg,duo=false,background=false,modeOverride=null){
   const mode=modeOverride||state.mode;
   const aiMsg=addMessage({role:'assistant',pending:true,label:duo?'Coding Agent':(background?'Code Agent':'')});
+  aiMsg.background=background;
   const refs=msgEls.get(aiMsg.id);
   if(!refs)return null;
   if(!background){state.streaming=true;updateSendBtn();}
@@ -1980,7 +2031,7 @@ async function runAgentTurn(userMsg,duo=false,background=false,modeOverride=null
   };
   try{
     const messages=buildContext(userMsg,mode);
-    const render=makeStreamRenderer(()=>aiMsg.content,refs.plain);
+    const render=background?()=>{}:makeStreamRenderer(()=>aiMsg.content,refs.plain);
     const text=await requestCompletion({messages,ctl,flag,onDelta:d=>{
       aiMsg.content+=d;render();
       if(background)updateBackgroundJob('agent',duo?'Duo Agent is generating files…':'Agent is working on your project…');
