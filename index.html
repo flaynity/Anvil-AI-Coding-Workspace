@@ -489,6 +489,265 @@ svg.ic{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 </style>
+<style id="anvil-modern-pro">
+/* ================================================================
+   ANVIL MODERN PRO — UI OVERRIDE
+   Keeps the original application logic/features while giving the
+   workspace a polished, responsive IDE-style visual system.
+   ================================================================ */
+:root{
+  --pro-bg:#080b12;
+  --pro-panel:#0d111a;
+  --pro-panel-2:#111722;
+  --pro-card:#151b27;
+  --pro-card-hover:#192131;
+  --pro-border:rgba(255,255,255,.08);
+  --pro-border-strong:rgba(255,255,255,.14);
+  --pro-text:#f4f7fb;
+  --pro-muted:#8d98aa;
+  --pro-dim:#626d7e;
+  --pro-accent:#7c6cff;
+  --pro-accent-2:#25c7a8;
+  --pro-shadow:0 24px 70px rgba(0,0,0,.38);
+  --pro-radius:16px;
+}
+*{box-sizing:border-box}
+html,body{background:var(--pro-bg)!important;color:var(--pro-text)}
+body{
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  letter-spacing:-.01em;
+}
+button,input,textarea,select{font:inherit}
+button{transition:transform .16s ease,background .16s ease,border-color .16s ease,opacity .16s ease}
+button:active{transform:scale(.98)}
+.app-shell,.app{background:
+  radial-gradient(900px 500px at 85% -10%,rgba(124,108,255,.12),transparent 55%),
+  radial-gradient(700px 400px at 15% 100%,rgba(37,199,168,.06),transparent 55%),
+  var(--pro-bg)!important}
+
+/* Sidebar */
+.sidebar{
+  background:rgba(10,13,20,.88)!important;
+  border-right:1px solid var(--pro-border)!important;
+  backdrop-filter:blur(24px)!important;
+  box-shadow:20px 0 60px rgba(0,0,0,.16);
+}
+.sidebar .brand,.brand{padding-top:20px}
+.nav-item{
+  margin:4px 10px!important;
+  border-radius:12px!important;
+  color:#9ca6b6!important;
+  border:1px solid transparent!important;
+}
+.nav-item:hover{
+  background:rgba(255,255,255,.045)!important;
+  color:#fff!important;
+}
+.nav-item.active{
+  background:linear-gradient(90deg,rgba(124,108,255,.18),rgba(124,108,255,.06))!important;
+  color:#fff!important;
+  border-color:rgba(124,108,255,.2)!important;
+  box-shadow:inset 3px 0 0 var(--pro-accent);
+}
+.nav-item .ic{opacity:.86}
+.new-chat,.btn-new-chat{
+  border-radius:12px!important;
+  border:1px solid rgba(124,108,255,.3)!important;
+  background:linear-gradient(135deg,rgba(124,108,255,.2),rgba(124,108,255,.08))!important;
+}
+
+/* Top bar */
+.topbar{
+  height:64px!important;
+  background:rgba(8,11,18,.72)!important;
+  border-bottom:1px solid var(--pro-border)!important;
+  backdrop-filter:blur(22px)!important;
+}
+.topbar .model-chip,.model-chip{
+  border:1px solid var(--pro-border)!important;
+  background:rgba(255,255,255,.035)!important;
+  border-radius:10px!important;
+}
+.topbar .model-chip:hover{border-color:rgba(124,108,255,.4)!important}
+
+/* Workspace */
+.workspace,.view{
+  background:transparent!important;
+}
+.messages{
+  width:min(980px,calc(100% - 32px))!important;
+  margin:0 auto!important;
+  padding:30px 0 180px!important;
+}
+.empty-state{
+  min-height:calc(100vh - 250px);
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.empty-state h1,.empty-state .title{
+  font-size:clamp(30px,5vw,52px)!important;
+  font-weight:750!important;
+  letter-spacing:-.045em!important;
+}
+.empty-state p{
+  color:var(--pro-muted)!important;
+  max-width:650px;
+}
+
+/* AI/user messages */
+.msg{animation:proIn .25s ease both}
+@keyframes proIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.msg.user{margin:22px 0}
+.u-bubble{
+  background:linear-gradient(135deg,#171e2b,#111721)!important;
+  border:1px solid var(--pro-border)!important;
+  box-shadow:0 12px 34px rgba(0,0,0,.18)!important;
+  border-radius:18px!important;
+  padding:14px 17px!important;
+}
+.msg.assistant{
+  padding:8px 0 20px!important;
+}
+.ai-head{
+  color:#dce3ee!important;
+  gap:9px!important;
+}
+.ai-glyph{
+  width:30px!important;height:30px!important;
+  display:grid!important;place-items:center!important;
+  border-radius:9px!important;
+  background:linear-gradient(135deg,rgba(124,108,255,.24),rgba(37,199,168,.12))!important;
+  border:1px solid rgba(124,108,255,.2)!important;
+}
+.ai-body{
+  color:#cbd3df!important;
+  line-height:1.72!important;
+}
+.md pre,.code-block,.file-block{
+  background:#090d14!important;
+  border:1px solid var(--pro-border)!important;
+  border-radius:14px!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.025);
+}
+.md code{color:#dce5f3}
+.ai-actions{opacity:.72}
+.mact{
+  border-radius:8px!important;
+  border:1px solid transparent!important;
+}
+.mact:hover{background:rgba(255,255,255,.05)!important;border-color:var(--pro-border)!important}
+
+/* Composer */
+.composer-wrap,.composer{
+  background:linear-gradient(180deg,transparent,rgba(8,11,18,.94) 28%,rgba(8,11,18,.98))!important;
+}
+.composer{
+  width:min(920px,calc(100% - 28px))!important;
+  margin:0 auto 18px!important;
+  border:1px solid var(--pro-border-strong)!important;
+  background:rgba(15,20,30,.86)!important;
+  border-radius:20px!important;
+  box-shadow:var(--pro-shadow)!important;
+  backdrop-filter:blur(22px)!important;
+  padding:10px!important;
+}
+.composer:focus-within{
+  border-color:rgba(124,108,255,.48)!important;
+  box-shadow:0 20px 80px rgba(0,0,0,.42),0 0 0 3px rgba(124,108,255,.08)!important;
+}
+.composer textarea,.composer input{
+  color:#f7f9fc!important;
+  background:transparent!important;
+}
+.composer textarea::placeholder{color:#697486!important}
+.composer-toolbar{border-top:1px solid rgba(255,255,255,.055)!important}
+.composer button{
+  border-radius:10px!important;
+}
+.send-btn{
+  width:40px!important;height:40px!important;
+  border-radius:12px!important;
+  background:linear-gradient(135deg,var(--pro-accent),#6556e9)!important;
+  box-shadow:0 8px 24px rgba(124,108,255,.25);
+}
+.send-btn:disabled{opacity:.38;box-shadow:none}
+.quick{
+  border:1px solid var(--pro-border)!important;
+  background:rgba(255,255,255,.025)!important;
+  border-radius:999px!important;
+}
+.quick:hover{background:rgba(124,108,255,.09)!important;border-color:rgba(124,108,255,.25)!important}
+
+/* Cards / modals / settings */
+.card,.panel,.modal,.setup-card,.provider-card,.settings-card{
+  background:rgba(17,23,34,.9)!important;
+  border:1px solid var(--pro-border)!important;
+  border-radius:16px!important;
+  box-shadow:var(--pro-shadow)!important;
+}
+.modal-backdrop{backdrop-filter:blur(8px)!important}
+.btn{
+  border-radius:10px!important;
+  border-color:var(--pro-border)!important;
+  background:rgba(255,255,255,.035)!important;
+}
+.btn:hover{background:rgba(255,255,255,.075)!important;border-color:var(--pro-border-strong)!important}
+input,textarea,select{
+  border-color:var(--pro-border)!important;
+  background:#0a0f17!important;
+  border-radius:10px!important;
+}
+input:focus,textarea:focus,select:focus{
+  border-color:rgba(124,108,255,.55)!important;
+  outline:3px solid rgba(124,108,255,.08)!important;
+}
+
+/* Duo */
+.duo-board{
+  border:1px solid var(--pro-border)!important;
+  background:rgba(12,17,26,.75)!important;
+  border-radius:18px!important;
+  box-shadow:var(--pro-shadow)!important;
+}
+.duo-card{
+  border:1px solid var(--pro-border)!important;
+  background:linear-gradient(145deg,rgba(22,29,42,.9),rgba(12,17,26,.9))!important;
+  border-radius:14px!important;
+}
+.duo-card[data-status="working"]{border-color:rgba(124,108,255,.4)!important}
+.duo-card[data-status="done"]{border-color:rgba(37,199,168,.28)!important}
+
+/* Files / project */
+.file-row,.project-row{
+  border:1px solid transparent!important;
+  border-radius:10px!important;
+}
+.file-row:hover,.project-row:hover{
+  background:rgba(255,255,255,.035)!important;
+  border-color:var(--pro-border)!important;
+}
+
+/* Scrollbars */
+*{
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.14) transparent;
+}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.2)}
+
+/* Mobile polish */
+@media(max-width:760px){
+  .topbar{height:58px!important}
+  .messages{width:calc(100% - 20px)!important;padding-top:18px!important}
+  .composer{width:calc(100% - 14px)!important;border-radius:16px!important}
+  .quick{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .empty-state h1{font-size:34px!important}
+  .u-bubble{max-width:92%!important}
+}
+</style>
 </head>
 <body>
 
@@ -2348,6 +2607,37 @@ function init(){
   updateComposer();updateSendBtn();
 }
 init();
+
+/* ================================================================
+   ANVIL MODERN PRO — MICRO INTERACTIONS
+   ================================================================ */
+(function(){
+  // Add a subtle app-ready marker for CSS/automation hooks.
+  document.documentElement.classList.add('anvil-pro');
+
+  // Keyboard shortcut: Ctrl/Cmd+K focuses the main composer.
+  document.addEventListener('keydown', function(e){
+    if((e.ctrlKey || e.metaKey) && e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      if(window.DOM && DOM.input){
+        DOM.input.focus();
+        DOM.input.select?.();
+      }
+    }
+  });
+
+  // Keep the composer visually compact when the textarea is empty.
+  const tune = () => {
+    const input = window.DOM && DOM.input;
+    if(!input) return;
+    document.body.classList.toggle('composer-empty', !input.value.trim());
+  };
+  if(window.DOM && DOM.input){
+    DOM.input.addEventListener('input', tune);
+    tune();
+  }
+})();
+
 </script>
 </body>
 </html>
