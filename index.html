@@ -123,13 +123,6 @@ svg.ic{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke
 @media(min-width:1200px){#wsAside{display:block}}
 #wsAside h4{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:10px}
 
-/* Background agent jobs */
-.bg-jobs{padding:10px 16px 0;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
-.bg-job{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:13px}
-.bg-job .bj-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease infinite;flex-shrink:0}
-.bg-job.done .bj-dot{animation:none}.bg-job.error .bj-dot{background:var(--err);animation:none}
-.bg-job .bj-main{min-width:0;flex:1}.bg-job .bj-title{font-size:12px;font-weight:600}.bg-job .bj-sub{font-size:10.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bg-job .bj-badge{font-size:9px;font-family:var(--mono);color:var(--accent);background:var(--accent-dim);padding:3px 7px;border-radius:7px}
 /* Duo board */
 #duoBoard{padding:14px 16px 0;flex-shrink:0}
 .duo-card{
@@ -161,10 +154,11 @@ svg.ic{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke
 
 /* Messages */
 
-.agent-files-bar{flex-shrink:0;margin:8px 12px 0;border:1px solid var(--border);background:var(--panel);border-radius:14px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.08)}
-.af-head{display:flex;align-items:center;gap:8px;padding:8px 11px;border-bottom:1px solid var(--border)}
-.af-title{font-size:12px;font-weight:800}.af-sub{font-size:10px;color:var(--text3);margin-left:auto}
-.agent-file-tabs{display:flex;gap:7px;overflow-x:auto;padding:8px}.agent-file-tab{flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2);color:var(--text);cursor:pointer;font-size:11px;font-weight:700}.agent-file-tab:hover{border-color:rgba(76,195,138,.45)}.agent-file-tab .aft-ext{font-size:9px;color:var(--text3);font-weight:600}
+.agent-files-bar{flex-shrink:0;margin:10px 12px 0;border:1px solid var(--border);background:var(--surface);border-radius:18px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+.af-head{display:flex;align-items:center;gap:11px;padding:13px 14px;border-bottom:1px solid var(--border)}
+.af-agent-icon{width:34px;height:34px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--accent);flex-shrink:0}
+.af-agent-icon svg{width:18px;height:18px}.af-head-main{min-width:0;flex:1}.af-title{font-size:13.5px;font-weight:700}.af-sub{font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.af-status{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease infinite;flex-shrink:0}.agent-files-bar.ready .af-status{animation:none}.agent-files-bar.ready .af-sub{color:var(--text2)}
+.agent-file-tabs{display:flex;gap:8px;overflow-x:auto;padding:10px}.agent-file-tab{flex:0 0 auto;min-width:150px;display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--bg2);color:var(--text);cursor:pointer;font-size:12px;font-weight:700;text-align:left}.agent-file-tab:hover{border-color:var(--accent-line);background:var(--surface2)}.agent-file-tab svg{color:var(--text2);flex-shrink:0}.agent-file-tab span:nth-child(2){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.agent-file-tab .aft-ext{font-size:9px;color:var(--text3);font-weight:600;margin-left:auto}
 .code-viewer{position:absolute;z-index:50;inset:10px 10px 10px;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:16px;background:var(--bg);box-shadow:0 18px 60px rgba(0,0,0,.35);overflow:hidden}.code-viewer[hidden]{display:none}.cv-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--panel)}.cv-name-wrap{display:flex;align-items:center;gap:8px;min-width:0}.cv-name-wrap strong{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cv-name-wrap span:last-child{font-size:9px;color:var(--text3)}.cv-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}.cv-code{flex:1;margin:0;padding:14px;overflow:auto;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;color:var(--text);background:var(--bg2)}
 .bg-agent-msg{display:none!important}
 #messages{flex:1;overflow-y:auto;min-height:0;padding:18px 14px 14px}
@@ -570,9 +564,12 @@ svg.ic{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke
       <section class="view active" id="viewWorkspace" aria-label="Workspace">
         <div class="ws-grid">
           <div class="ws-col">
-            <div id="bgJobs" class="bg-jobs" hidden aria-live="polite"></div>
-            <div id="agentFilesBar" class="agent-files-bar" hidden aria-label="Generated code files">
-              <div class="af-head"><span class="af-title">Generated files</span><span class="af-sub">Agent output</span></div>
+            <div id="agentFilesBar" class="agent-files-bar" hidden aria-label="Code Agent files">
+              <div class="af-head">
+                <span class="af-agent-icon"><svg class="ic"><use href="#i-term"/></svg></span>
+                <div class="af-head-main"><div class="af-title">Code Agent</div><div class="af-sub" id="agentFileStatus">Agent is working on your project…</div></div>
+                <span class="af-status"></span>
+              </div>
               <div id="agentFileTabs" class="agent-file-tabs"></div>
             </div>
             <div id="codeViewer" class="code-viewer" hidden role="dialog" aria-modal="true" aria-label="Code viewer">
@@ -821,8 +818,8 @@ const DOM={
   sidebar:$('#sidebar'), backdrop:$('#sidebarBackdrop'), btnMenu:$('#btnMenu'),
   modelChip:$('#modelChip'), modelChipTxt:$('#modelChipTxt'),
   viewWs:$('#viewWorkspace'), viewFiles:$('#viewFiles'), viewSettings:$('#viewSettings'),
-  messages:$('#messages'), emptyState:$('#emptyState'), agentFilesBar:$('#agentFilesBar'), agentFileTabs:$('#agentFileTabs'), codeViewer:$('#codeViewer'), cvName:$('#cvName'), cvLang:$('#cvLang'), cvCode:$('#cvCode'), cvClose:$('#cvClose'),
-  duoBoard:$('#duoBoard'), duoSummary:$('#duoSummary'), bgJobs:$('#bgJobs'),
+  messages:$('#messages'), emptyState:$('#emptyState'), agentFilesBar:$('#agentFilesBar'), agentFileStatus:$('#agentFileStatus'), agentFileTabs:$('#agentFileTabs'), codeViewer:$('#codeViewer'), cvName:$('#cvName'), cvLang:$('#cvLang'), cvCode:$('#cvCode'), cvClose:$('#cvClose'),
+  duoBoard:$('#duoBoard'), duoSummary:$('#duoSummary'),
   input:$('#input'), sendBtn:$('#sendBtn'), sendIcon:$('#sendIcon'), stopIcon:$('#stopIcon'),
   charCount:$('#charCount'), attachRow:$('#attachRow'), fileInput:$('#fileInput'),
   btnAttach:$('#btnAttach'), btnMic:$('#btnMic'), composerModel:$('#composerModel'),
@@ -1844,11 +1841,12 @@ function wpFinish(wp,stateLabel){
 }
 
 /* ---- message DOM ---- */
-function addMessage({role,content='',attachments=[],pending=false,label='',kind=null}){
+function addMessage({role,content='',attachments=[],pending=false,label='',kind=null,background=false}){
   const chat=activeChat();if(!chat)return null;
-  const msg={id:uid(),role,content,attachments,pending,label,kind,ts:Date.now(),background:false};
+  const msg={id:uid(),role,content,attachments,pending,label,kind,ts:Date.now(),background};
   chat.messages.push(msg);
   DOM.emptyState.classList.add('hidden');
+  if(background){ saveSoon(); return msg; }
   const el=document.createElement('div');
   if(role==='user'&&kind==='handoff'){
     // Compact agent-to-agent handoff note — keeps history truthful without fake user bubbles.
@@ -1927,19 +1925,30 @@ function resendLast(){
   if(state.mode==='duo')runDuo(lastUser);else runAgentTurn(lastUser,false);
 }
 
+function showAgentWorking(status='Agent is working on your project…'){
+  if(!DOM.agentFilesBar)return;
+  DOM.agentFilesBar.hidden=false;
+  DOM.agentFilesBar.classList.remove('ready');
+  if(DOM.agentFileStatus)DOM.agentFileStatus.textContent=status;
+}
 function showAgentFileTabs(blocks){
   if(!DOM.agentFilesBar||!DOM.agentFileTabs)return;
   const list=(blocks||[]).filter(b=>b&&b.path&&b.content!=null);
-  if(!list.length)return;
   DOM.agentFileTabs.innerHTML='';
+  if(!list.length){
+    showAgentWorking('Agent is working on your project…');
+    return;
+  }
   for(const b of list){
     const btn=document.createElement('button');btn.className='agent-file-tab';btn.type='button';
     const ext=extOf(b.path).toUpperCase();
-    btn.innerHTML=`<svg class="ic" style="width:14px;height:14px"><use href="#${iconFor(b.path)}"/></svg><span>${esc(b.path)}</span><span class="aft-ext">${esc(ext)}</span>`;
+    btn.innerHTML=`<svg class="ic" style="width:16px;height:16px"><use href="#${iconFor(b.path)}"/></svg><span>${esc(b.path)}</span><span class="aft-ext">${esc(ext)}</span>`;
     btn.addEventListener('click',()=>openGeneratedCode(b));
     DOM.agentFileTabs.appendChild(btn);
   }
   DOM.agentFilesBar.hidden=false;
+  DOM.agentFilesBar.classList.add('ready');
+  if(DOM.agentFileStatus)DOM.agentFileStatus.textContent=`${list.length} file${list.length===1?'':'s'} ready — click a file to view code`;
 }
 function openGeneratedCode(file){
   if(!DOM.codeViewer||!file)return;
@@ -1953,8 +1962,24 @@ DOM.codeViewer?.addEventListener('click',e=>{if(e.target===DOM.codeViewer)closeG
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGeneratedCode();});
 
 function finalizeAssistant(msg,{error=null,stopped=false}={}){
-  const refs=msgEls.get(msg.id);if(!refs)return;
+  const refs=msgEls.get(msg.id);
   msg.pending=false;
+  if(!refs && msg.background){
+    if(error){ msg.error=error; }
+    else{
+      const blocks=extractFileBlocks(msg.content);
+      if(blocks.length){
+        applyFileBlocks(blocks);
+        msg.fileBlocks=blocks.map(b=>({path:b.path,lang:b.lang,content:b.content}));
+        showAgentFileTabs(msg.fileBlocks);
+        renderProjectAll();
+      }
+      if(stopped)msg.stopped=true;
+    }
+    saveSoon();
+    return;
+  }
+  if(!refs)return;
   if(error){
     msg.error=error;
     refs.wp&&refs.wp.remove();
@@ -2012,7 +2037,7 @@ function retryMessage(failedMsg){
 /* ---- the main turn ---- */
 async function runAgentTurn(userMsg,duo=false,background=false,modeOverride=null){
   const mode=modeOverride||state.mode;
-  const aiMsg=addMessage({role:'assistant',pending:true,label:duo?'Coding Agent':(background?'Code Agent':'')});
+  const aiMsg=addMessage({role:'assistant',pending:true,label:duo?'Coding Agent':(background?'Code Agent':''),background});
   aiMsg.background=background;
   const refs=msgEls.get(aiMsg.id);
   if(!refs)return null;
@@ -2026,7 +2051,7 @@ async function runAgentTurn(userMsg,duo=false,background=false,modeOverride=null
       else {aiMsg.content=aiMsg.content||'';finalizeAssistant(aiMsg,{stopped:true});if(!background)toast('Response stopped');}
     }else{state.error=err.message;finalizeAssistant(aiMsg,{error:describeError(err)});}
     if(!background){state.streaming=false;state.abortCtl=null;updateSendBtn();}
-    if(background)finishBackgroundJob('agent',err.name==='AbortError'?'Stopped':'Failed');
+    if(background && DOM.agentFilesBar && DOM.agentFileStatus)DOM.agentFileStatus.textContent=err.name==='AbortError'?'Agent stopped':'Agent could not finish the project';
     return null;
   };
   try{
@@ -2034,7 +2059,7 @@ async function runAgentTurn(userMsg,duo=false,background=false,modeOverride=null
     const render=background?()=>{}:makeStreamRenderer(()=>aiMsg.content,refs.plain);
     const text=await requestCompletion({messages,ctl,flag,onDelta:d=>{
       aiMsg.content+=d;render();
-      if(background)updateBackgroundJob('agent',duo?'Duo Agent is generating files…':'Agent is working on your project…');
+      if(background){ if(duo)showAgentWorking('Agent is generating project files…'); else showAgentWorking('Agent is working on your project…'); }
       if(duo)renderDuoCard('A',{status:'working',task:'Generating project files…'});
     }});
     aiMsg.content=text;
@@ -2048,22 +2073,6 @@ function isCodeTask(text){
 }
 function isDuoProgressQuestion(text){
   return !!state.duoRun && /\b(progress|status|how far|কত দূর|কতদূর|অবস্থা|কাজ কত|কতটুকু|কি তৈরি|কী তৈরি|তৈরি হচ্ছে|বানাচ্ছে|বানানো)\b/i.test(text||'');
-}
-function updateBackgroundJob(kind,sub='Working…'){
-  if(!DOM.bgJobs)return;
-  DOM.bgJobs.hidden=false;
-  let el=DOM.bgJobs.querySelector(`[data-job="${kind}"]`);
-  if(!el){el=document.createElement('div');el.className='bg-job';el.dataset.job=kind;el.innerHTML='<span class="bj-dot"></span><div class="bj-main"><div class="bj-title"></div><div class="bj-sub"></div></div><span class="bj-badge">BACKGROUND</span>';DOM.bgJobs.appendChild(el);}
-  el.querySelector('.bj-title').textContent=kind==='duo'?'Duo Agent':'Code Agent';
-  el.querySelector('.bj-sub').textContent=sub;
-  el.classList.remove('done','error');
-}
-function finishBackgroundJob(kind,status='done'){
-  const el=DOM.bgJobs?.querySelector(`[data-job="${kind}"]`);if(!el)return;
-  el.classList.add(status==='done'?'done':'error');
-  el.querySelector('.bj-sub').textContent=status==='done'?'Finished in background':'Stopped';
-  el.querySelector('.bj-badge').textContent=status==='done'?'DONE':'STOPPED';
-  setTimeout(()=>{el.remove();if(!DOM.bgJobs.children.length)DOM.bgJobs.hidden=true;},5000);
 }
 async function answerDuoProgress(userMsg){
   const job=state.duoJob||{};
@@ -2090,7 +2099,7 @@ function handleSend(){
     runDuo(userMsg);return;
   }
   if(isCodeTask(text)){
-    updateBackgroundJob('agent','Starting project work…');
+    showAgentWorking('Agent is working on your project…');
     runAgentTurn(userMsg,false,true,'agent');
   }else{
     runAgentTurn(userMsg,false,false,'chat');
@@ -2126,27 +2135,27 @@ function resetDuo(){
 async function runDuo(userMsg){
   if(state.duoRun){toast('Duo Agent is already working in the background.','info');return;}
   state.duoRun=true;state.duoJob={stage:'generating',startedAt:Date.now(),request:userMsg.content};
-  DOM.duoBoard.hidden=false;resetDuo();updateBackgroundJob('duo','Duo Agent is generating and updating files…');
+  DOM.duoBoard.hidden=false;resetDuo();showAgentWorking('Duo Agent is generating and updating files…');
   const implMsg=await runAgentTurn(userMsg,true,true,'agent');
-  if(!implMsg||implMsg.error){state.duoRun=false;finishBackgroundJob('duo','error');return;}
+  if(!implMsg||implMsg.error){state.duoRun=false;if(DOM.agentFileStatus)DOM.agentFileStatus.textContent='Duo Agent could not finish the project';return;}
   const changed=implMsg.fileBlocks?.length||0;
-  if(!changed){state.duoRun=false;renderDuoCard('A',{status:'done',task:'No code changes were needed'});renderDuoCard('B',{status:'skipped',task:'Nothing to review'});finishBackgroundJob('duo');return;}
-  state.duoJob.stage='review';updateBackgroundJob('duo','Initial code is ready; Review Agent is checking it…');renderDuoCard('A',{status:'done',task:`${changed} file${changed>1?'s':''} generated`});renderDuoCard('B',{status:'working',task:'Reviewing generated code…'});
+  if(!changed){state.duoRun=false;renderDuoCard('A',{status:'done',task:'No code changes were needed'});renderDuoCard('B',{status:'skipped',task:'Nothing to review'});if(DOM.agentFileStatus)DOM.agentFileStatus.textContent='Duo Agent finished — files are ready';return;}
+  state.duoJob.stage='review';showAgentWorking('Review Agent is checking the generated code…');renderDuoCard('A',{status:'done',task:`${changed} file${changed>1?'s':''} generated`});renderDuoCard('B',{status:'working',task:'Reviewing generated code…'});
   const fileText=implMsg.fileBlocks.map(b=>`--- ${b.path} ---\n${b.content.length>LIMITS.reviewFileChars?b.content.slice(0,LIMITS.reviewFileChars)+'\n… [truncated]':b.content}`).join('\n\n');
   const ctl=new AbortController(),flag={timedOut:false,done:false};
   try{
     const verdictText=await requestCompletion({messages:[{role:'system',content:REVIEW_SYSTEM},{role:'user',content:`Request:\n${userMsg.content}\n\nFiles produced by the Coding Agent:\n\n${fileText}`}],ctl,flag,onDelta:()=>{}});
     const verdict=/VERDICT:\s*(PASS|ISSUES)/i.exec(verdictText)?.[1]?.toUpperCase()||'UNKNOWN';
     if(verdict==='ISSUES'){
-      state.duoJob.stage='fixing';updateBackgroundJob('duo','Review found issues; Coding Agent is applying fixes…');renderDuoCard('B',{status:'done',task:'Issues found — fixes requested'});
+      state.duoJob.stage='fixing';showAgentWorking('Coding Agent is applying review fixes…');renderDuoCard('B',{status:'done',task:'Issues found — fixes requested'});
       const fixText=`Apply the review fixes to the existing project. Review report:\n${verdictText}`;
       const handoff={id:uid(),role:'user',content:fixText,attachments:[],ts:Date.now()};
       const fixMsg=await runAgentTurn(handoff,true,true,'agent');
       if(fixMsg?.fileBlocks?.length)renderDuoCard('A',{status:'done',task:`${fixMsg.fileBlocks.length} file${fixMsg.fileBlocks.length>1?'s':''} updated after review`});
     }
-    state.duoJob.stage='done';renderDuoCard('B',{status:'done',task:verdict==='PASS'?'Code review passed':'Review fixes applied'});finishBackgroundJob('duo');
-    state.duoRun=false;state.duoJob=null;state.backgroundAgent=null;DOM.duoBoard.hidden=true;DOM.bgJobs.hidden=true;toast('Duo Agent finished in background','success');
-  }catch(err){state.duoRun=false;DOM.duoBoard.hidden=true;finishBackgroundJob('duo','error');}
+    state.duoJob.stage='done';renderDuoCard('B',{status:'done',task:verdict==='PASS'?'Code review passed':'Review fixes applied'});if(DOM.agentFileStatus)DOM.agentFileStatus.textContent='Duo Agent finished — files are ready';
+    state.duoRun=false;state.duoJob=null;state.backgroundAgent=null;DOM.duoBoard.hidden=true;toast('Duo Agent finished','success');
+  }catch(err){state.duoRun=false;DOM.duoBoard.hidden=true;if(DOM.agentFileStatus)DOM.agentFileStatus.textContent='Duo Agent could not finish the project';}
 }
 /* =====================================================================
    RENDER MESSAGES (history restore)
