@@ -7,6 +7,7 @@ const PORT = Number(process.env.PORT || 8787);
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: process.env.JSON_LIMIT || '8mb' }));
+app.use(express.static(process.cwd()));
 
 /*
   Universal browser -> server -> OpenAI-compatible provider proxy.
@@ -52,8 +53,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: false,
 }));
-
-app.options('*', cors());
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'anvil-universal-proxy' });
