@@ -1063,13 +1063,13 @@ function idleGuard(ctl,flag,ms){
 async function requestCompletion({messages,onDelta,ctl,flag}){
   const p=activeProvider();
   if(!p)throw new Error('No AI provider is configured. Add one in Settings.');
-  const url=p.baseURL.replace(/\/+$/,'')+'/chat/completions';
-  const mkBody=stream=>{const b={model:p.model||'default',messages,stream};
+  const url='/api/chat';
+  const mkBody=stream=>{const b={baseURL:p.baseURL,apiKey:p.apiKey||'',model:p.model||'default',messages,stream};
     const t=parseFloat(p.temperature);if(!isNaN(t))b.temperature=Math.max(0,Math.min(2,t));
     if(p.maxTokens&&parseInt(p.maxTokens)>0)b.max_tokens=parseInt(p.maxTokens);
     if(p.reasoningEffort&&p.reasoningEffort!=='default')b.reasoning_effort=p.reasoningEffort;
     return b;};
-  const headers={'Content-Type':'application/json',...(p.apiKey?{Authorization:'Bearer '+p.apiKey}:{})};
+  const headers={'Content-Type':'application/json'};
   const guard=idleGuard(ctl,flag,LIMITS.idleTimeoutMs);
   try{
     let res=await fetch(url,{method:'POST',signal:ctl.signal,headers,body:JSON.stringify(mkBody(true))});
@@ -1124,8 +1124,8 @@ async function testProvider(p,outEl,btn){
   const guard=idleGuard(ctl,flag,LIMITS.testTimeoutMs);
   const t0=performance.now();
   try{
-    const url=p.baseURL.replace(/\/+$/,'')+'/chat/completions';
-    const res=await fetch(url,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json',...(p.apiKey?{Authorization:'Bearer '+p.apiKey}:{})},body:JSON.stringify({model:p.model||'default',messages:[{role:'user',content:'ping'}],max_tokens:5,stream:false})});
+    const url='/api/chat';
+    const res=await fetch(url,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify({baseURL:p.baseURL,apiKey:p.apiKey||'',model:p.model||'default',messages:[{role:'user',content:'ping'}],max_tokens:5,stream:false})});
     if(!res.ok)throw new Error(await httpError(res));
     const j=await res.json();
     if(!j||!Array.isArray(j.choices))throw new Error('Unexpected response shape from provider.');
