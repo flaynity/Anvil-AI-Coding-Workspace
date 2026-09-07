@@ -95,12 +95,6 @@ svg.ic{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke
 .tbtn:hover{background:var(--surface2);color:var(--text)}
 #btnMenu{display:flex}
 @media(min-width:900px){#btnMenu{display:none}}
-.brand-mini{display:flex;align-items:center;gap:9px;margin-right:2px}
-.brand-mini .logo-mark{width:30px;height:30px;border-radius:9px}
-.mode-pill{
-  font-size:11.5px;font-weight:600;color:var(--text2);background:var(--surface);border:1px solid var(--border);
-  padding:5px 11px;border-radius:99px;letter-spacing:.02em;white-space:nowrap;
-}
 .tspacer{flex:1}
 .model-chip{
   display:flex;align-items:center;gap:7px;max-width:44vw;font-size:12px;font-weight:500;color:var(--text2);
@@ -110,7 +104,6 @@ svg.ic{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke
 .model-chip .dot{width:6px;height:6px;border-radius:50%;background:var(--text3);flex-shrink:0}
 .model-chip.on .dot{background:var(--accent)}
 .model-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media(max-width:520px){.brand-mini .brand-txt{display:none}}
 
 /* ---- Views ---- */
 #views{flex:1;min-height:0;position:relative}
@@ -121,17 +114,6 @@ svg.ic{width:20px;height:20px;flex-shrink:0;fill:none;stroke:currentColor;stroke
 .view-head h2{font-size:20px;font-weight:600;letter-spacing:-.015em}
 .view-head p{font-size:12.5px;color:var(--text2);margin-top:3px}
 .view-scroll{flex:1;overflow-y:auto;min-height:0;padding:0 16px calc(20px + env(safe-area-inset-bottom))}
-
-/* ---- Bottom nav ---- */
-#bottomnav{
-  flex-shrink:0;display:flex;border-top:1px solid var(--border);background:rgba(13,15,18,.92);backdrop-filter:blur(14px);
-  padding-bottom:env(safe-area-inset-bottom);
-}
-@media(min-width:900px){#bottomnav{display:none}}
-.bn-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 0 8px;color:var(--text3);font-size:10px;font-weight:500;letter-spacing:.02em;transition:color .15s;min-height:var(--nav-h);justify-content:center}
-.bn-item svg{width:21px;height:21px}
-.bn-item.active{color:var(--accent)}
-body.kb #bottomnav{display:none}
 
 /* ============ 3. WORKSPACE ============ */
 .ws-grid{flex:1;min-height:0;display:grid;grid-template-columns:1fr}
@@ -169,18 +151,6 @@ body.kb #bottomnav{display:none}
 .duo-link svg{width:14px;height:14px;color:var(--text3);position:absolute;bottom:-2px;background:var(--bg)}
 .duo-card + .duo-card{margin-top:20px}
 #duoSummary{margin-top:10px;text-align:center;font-size:11.5px;color:var(--text2);font-family:var(--mono)}
-
-/* Project strip */
-#projectStrip{
-  margin:12px 16px 0;flex-shrink:0;display:flex;align-items:center;gap:10px;background:var(--surface);
-  border:1px solid var(--border);border-radius:13px;padding:10px 13px;width:calc(100% - 32px);text-align:left;
-  transition:border-color .15s;color:var(--text2);
-}
-#projectStrip:hover{border-color:var(--border2)}
-#projectStrip svg{color:var(--accent)}
-#projectStrip .ps-txt{flex:1;min-width:0;font-size:12px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#projectStrip .ps-txt b{color:var(--text);font-weight:600}
-#projectStrip .chev{color:var(--text3)}
 
 /* Messages */
 #messages{flex:1;overflow-y:auto;min-height:0;padding:18px 14px 14px}
@@ -578,11 +548,6 @@ body.kb #bottomnav{display:none}
   <div class="main">
     <header id="topbar">
       <button class="tbtn" id="btnMenu" aria-label="Open history"><svg class="ic"><use href="#i-menu"/></svg></button>
-      <div class="brand-mini">
-        <div class="logo-mark"><svg class="ic"><use href="#i-logo"/></svg><span class="logo-cursor"></span></div>
-        <div class="brand-txt"><div class="brand-name" style="font-size:15px">Anvil</div></div>
-      </div>
-      <span class="mode-pill" id="modeLabel">Chat</span>
       <span class="tspacer"></span>
       <button class="model-chip" id="modelChip" aria-label="Switch provider"><span class="dot"></span><span id="modelChipTxt">Set up AI</span></button>
       <button class="tbtn" id="btnNewChat" aria-label="New chat"><svg class="ic"><use href="#i-plus"/></svg></button>
@@ -613,11 +578,6 @@ body.kb #bottomnav{display:none}
               </div>
               <div id="duoSummary" hidden></div>
             </div>
-            <button id="projectStrip" hidden aria-label="Open project files">
-              <svg class="ic"><use href="#i-folder"/></svg>
-              <span class="ps-txt" id="projectStripTxt"></span>
-              <svg class="ic chev" style="width:15px;height:15px"><use href="#i-chev"/></svg>
-            </button>
             <div id="messages" aria-live="polite">
               <div id="emptyState">
                 <div class="es-glyph"><svg class="ic"><use href="#i-logo"/></svg></div>
@@ -736,14 +696,6 @@ body.kb #bottomnav{display:none}
         </div>
       </section>
     </div>
-
-    <nav id="bottomnav" aria-label="Main navigation">
-      <button class="bn-item nav-item" data-mode="chat"><svg class="ic"><use href="#i-chat"/></svg>Chat</button>
-      <button class="bn-item nav-item" data-mode="agent"><svg class="ic"><use href="#i-term"/></svg>Agent</button>
-      <button class="bn-item nav-item" data-mode="duo"><svg class="ic"><use href="#i-duo"/></svg>Duo</button>
-      <button class="bn-item nav-item" data-mode="files"><svg class="ic"><use href="#i-folder"/></svg>Files</button>
-      <button class="bn-item nav-item" data-mode="settings"><svg class="ic"><use href="#i-sliders"/></svg>Settings</button>
-    </nav>
   </div>
 </div>
 
@@ -774,7 +726,6 @@ const LIMITS={
 };
 const TEXT_EXTS=new Set(['html','htm','css','js','mjs','ts','jsx','tsx','json','xml','py','java','kt','kts','c','h','cpp','cc','hpp','cs','php','rb','go','rs','swift','sql','md','txt','yml','yaml','sh']);
 const EXT_LANG={html:'HTML',htm:'HTML',css:'CSS',js:'JavaScript',mjs:'JavaScript',ts:'TypeScript',jsx:'JSX',tsx:'TSX',json:'JSON',xml:'XML',py:'Python',java:'Java',kt:'Kotlin',kts:'Kotlin',c:'C',h:'C',cpp:'C++',cc:'C++',hpp:'C++',cs:'C#',php:'PHP',rb:'Ruby',go:'Go',rs:'Rust',swift:'Swift',sql:'SQL',md:'Markdown',txt:'Text',yml:'YAML',yaml:'YAML',sh:'Shell',zip:'ZIP',pdf:'PDF',svg:'SVG',png:'Image',jpg:'Image',jpeg:'Image',gif:'Image',webp:'Image'};
-const IMG_EXTS=new Set(['png','jpg','jpeg','gif','webp','svg']);
 const MODE_LABEL={chat:'Chat',agent:'Code Agent',duo:'Duo Agent',files:'Files',settings:'Settings'};
 
 const CHAT_SYSTEM=
@@ -843,11 +794,10 @@ let saveTimer=null, storageWarned=false;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DOM={
   sidebar:$('#sidebar'), backdrop:$('#sidebarBackdrop'), btnMenu:$('#btnMenu'),
-  modeLabel:$('#modeLabel'), modelChip:$('#modelChip'), modelChipTxt:$('#modelChipTxt'),
+  modelChip:$('#modelChip'), modelChipTxt:$('#modelChipTxt'),
   viewWs:$('#viewWorkspace'), viewFiles:$('#viewFiles'), viewSettings:$('#viewSettings'),
   messages:$('#messages'), emptyState:$('#emptyState'),
   duoBoard:$('#duoBoard'), duoSummary:$('#duoSummary'),
-  projectStrip:$('#projectStrip'), projectStripTxt:$('#projectStripTxt'),
   input:$('#input'), sendBtn:$('#sendBtn'), sendIcon:$('#sendIcon'), stopIcon:$('#stopIcon'),
   charCount:$('#charCount'), attachRow:$('#attachRow'), fileInput:$('#fileInput'),
   btnAttach:$('#btnAttach'), btnMic:$('#btnMic'), composerMode:$('#composerMode'), composerModel:$('#composerModel'),
@@ -1544,14 +1494,7 @@ function ingestZipEntries(entries,zipName){
 }
 function projModifiedCount(){return state.project?[...state.project.files.values()].filter(v=>v.status==='M'||v.status==='A').length:0}
 function renderProjectAll(){renderProjectStrip();renderProjectView();renderAsideProject();}
-function renderProjectStrip(){
-  const p=state.project;
-  DOM.projectStrip.hidden=!p;
-  if(p){
-    const mod=projModifiedCount();
-    DOM.projectStripTxt.innerHTML=`<b>${esc(p.name)}</b> · ${p.files.size} files${mod?` · <b style="color:var(--warn)">${mod} modified</b>`:''}`;
-  }
-}
+function renderProjectStrip(){}
 function treeData(paths){
   const root={dirs:new Map(),files:[]};
   for(const p of paths){
@@ -2256,7 +2199,6 @@ function renderMessages(){
 ===================================================================== */
 function setMode(mode){
   state.mode=mode;
-  DOM.modeLabel.textContent=MODE_LABEL[mode];
   if(['chat','agent','duo'].includes(mode))DOM.composerMode.textContent=mode==='chat'?'Chat':mode==='duo'?'Duo':'Agent';
   $$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
   const isWs=['chat','agent','duo'].includes(mode);
@@ -2361,7 +2303,6 @@ window.addEventListener('drop',e=>{
   if(e.dataTransfer?.files?.length){addAttachments([...e.dataTransfer.files]);if(!['chat','agent','duo'].includes(state.mode))setMode('files');}
 });
 /* project actions */
-DOM.projectStrip.addEventListener('click',()=>setMode('files'));
 DOM.btnProjZip.addEventListener('click',downloadProjectZip);
 DOM.btnProjClear.addEventListener('click',async()=>{
   if(!await confirmDialog('Clear project','Remove all loaded project files? Chat history is kept.','Clear'))return;
