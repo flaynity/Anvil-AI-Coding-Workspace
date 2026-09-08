@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<title>Kodo — AI Coding Agent</title>
+<title>DevNix AI — Coding Agent</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230A0A0A'/%3E%3Cpath d='M8.5 8.5l3.5 3.5-3.5 3.5M13.5 15.5H17' stroke='white' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <!-- Isolated CDN dependency: real ZIP create/extract only. App degrades gracefully if unavailable. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" onerror="window.__noJsZip=true"></script>
@@ -324,6 +324,10 @@ button:disabled,.tbtn:disabled,.ibtn:disabled{opacity:.32;pointer-events:none}
 .about-t b{color:var(--ink-2)}
 
 /* provider setup */
+.proxy-line{display:flex;gap:8px;align-items:center;font-size:12.5px;padding:10px 12px;border:1px solid var(--line);
+  border-radius:10px;margin-bottom:12px;background:var(--surface);color:var(--ink-3);line-height:1.5}
+.proxy-line.ok{color:var(--ok)} .proxy-line.warn{color:var(--warn)}
+.proxy-line .ic{width:15px;height:15px;flex:none}
 .pcard{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:12px 14px;
   cursor:pointer;width:100%;background:#fff;font:inherit;text-align:left;margin-bottom:9px;transition:border-color .15s,box-shadow .15s}
 .pcard:hover{border-color:var(--line-2)}
@@ -354,6 +358,10 @@ button:disabled,.tbtn:disabled,.ibtn:disabled{opacity:.32;pointer-events:none}
 .test-line{font-size:12.5px;margin-top:10px;display:flex;gap:8px;align-items:center;min-height:20px}
 .test-line.ok{color:var(--ok)} .test-line.err{color:var(--err)}
 .form-head{font-size:13px;font-weight:700;margin:4px 0 14px;display:flex;align-items:center;gap:8px}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.preset{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line-2);background:#fff;
+  font-size:12px;font-weight:600;color:var(--ink-2);cursor:pointer;display:inline-flex;align-items:center}
+.preset:hover{border-color:var(--ink);color:var(--ink)}
 
 /* code viewer */
 #ovViewer .panel{left:0;right:0;top:0;bottom:0;border-radius:0;animation:slideUp .26s var(--ease)}
@@ -491,11 +499,25 @@ button:disabled,.tbtn:disabled,.ibtn:disabled{opacity:.32;pointer-events:none}
    CONFIG
 ===================================================================== */
 const CFG = {
+  /* Your Render proxy — all provider requests are relayed through it (CORS-free).
+     Leave '' to connect to providers directly. */
+  PROXY_BASE: 'https://devnix-ai.onrender.com',
   MAX_FILE_MB: 25, MAX_ZIP_MB: 120, MAX_TOTAL_ZIP_MB: 150, MAX_FILES: 400,
   MAX_AI_IMAGE_MB: 4, FILE_CTX_CHARS: 24000, TOTAL_CTX_CHARS: 96000,
-  STREAM_TIMEOUT_MS: 90000, MAX_HISTORY_MSGS: 16, MAX_CHATS: 30,
+  STREAM_TIMEOUT_MS: 120000, MAX_HISTORY_MSGS: 16, MAX_CHATS: 30,
   STORE_FILE_CAP: 120000, KEY: 'kodo.v1'
 };
+/* One-tap provider presets for the Set Up AI form (real public base URLs) */
+const PROVIDER_PRESETS = [
+  { name: 'Groq',        baseURL: 'https://api.groq.com/openai/v1',                          model: 'llama-3.3-70b-versatile' },
+  { name: 'Gemini',      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai', model: 'gemini-2.0-flash' },
+  { name: 'OpenRouter',  baseURL: 'https://openrouter.ai/api/v1',                            model: 'meta-llama/llama-3.3-70b-instruct' },
+  { name: 'DeepSeek',    baseURL: 'https://api.deepseek.com/v1',                             model: 'deepseek-chat' },
+  { name: 'OpenAI',      baseURL: 'https://api.openai.com/v1',                               model: 'gpt-4o-mini' },
+  { name: 'Together',    baseURL: 'https://api.together.xyz/v1',                             model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
+  { name: 'Mistral',     baseURL: 'https://api.mistral.ai/v1',                               model: 'mistral-large-latest' },
+  { name: 'Cerebras',    baseURL: 'https://api.cerebras.ai/v1',                              model: 'llama3.1-8b' }
+];
 const THINK_LEVELS = [
   { id:'fast',     label:'Fast',     desc:'Quick answers, minimal deliberation' },
   { id:'balanced', label:'Balanced', desc:'Default quality and speed' },
@@ -625,7 +647,8 @@ const ICONS = {
   pencil:'<path d="M4 20h4.2L19.6 8.6a2.1 2.1 0 0 0-3-3L5.2 17 4 20z"/>',
   skip:'<path d="M6 6l6 6-6 6M13.5 6l6 6-6 6"/>',
   expand:'<path d="M9 4.5H4.5V9M15 4.5h4.5V9M9 19.5H4.5V15M15 19.5h4.5V15"/>',
-  shield:'<path d="M12 3.5l7 2.6v5.2c0 4.6-3 7.8-7 9.2-4-1.4-7-4.6-7-9.2V6.1z"/><path d="M9 12l2.2 2.2 4.3-4.5"/>'
+  shield:'<path d="M12 3.5l7 2.6v5.2c0 4.6-3 7.8-7 9.2-4-1.4-7-4.6-7-9.2V6.1z"/><path d="M9 12l2.2 2.2 4.3-4.5"/>',
+  zap:'<path d="M13 3L5 13.5h5.5L10 21l8-10.5h-5.5z"/>'
 };
 const I = (name, cls) => '<svg class="ic ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
 
@@ -824,7 +847,11 @@ function mdRender(raw) {
 }
 
 /* =====================================================================
-   PROVIDERS
+   PROVIDERS + PROXY ROUTING
+   Every request goes through CFG.PROXY_BASE using the /host/ route:
+   https://provider.com/v1/chat/completions
+     -> https://<proxy>/host/provider.com/v1/chat/completions
+   The proxy never stores keys — the Authorization header passes through.
 ===================================================================== */
 function getActiveProvider() {
   const list = state.providers || [];
@@ -834,9 +861,17 @@ function buildURL(base) {
   let u = String(base || '').trim().replace(/\/+$/, '');
   if (!u) throw new Error('Base URL is not configured.');
   if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
-  if (/\/chat\/completions$/.test(u)) return u;
-  if (/\/v\d+\w*$/.test(u)) return u + '/chat/completions';
-  return u + '/v1/chat/completions';
+  let target;
+  if (/\/chat\/completions$/.test(u)) target = u;
+  else if (/\/v\d+\w*$/.test(u)) target = u + '/chat/completions';
+  else target = u + '/v1/chat/completions';
+  if (!CFG.PROXY_BASE) return target;
+  try {
+    const t = new URL(target);
+    const px = new URL(CFG.PROXY_BASE);
+    if (t.host === px.host) return target;             // already pointed at the proxy
+    return px.origin + '/host/' + t.host + t.pathname; // relay via /host/ passthrough
+  } catch (e) { return target; }
 }
 async function toApiError(res) {
   let detail = '';
@@ -850,28 +885,12 @@ async function toApiError(res) {
     400: 'The provider rejected the request (400)', 401: 'Invalid or missing API key (401)',
     403: 'Access denied by the provider (403)', 404: 'Endpoint not found (404). Check the Base URL',
     422: 'The provider rejected the request (422)', 429: 'Rate limited by the provider (429). Wait a moment, then retry',
-    500: 'Provider server error (500)', 502: 'Provider server error (502)', 503: 'Provider is temporarily unavailable (503)'
+    500: 'Provider server error (500)', 502: 'Proxy could not reach the provider (502)',
+    503: 'Provider is temporarily unavailable (503)', 504: 'Upstream timed out (504). Press Retry'
   };
   return new Error((map[res.status] || 'Provider error (' + res.status + ')') + detail);
 }
-/* OpenAI-compatible streaming client with server-side proxy (no browser CORS) */
-const ANVIL_PROXY_URL = (window.ANVIL_PROXY_URL || '/api/chat').replace(/\/$/, '');
-function proxyBody(p, messages, stream, opts = {}) {
-  const body = {
-    baseURL: p.baseURL,
-    apiKey: p.apiKey || '',
-    model: p.model || 'default',
-    messages,
-    stream: !!stream
-  };
-  if (opts.temp != null) body.temperature = opts.temp;
-  else if (p.temperature !== '' && p.temperature != null && !isNaN(+p.temperature)) body.temperature = +p.temperature;
-  if (opts.maxTok != null) body.max_tokens = opts.maxTok;
-  else if (+p.maxTokens > 0) body.max_tokens = +p.maxTokens;
-  if (opts.reasoningEffort) body.reasoning_effort = opts.reasoningEffort;
-  else if (p.reasoningEffort && p.reasoningEffort !== 'off') body.reasoning_effort = THINK_MAP[state.deepThink] || 'medium';
-  return body;
-}
+/* OpenAI-compatible streaming client with robust SSE parsing */
 async function chatStream(opts) {
   const p = getActiveProvider();
   if (!p) throw new Error('NO_PROVIDER');
@@ -888,17 +907,17 @@ async function chatStream(opts) {
   bump();
   let res;
   try {
-    res = await fetch(ANVIL_PROXY_URL, {
+    res = await fetch(buildURL(p.baseURL), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(proxyBody(p, opts.messages, true, { temp: opts.temp, maxTok: opts.maxTok })),
-      signal: ctrl.signal
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (p.apiKey || '') },
+      body: JSON.stringify(body), signal: ctrl.signal
     });
   } catch (e) {
     clearTimeout(idle);
     if (state.stopRequested) throw new Error('STOPPED');
-    throw new Error(timedOut ? 'The provider did not respond in time (timeout after ' + (CFG.STREAM_TIMEOUT_MS/1000) + 's).'
-      : 'Unable to connect to the AI server. Make sure this page is served by the Anvil server (or set window.ANVIL_PROXY_URL to your /api/chat endpoint).');
+    throw new Error(timedOut
+      ? 'The provider did not respond in time (idle timeout after ' + (CFG.STREAM_TIMEOUT_MS / 1000) + 's). If the proxy was idle, it may be waking up — press Retry.'
+      : 'Could not reach the proxy. If it was just deployed or idle, wait a few seconds and press Retry (free hosting cold start).');
   }
   if (!res.ok) { clearTimeout(idle); throw await toApiError(res); }
   let full = '';
@@ -1057,8 +1076,6 @@ class StreamParser {
     this.file = null; this.mode = 'prose';
   }
   end() {
-    this.abortFile ? (this.file && this.mode === 'file' ? null : null) : null;
-    if (this.file) { /* keep buffer flush for prose only */ }
     if (this.buf && this.mode === 'prose') { this.prose += this.buf; this.buf=''; this.h.onProse && this.h.onProse(this.prose); }
     this.buf = '';
   }
@@ -1599,7 +1616,6 @@ async function runTurn(userMsg, opts = {}) {
       if (fb.files.length) {
         ai.text = fb.text.trim();
         for (const f of fb.files) {
-          parser.onFileStart ? null : null;
           ai.files.push({ path: f.path, status: 'generating', change: null });
           updateFileGroup(ai);
           const change = commitGeneratedFile(f.path, f.content);
@@ -1793,8 +1809,7 @@ document.addEventListener('drop', e => {
   if (e.dataTransfer?.files?.length) addAttachments(e.dataTransfer.files);
 });
 document.addEventListener('paste', e => {
-  if (e.clipboardData?.files?.length && !e.target.closest('#input')) addAttachments(e.clipboardData.files);
-  else if (e.clipboardData?.files?.length) addAttachments(e.clipboardData.files);
+  if (e.clipboardData?.files?.length) addAttachments(e.clipboardData.files);
 });
 
 /* =====================================================================
@@ -1805,8 +1820,8 @@ function openOv(el) {
   el.classList.add('on');
   ovStack.push(el);
   $('#scrim').classList.add('on');
-  const f = el.querySelector('[data-autofocus]') || el.querySelector('.panel');
-  f && f.setAttribute('tabindex', '-1') && f.focus();
+  const f = el.querySelector('[data-autofocus]');
+  if (f) { f.setAttribute('tabindex', '-1'); f.focus(); }
 }
 function closeOv(el) {
   el = el || ovStack[ovStack.length - 1];
@@ -1987,10 +2002,7 @@ function openViewer(path) {
       const isDiff = s.dataset.tab === 'diff';
       diffEl.style.display = isDiff ? 'block' : 'none';
       codeEl.style.display = isDiff ? 'none' : 'block';
-      skipBtn.hidden = isDiff || stopped === true ? skipBtn.hidden : skipBtn.hidden;
-      if (isDiff) renderDiff(diffEl, f.prevContent, f.content);
-      else cancelReveal;
-      if (!isDiff && stopped) { /* keep rendered */ }
+      if (isDiff) { cancelReveal(); renderDiff(diffEl, f.prevContent, f.content); }
     });
   }
   openOv(el);
@@ -2079,17 +2091,34 @@ function openPreview() {
 function closePreview() { previewUrls.forEach(u => URL.revokeObjectURL(u)); previewUrls = []; const el = $('#ovPreview'); if (el) el.querySelector('.pv-frame').src = 'about:blank'; }
 
 /* =====================================================================
-   SET UP AI (providers)
+   SET UP AI (providers) — requests relayed via your Render proxy
 ===================================================================== */
 function openSetup() { renderSetupList(); openOv(setupEl); }
 let setupEl = null;
 function ensureSetupEl() {
   if (setupEl) return setupEl;
   setupEl = sheet('#ovSetup', 'sheet',
-    '<span class="sh-title">' + I('cpu') + '<span><div>Set Up AI</div><div class="sh-sub">OpenAI-compatible providers</div></span></span>' + xBtn,
+    '<span class="sh-title">' + I('cpu') + '<span><div>Set Up AI</div><div class="sh-sub">Any provider · relayed via your proxy</div></span></span>' + xBtn,
     '<div id="suList"></div><div id="suForm" hidden></div>', null);
   setupEl.querySelector('[data-close]').onclick = () => closeOv(setupEl);
   return setupEl;
+}
+function pingProxy() {
+  const el = document.querySelector('#suProxyLine');
+  if (!el || !CFG.PROXY_BASE) return;
+  el.className = 'proxy-line';
+  el.innerHTML = '<span class="spin sm"></span> Checking proxy ' + CFG.PROXY_BASE.replace(/^https:\/\//, '') + ' …';
+  const t0 = performance.now();
+  fetch(CFG.PROXY_BASE + '/healthz', { cache: 'no-store' })
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(() => {
+      el.className = 'proxy-line ok';
+      el.innerHTML = I('ok','ic-xs') + '<span>Proxy online · ' + Math.round(performance.now() - t0) + ' ms — provider requests relayed CORS-free.</span>';
+    })
+    .catch(() => {
+      el.className = 'proxy-line warn';
+      el.innerHTML = I('warn','ic-xs') + '<span>Proxy not responding yet. On the free plan it sleeps when idle — the first request may take 30–60 s to wake it, then it is fast.</span>';
+    });
 }
 function renderSetupList() {
   const el = ensureSetupEl();
@@ -2097,14 +2126,14 @@ function renderSetupList() {
   const list = el.querySelector('#suList'); list.hidden = false;
   const provs = state.providers || [];
   list.innerHTML =
-    '<div class="note">' + I('shield') + '<span>API keys are stored only in this browser\'s localStorage and are sent only to the Base URL you configure. localStorage is not an encrypted secret store — for production, route requests through your own backend proxy instead of the browser.</span></div>' +
+    '<div class="proxy-line" id="suProxyLine"></div>' +
     (provs.length ? provs.map(p =>
       '<div class="pcard' + (p.id === state.activeProvider ? ' on' : '') + '" data-pid="' + p.id + '" role="radio" aria-checked="' + (p.id === state.activeProvider) + '" tabindex="0">' +
       '<span class="pradio"></span><span class="pcard-m"><div class="pcard-n">' + esc(p.name) + '</div>' +
       '<div class="pcard-s">' + esc(p.model) + ' · ' + esc(String(p.baseURL).replace(/^https?:\/\//, '')) + '</div></span>' +
       '<span class="hact"><button class="hib" data-edit="' + p.id + '" aria-label="Edit provider">' + I('pencil') + '</button>' +
       '<button class="hib del" data-del="' + p.id + '" aria-label="Delete provider">' + I('trash') + '</button></span></div>').join('')
-    : '<div class="dw-empty">No providers configured yet. Add an OpenAI-compatible endpoint to start coding.</div>') +
+    : '<div class="dw-empty">No providers configured yet. Add any OpenAI-compatible provider below — requests go through your proxy, so CORS is never an issue.</div>') +
     '<button class="btn btn-dark" id="suAdd" style="width:100%;margin-top:6px">' + I('plus','ic-xs') + 'Add Provider</button>';
   list.querySelectorAll('.pcard').forEach(c => {
     c.onclick = e => {
@@ -2124,6 +2153,7 @@ function renderSetupList() {
     }
   });
   list.querySelector('#suAdd').onclick = () => renderSetupForm(null);
+  pingProxy();
 }
 function renderSetupForm(p) {
   const el = ensureSetupEl();
@@ -2132,9 +2162,11 @@ function renderSetupForm(p) {
   const v = k => p ? esc(String(p[k] ?? '')) : '';
   f.innerHTML =
     '<div class="form-head">' + I(p ? 'pencil' : 'plus','ic-s') + (p ? 'Edit provider' : 'New provider') + '</div>' +
+    '<div class="presets">' + PROVIDER_PRESETS.map((pr, i) =>
+      '<button class="preset" data-preset="' + i + '" type="button">' + I('zap','ic-xs') + pr.name + '</button>').join('') + '</div>' +
     '<div class="fld" data-k="name"><label>Provider Name</label><input data-f="name" value="' + v('name') + '" placeholder="My Provider" data-autofocus><span class="ferr" hidden>Provider name is required.</span></div>' +
-    '<div class="fld" data-k="baseURL"><label>Base URL</label><input data-f="baseURL" value="' + v('baseURL') + '" placeholder="https://example.com/v1" inputmode="url"><span class="hint" data-hint>Request endpoint: —</span><span class="ferr" hidden>A valid http(s) URL is required.</span></div>' +
-    '<div class="fld" data-k="apiKey"><label>API Key</label><div class="pw-wrap"><input data-f="apiKey" type="password" value="' + v('apiKey') + '" placeholder="sk-…" autocomplete="off"><button class="pw-eye" type="button" aria-label="Show API key">' + I('eye','ic-s') + '</button></div><span class="hint">Stored locally in this browser only.</span></div>' +
+    '<div class="fld" data-k="baseURL"><label>Base URL</label><input data-f="baseURL" value="' + v('baseURL') + '" placeholder="https://api.groq.com/openai/v1" inputmode="url"><span class="hint" data-hint>Request endpoint: —</span><span class="ferr" hidden>A valid http(s) URL is required.</span></div>' +
+    '<div class="fld" data-k="apiKey"><label>API Key</label><div class="pw-wrap"><input data-f="apiKey" type="password" value="' + v('apiKey') + '" placeholder="sk-… / gsk_…" autocomplete="off"><button class="pw-eye" type="button" aria-label="Show API key">' + I('eye','ic-s') + '</button></div><span class="hint">Stored in this browser only · relayed through your proxy per request, never stored on the server.</span></div>' +
     '<div class="fld" data-k="model"><label>Model</label><input data-f="model" value="' + v('model') + '" placeholder="model-name"><span class="ferr" hidden>Model is required.</span></div>' +
     '<div class="grid2">' +
     '<div class="fld"><label>API Format</label><select data-f="apiFormat"><option value="openai">OpenAI Chat Completions</option></select></div>' +
@@ -2154,6 +2186,12 @@ function renderSetupForm(p) {
   const hint = f.querySelector('[data-hint]');
   const updHint = () => { try { hint.textContent = 'Request endpoint: ' + buildURL(q('baseURL').value); } catch (e) { hint.textContent = 'Request endpoint: —'; } };
   q('baseURL').addEventListener('input', updHint); updHint();
+  f.querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+    const pr = PROVIDER_PRESETS[b.dataset.preset];
+    q('name').value = pr.name; q('baseURL').value = pr.baseURL; q('model').value = pr.model;
+    updHint(); q('apiKey').focus();
+    toast(pr.name + ' preset loaded — paste your API key', 'ok');
+  });
   f.querySelector('.pw-eye').onclick = () => {
     const inp = q('apiKey'); inp.type = inp.type === 'password' ? 'text' : 'password';
   };
@@ -2175,28 +2213,21 @@ function renderSetupForm(p) {
     };
     if (p) Object.assign(p, rec); else state.providers.push(rec);
     if (!state.activeProvider || !state.providers.find(x => x.id === state.activeProvider)) state.activeProvider = rec.id;
-    save(); renderSetupList(); updateTopbar();
+    save(); renderSetupList(); updateTopbar(); renderSetupCta();
     toast('Provider saved', 'ok');
   };
   f.querySelector('#suTest').onclick = async () => {
     const line = f.querySelector('#suTestLine');
     line.hidden = false; line.className = 'test-line';
-    line.innerHTML = '<span class="spin sm"></span> Testing ' + buildURL(q('baseURL').value) + ' …';
+    line.innerHTML = '<span class="spin sm"></span> Testing through proxy … (cold start can take up to 45 s)';
     const t0 = performance.now();
     try {
       const ctrl = new AbortController();
-      const to = setTimeout(() => ctrl.abort(), 20000);
-      const res = await fetch(ANVIL_PROXY_URL, {
+      const to = setTimeout(() => ctrl.abort(), 45000);
+      const res = await fetch(buildURL(q('baseURL').value), {
         method: 'POST', signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          baseURL: q('baseURL').value.trim(),
-          apiKey: q('apiKey').value.trim(),
-          model: q('model').value.trim(),
-          messages: [{ role: 'user', content: 'Reply with: OK' }],
-          max_tokens: 8,
-          stream: false
-        })
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + q('apiKey').value.trim() },
+        body: JSON.stringify({ model: q('model').value.trim(), messages: [{ role: 'user', content: 'Reply with: OK' }], max_tokens: 8, stream: false })
       });
       clearTimeout(to);
       if (!res.ok) throw await toApiError(res);
@@ -2205,7 +2236,9 @@ function renderSetupForm(p) {
       line.innerHTML = I('ok','ic-xs') + ' Connected — ' + Math.round(performance.now() - t0) + ' ms';
     } catch (e) {
       line.className = 'test-line err';
-      line.innerHTML = I('errC','ic-xs') + ' ' + esc(e.name === 'AbortError' ? 'Timed out after 20 s.' : e.message);
+      line.innerHTML = I('errC','ic-xs') + ' ' + esc(e.name === 'AbortError'
+        ? 'Timed out after 45 s — the proxy may be waking up. Try once more.'
+        : e.message);
     }
   };
 }
@@ -2218,7 +2251,7 @@ let drawerEl = null;
 function ensureDrawer() {
   if (drawerEl) return drawerEl;
   drawerEl = sheet('#ovDrawer', 'side',
-    '<span class="sh-title"><span class="mark" style="width:34px;height:34px;border-radius:10px;margin:0">' + I('term') + '</span><span><div>Kodo</div><div class="sh-sub">AI Coding Agent</div></span></span>' + xBtn,
+    '<span class="sh-title"><span class="mark" style="width:34px;height:34px;border-radius:10px;margin:0">' + I('term') + '</span><span><div>DevNix AI</div><div class="sh-sub">AI Coding Agent</div></span></span>' + xBtn,
     '<div id="dwBody"></div>', null);
   drawerEl.querySelector('[data-close]').onclick = () => closeOv(drawerEl);
   return drawerEl;
@@ -2253,8 +2286,8 @@ function renderDrawer() {
         '<button class="hib del" data-cdel="' + c.id + '" aria-label="Delete chat">' + I('trash') + '</button></span></div>').join('')
       : '<div class="dw-empty">No saved chats yet.</div>') + '</div>' +
     /* About */
-    '<div class="dw-sec"><div class="dw-h">About</div><div class="about-t"><b>Kodo 1.0</b> — a local-first AI coding workspace.<br><br>' +
-    'Conversations, projects and provider settings live in this browser. Nothing is sent anywhere except to the AI provider you configure. Uploaded code is never executed; previews run inside a sandboxed frame. In production, route API traffic through your own backend proxy.</div></div>';
+    '<div class="dw-sec"><div class="dw-h">About</div><div class="about-t"><b>DevNix AI 1.0</b> — a local-first AI coding workspace.<br><br>' +
+    'Conversations, projects and provider settings live in this browser. Provider requests are relayed through <b>devnix-ai.onrender.com</b>, which forwards your key per request and stores nothing. Uploaded code is never executed; previews run inside a sandboxed frame.</div></div>';
   b.querySelector('#dwSetup').onclick = () => { closeOv(drawerEl); openSetup(); };
   b.querySelector('#dwProj')?.addEventListener('click', () => { closeOv(drawerEl); openProjectSheet(); });
   b.querySelector('#dwZip')?.addEventListener('click', downloadProjectZip);
@@ -2404,7 +2437,7 @@ function updateTopbar() {
  $('#btnNewChat').innerHTML = I('pen') + '<span class="lbl">New Chat</span>';
 fabEl.innerHTML = I('chevD');
  $('#markLogo').innerHTML = I('term');
- $('#dzIcon').innerHTML = I('upload');
+ $('#dzIcon').innerHTML = I('file');
  $('#btnMenu').onclick = openDrawer;
  $('#btnDeleteProject').onclick = askDeleteProject;
  $('#btnSetup').onclick = openSetup;
