@@ -830,11 +830,6 @@ function getActiveProvider() {
   const list = state.providers || [];
   return list.find(p => p.id === state.activeProvider) || list[0] || null;
 }
-const ANVIL_PROXY_URL = (window.ANVIL_PROXY_URL || (window.location.origin + '/api/chat')).replace(/\/$/, '');
-function proxyBody(p, messages, stream, extra={}) {
-  const body = { baseURL: p.baseURL, apiKey: p.apiKey || '', model: p.model || 'default', messages, stream, ...extra };
-  return body;
-}
 function buildURL(base) {
   let u = String(base || '').trim().replace(/\/+$/, '');
   if (!u) throw new Error('Base URL is not configured.');
@@ -859,7 +854,24 @@ async function toApiError(res) {
   };
   return new Error((map[res.status] || 'Provider error (' + res.status + ')') + detail);
 }
-/* OpenAI-compatible streaming client with robust SSE parsing */
+/* OpenAI-compatible streaming client with server-side proxy (no browser CORS) */
+const ANVIL_PROXY_URL = (window.ANVIL_PROXY_URL || '/api/chat').replace(/\/$/, '');
+function proxyBody(p, messages, stream, opts = {}) {
+  const body = {
+    baseURL: p.baseURL,
+    apiKey: p.apiKey || '',
+    model: p.model || 'default',
+    messages,
+    stream: !!stream
+  };
+  if (opts.temp != null) body.temperature = opts.temp;
+  else if (p.temperature !== '' && p.temperature != null && !isNaN(+p.temperature)) body.temperature = +p.temperature;
+  if (opts.maxTok != null) body.max_tokens = opts.maxTok;
+  else if (+p.maxTokens > 0) body.max_tokens = +p.maxTokens;
+  if (opts.reasoningEffort) body.reasoning_effort = opts.reasoningEffort;
+  else if (p.reasoningEffort && p.reasoningEffort !== 'off') body.reasoning_effort = THINK_MAP[state.deepThink] || 'medium';
+  return body;
+}
 async function chatStream(opts) {
   const p = getActiveProvider();
   if (!p) throw new Error('NO_PROVIDER');
@@ -876,21 +888,17 @@ async function chatStream(opts) {
   bump();
   let res;
   try {
-    const proxyPayload = proxyBody(p, opts.messages, true);
-    if (body.temperature != null) proxyPayload.temperature = body.temperature;
-    if (body.max_tokens != null) proxyPayload.max_tokens = body.max_tokens;
-    if (body.reasoning_effort) proxyPayload.reasoning_effort = body.reasoning_effort;
     res = await fetch(ANVIL_PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(proxyPayload), signal: ctrl.signal,
-      credentials: 'same-origin'
+      body: JSON.stringify(proxyBody(p, opts.messages, true, { temp: opts.temp, maxTok: opts.maxTok })),
+      signal: ctrl.signal
     });
   } catch (e) {
     clearTimeout(idle);
     if (state.stopRequested) throw new Error('STOPPED');
     throw new Error(timedOut ? 'The provider did not respond in time (timeout after ' + (CFG.STREAM_TIMEOUT_MS/1000) + 's).'
-      : 'Unable to connect to the provider. This is usually a network issue or a CORS restriction on the Base URL.');
+      : 'Unable to connect to the AI server. Make sure this page is served by the Anvil server (or set window.ANVIL_PROXY_URL to your /api/chat endpoint).');
   }
   if (!res.ok) { clearTimeout(idle); throw await toApiError(res); }
   let full = '';
@@ -2178,16 +2186,17 @@ function renderSetupForm(p) {
     try {
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 20000);
-      const testProvider = {
-        baseURL: q('baseURL').value.trim(),
-        apiKey: q('apiKey').value.trim(),
-        model: q('model').value.trim()
-      };
       const res = await fetch(ANVIL_PROXY_URL, {
         method: 'POST', signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify(proxyBody(testProvider, [{ role: 'user', content: 'Reply with: OK' }], false, { max_tokens: 8 }))
+        body: JSON.stringify({
+          baseURL: q('baseURL').value.trim(),
+          apiKey: q('apiKey').value.trim(),
+          model: q('model').value.trim(),
+          messages: [{ role: 'user', content: 'Reply with: OK' }],
+          max_tokens: 8,
+          stream: false
+        })
       });
       clearTimeout(to);
       if (!res.ok) throw await toApiError(res);
