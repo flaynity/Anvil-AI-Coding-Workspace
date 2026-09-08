@@ -177,7 +177,7 @@ button:disabled,.tbtn:disabled,.ibtn:disabled{opacity:.32;pointer-events:none}
 .spin.sm{width:13px;height:13px}
 @keyframes rot{to{transform:rotate(360deg)}}
 
-/* extras: errors / actions / validation */
+/* extras */
 .extras-slot{display:flex;flex-direction:column;gap:10px}
 .notice{border:1px solid var(--line);border-left:3px solid var(--err);border-radius:12px;padding:12px 14px;background:#fff}
 .notice.warn{border-left-color:var(--warn)}
@@ -534,10 +534,12 @@ const QUICK_ACTIONS = [
 ];
 
 /* =====================================================================
-   STATE
+   STATE  (providers is initialized here — this fixes "Save" failing
+   on a fresh browser where load() had no stored data yet)
 ===================================================================== */
 const state = {
   appMode: 'chat',
+  providers: [],                 // configured providers (FIX: was missing)
   activeProvider: null,          // provider id
   activeModel: null,
   messages: [],
@@ -632,7 +634,6 @@ const ICONS = {
   file:'<path d="M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM14 3v5h5"/>',
   folder:'<path d="M3.5 7a2 2 0 0 1 2-2h4l2 2.3h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>',
   code:'<path d="M8.5 8l-4 4 4 4M15.5 8l4 4-4 4"/>',
-  braces:'<path d="M8.5 4c-2 0-2.5 1-2.5 2.5V9c0 1.5-.7 2.5-2 3 1.3.5 2 1.5 2 3v2.5C6 19 6.5 20 8.5 20M15.5 4c2 0 2.5 1 2.5 2.5V9c0 1.5.7 2.5 2 3-1.3.5-2 1.5-2 3v2.5c0 1.5-.5 2.5-2.5 2.5"/>',
   warn:'<path d="M12 4.2L2.8 19.5h18.4L12 4.2zM12 10v4.2M12 17.2h.01"/>',
   ok:'<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.4 2.4 4.6-5"/>',
   errC:'<circle cx="12" cy="12" r="8.5"/><path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6"/>',
@@ -854,16 +855,18 @@ function mdRender(raw) {
    The proxy never stores keys — the Authorization header passes through.
 ===================================================================== */
 function getActiveProvider() {
-  const list = state.providers || [];
-  return list.find(p => p.id === state.activeProvider) || list[0] || null;
+  if (!Array.isArray(state.providers)) state.providers = [];
+  return state.providers.find(p => p.id === state.activeProvider) || state.providers[0] || null;
 }
+/* FIX: version-aware endpoint building — handles /v1, /v1beta/openai (Gemini),
+   already-complete URLs and version-less bases correctly. */
 function buildURL(base) {
   let u = String(base || '').trim().replace(/\/+$/, '');
   if (!u) throw new Error('Base URL is not configured.');
   if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
   let target;
   if (/\/chat\/completions$/.test(u)) target = u;
-  else if (/\/v\d+\w*$/.test(u)) target = u + '/chat/completions';
+  else if (/\/v\d+[a-z]*(\/|$)/i.test(u)) target = u + '/chat/completions';
   else target = u + '/v1/chat/completions';
   if (!CFG.PROXY_BASE) return target;
   try {
@@ -873,24 +876,85 @@ function buildURL(base) {
     return px.origin + '/host/' + t.host + t.pathname; // relay via /host/ passthrough
   } catch (e) { return target; }
 }
-async function toApiError(res) {
+async function readErrBody(res) {
+  try { return await res.text(); } catch (e) { return ''; }
+}
+function apiError(status, raw) {
   let detail = '';
   try {
-    const t = await res.text();
-    try { const j = JSON.parse(t); detail = j?.error?.message || j?.message || j?.detail || ''; }
-    catch { detail = t.slice(0, 180); }
-  } catch (e) {}
+    const j = JSON.parse(raw);
+    detail = j?.error?.message || j?.message || j?.detail || '';
+  } catch (e) { detail = String(raw || '').slice(0, 180); }
   if (detail) detail = ' — ' + detail;
   const map = {
     400: 'The provider rejected the request (400)', 401: 'Invalid or missing API key (401)',
-    403: 'Access denied by the provider (403)', 404: 'Endpoint not found (404). Check the Base URL',
+    403: 'Access denied by the provider (403)', 404: 'Endpoint or model not found (404). Check the Base URL and model name',
     422: 'The provider rejected the request (422)', 429: 'Rate limited by the provider (429). Wait a moment, then retry',
     500: 'Provider server error (500)', 502: 'Proxy could not reach the provider (502)',
     503: 'Provider is temporarily unavailable (503)', 504: 'Upstream timed out (504). Press Retry'
   };
-  return new Error((map[res.status] || 'Provider error (' + res.status + ')') + detail);
+  return new Error((map[status] || 'Provider error (' + status + ')') + detail);
 }
-/* OpenAI-compatible streaming client with robust SSE parsing */
+
+/* ---- Request sanitization: guarantees a provider-valid messages array.
+   This is what fixes 400 "Invalid value for 'messages': expected a value". ---- */
+function sanitizeMessages(msgs) {
+  const out = [];
+  for (const m of (Array.isArray(msgs) ? msgs : [])) {
+    const role = (m && (m.role === 'system' || m.role === 'user' || m.role === 'assistant')) ? m.role : null;
+    if (!role) continue;
+    let c = m.content;
+    if (Array.isArray(c)) {
+      const parts = [];
+      for (const pt of c) {
+        if (!pt || typeof pt !== 'object') continue;
+        if (pt.type === 'text') {
+          const tx = typeof pt.text === 'string' ? pt.text : (pt.text == null ? '' : String(pt.text));
+          if (tx.trim()) parts.push({ type: 'text', text: tx });
+        } else if (pt.type === 'image_url' && pt.image_url && typeof pt.image_url.url === 'string' && pt.image_url.url) {
+          parts.push({ type: 'image_url', image_url: { url: pt.image_url.url } });
+        }
+      }
+      if (!parts.some(p => p.type === 'text')) parts.unshift({ type: 'text', text: '(see the attached image)' });
+      if (!parts.length) parts.push({ type: 'text', text: '(continue)' });
+      c = parts;
+    } else {
+      c = typeof c === 'string' ? c : (c == null ? '' : String(c));
+      c = c.replace(/\u0000/g, '');
+      if (!c.trim()) c = role === 'assistant' ? '(no text output)' : '(continue)';
+    }
+    out.push({ role, content: c });
+  }
+  if (!out.length) out.push({ role: 'user', content: '(continue)' });
+  return out;
+}
+/* Fallback 1: strip image parts (text-only models reject them) */
+function stripImages(msgs) {
+  return msgs.map(m => {
+    if (!Array.isArray(m.content)) return m;
+    const text = m.content.filter(p => p.type === 'text').map(p => p.text).join('\n');
+    const n = m.content.filter(p => p.type === 'image_url').length;
+    return { role: m.role, content: text + (n ? '\n[' + n + ' image' + (n > 1 ? 's' : '') + ' were attached but this model does not accept image input]' : '') };
+  });
+}
+/* Fallback 2: fold system message into the first user message
+   (some providers/models reject the system role or strict formats) */
+function foldSystem(msgs) {
+  const sys = msgs.filter(m => m.role === 'system')
+    .map(m => Array.isArray(m.content) ? m.content.filter(p => p.type === 'text').map(p => p.text).join('\n') : String(m.content || ''))
+    .join('\n\n').trim();
+  const rest = msgs.filter(m => m.role !== 'system');
+  if (!sys) return msgs;
+  const first = rest[0];
+  if (first && first.role === 'user') {
+    const ft = Array.isArray(first.content) ? first.content.filter(p => p.type === 'text').map(p => p.text).join('\n') : String(first.content || '');
+    return [{ role: 'user', content: sys + '\n\n---\n\n' + ft }, ...rest.slice(1)];
+  }
+  return [{ role: 'user', content: sys }, ...rest];
+}
+
+/* OpenAI-compatible streaming client with robust SSE parsing and
+   automatic 400/422 fallback retries (text-only -> simplified format). */
 async function chatStream(opts) {
   const p = getActiveProvider();
   if (!p) throw new Error('NO_PROVIDER');
@@ -898,28 +962,52 @@ async function chatStream(opts) {
   state.abort = ctrl; state.stopRequested = false;
   let timedOut = false, idle = null;
   const bump = () => { clearTimeout(idle); idle = setTimeout(() => { timedOut = true; ctrl.abort(); }, CFG.STREAM_TIMEOUT_MS); };
-  const body = { model: p.model, messages: opts.messages, stream: true };
-  if (opts.temp != null) body.temperature = opts.temp;
-  else if (p.temperature !== '' && p.temperature != null && !isNaN(+p.temperature)) body.temperature = +p.temperature;
-  if (opts.maxTok != null) body.max_tokens = opts.maxTok;
-  else if (+p.maxTokens > 0) body.max_tokens = +p.maxTokens;
-  if (opts.temp == null && p.reasoningEffort && p.reasoningEffort !== 'off') body.reasoning_effort = THINK_MAP[state.deepThink] || 'medium';
+  const url = buildURL(p.baseURL);
+  const mkBody = mode => {
+    let msgs = sanitizeMessages(opts.messages);
+    if (mode >= 1) msgs = stripImages(msgs);
+    if (mode >= 2) msgs = foldSystem(msgs);
+    const body = { model: p.model, messages: msgs, stream: true };
+    if (mode < 2) {
+      const t = opts.temp != null ? opts.temp
+        : (p.temperature !== '' && p.temperature != null && !isNaN(+p.temperature) ? +p.temperature : null);
+      if (t != null) body.temperature = t;
+    }
+    const mt = opts.maxTok != null ? opts.maxTok : (+p.maxTokens > 0 ? +p.maxTokens : null);
+    if (mt != null && mt > 0) body.max_tokens = mt;
+    if (mode === 0 && opts.temp == null && p.reasoningEffort && p.reasoningEffort !== 'off') {
+      body.reasoning_effort = THINK_MAP[state.deepThink] || 'medium';
+    }
+    return body;
+  };
   bump();
-  let res;
-  try {
-    res = await fetch(buildURL(p.baseURL), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (p.apiKey || '') },
-      body: JSON.stringify(body), signal: ctrl.signal
-    });
-  } catch (e) {
+  let res = null, usedMode = 0;
+  for (let mode = 0; mode < 3; mode++) {
+    let r;
+    try {
+      r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (p.apiKey || '') },
+        body: JSON.stringify(mkBody(mode)),
+        signal: ctrl.signal
+      });
+    } catch (e) {
+      clearTimeout(idle);
+      if (state.stopRequested) throw new Error('STOPPED');
+      throw new Error(timedOut
+        ? 'The provider did not respond in time (idle timeout after ' + (CFG.STREAM_TIMEOUT_MS / 1000) + 's). If the proxy was idle, it may be waking up — press Retry.'
+        : 'Could not reach the proxy. If it was just deployed or idle, wait a few seconds and press Retry (free hosting cold start).');
+    }
+    if (r.ok) { res = r; usedMode = mode; break; }
+    const raw = await readErrBody(r);
+    /* Auto-fallback: sanitize harder and retry instead of failing the user */
+    if ((r.status === 400 || r.status === 422) && mode < 2 && !state.stopRequested) continue;
     clearTimeout(idle);
-    if (state.stopRequested) throw new Error('STOPPED');
-    throw new Error(timedOut
-      ? 'The provider did not respond in time (idle timeout after ' + (CFG.STREAM_TIMEOUT_MS / 1000) + 's). If the proxy was idle, it may be waking up — press Retry.'
-      : 'Could not reach the proxy. If it was just deployed or idle, wait a few seconds and press Retry (free hosting cold start).');
+    throw apiError(r.status, raw);
   }
-  if (!res.ok) { clearTimeout(idle); throw await toApiError(res); }
+  if (!res) { clearTimeout(idle); throw new Error('The provider rejected the request after automatic retries.'); }
+  if (usedMode > 0 && opts.onFallback) opts.onFallback(usedMode);
+
   let full = '';
   const ct = res.headers.get('content-type') || '';
   if (!res.body || ct.includes('application/json')) {
@@ -1011,6 +1099,14 @@ function buildProjectContext() {
   bins.forEach(f => out.push('\n--- FILE: ' + f.path + ' --- [binary file, ' + fmtSize(f.size) + ' — content not shown]'));
   return out.join('\n');
 }
+function userContentFor(m) {
+  const names = (m.attachments || []).filter(a => a.ok).map(a => a.name);
+  let text = m.text || '';
+  if (names.length) text += (text ? '\n\n' : '') + '[Attached: ' + names.join(', ') + (state.project.files.length ? ' — contents are provided in the project context]' : ']');
+  const imgs = (m.images || []).slice(0, 2);
+  if (imgs.length) return [{ type: 'text', text: text || 'Describe the attached image.' }, ...imgs.map(u => ({ type: 'image_url', image_url: { url: u } }))];
+  return text || '(continue)';
+}
 function buildRequestMessages(userMsg, ai, flags) {
   const sys = sysBase() + buildProjectContext() +
     (flags?.continuation ? '\n\nYour previous response was cut off. Re-output EVERY affected file completely in the required format.' : '');
@@ -1020,16 +1116,14 @@ function buildRequestMessages(userMsg, ai, flags) {
     if (m.role === 'user') hist.push({ role: 'user', content: userContentFor(m) });
     else hist.push({ role: 'assistant', content: (m.text || '').slice(0, 4000) || '(Updated project files.)' });
   }
-  if (!hist.length || hist[hist.length - 1].content !== userContentFor(userMsg)) hist.push({ role:'user', content: userContentFor(userMsg) });
+  /* FIX: content may be an array (images) — compare serialized so the final
+     user message is never duplicated with a malformed shape. */
+  const curContent = userContentFor(userMsg);
+  const lastContent = hist.length ? hist[hist.length - 1].content : null;
+  if (!hist.length || JSON.stringify(lastContent) !== JSON.stringify(curContent)) {
+    hist.push({ role: 'user', content: curContent });
+  }
   return [{ role: 'system', content: sys }, ...hist];
-}
-function userContentFor(m) {
-  const names = (m.attachments || []).filter(a => a.ok).map(a => a.name);
-  let text = m.text || '';
-  if (names.length) text += (text ? '\n\n' : '') + '[Attached: ' + names.join(', ') + (state.project.files.length ? ' — contents are provided in the project context]' : ']');
-  const imgs = (m.images || []).slice(0, 2);
-  if (imgs.length) return [{ type: 'text', text: text || 'Describe the attached image.' }, ...imgs.map(u => ({ type: 'image_url', image_url: { url: u } }))];
-  return text || '(continue)';
 }
 
 /* =====================================================================
@@ -1592,6 +1686,9 @@ async function runTurn(userMsg, opts = {}) {
   state.agentStatus = 'running'; state.duoAgentStatus = 'coding';
   appendMessage(ai);
   state.streaming = true; updateSendBtn();
+  const onFallback = mode => toast(mode >= 2
+    ? 'Provider rejected the standard request format — retried with a simplified format.'
+    : 'Image input is not supported by this model — retried in text-only mode.');
   try {
     evAdd(ai, 'Request received');
     if (userMsg.attachments?.length || state.pending.length) evAdd(ai, 'Files received');
@@ -1604,7 +1701,7 @@ async function runTurn(userMsg, opts = {}) {
     const parser = makeParser(ai);
     let raw;
     try {
-      raw = await chatStream({ messages, onDelta: pc => parser.push(pc) });
+      raw = await chatStream({ messages, onDelta: pc => parser.push(pc), onFallback });
     } catch (e) {
       if (e.message === 'STOPPED') { parser.abortFile(); throw e; }
       parser.end(); throw e;
@@ -1655,7 +1752,7 @@ async function runTurn(userMsg, opts = {}) {
           await chatStream({
             messages: [{ role: 'system', content: fixSys },
               { role: 'user', content: 'Review findings:\n' + JSON.stringify({ verdict: review.verdict, summary: review.summary, issues: review.issues }) + '\n\nApply the necessary corrections now.' }],
-            onDelta: pc => fixParser.push(pc), temp: 0.2
+            onDelta: pc => fixParser.push(pc), temp: 0.2, onFallback
           });
           fixParser.end();
           ai.agent.review.fixed = true;
@@ -2121,10 +2218,11 @@ function pingProxy() {
     });
 }
 function renderSetupList() {
+  if (!Array.isArray(state.providers)) state.providers = [];
   const el = ensureSetupEl();
   el.querySelector('#suForm').hidden = true;
   const list = el.querySelector('#suList'); list.hidden = false;
-  const provs = state.providers || [];
+  const provs = state.providers;
   list.innerHTML =
     '<div class="proxy-line" id="suProxyLine"></div>' +
     (provs.length ? provs.map(p =>
@@ -2211,10 +2309,17 @@ function renderSetupForm(p) {
       apiFormat: q('apiFormat').value, reasoningEffort: q('reasoningEffort').value,
       temperature: q('temperature').value, maxTokens: q('maxTokens').value
     };
-    if (p) Object.assign(p, rec); else state.providers.push(rec);
-    if (!state.activeProvider || !state.providers.find(x => x.id === state.activeProvider)) state.activeProvider = rec.id;
-    save(); renderSetupList(); updateTopbar(); renderSetupCta();
-    toast('Provider saved', 'ok');
+    /* FIX: guard + try/catch — provider saving can no longer fail silently */
+    try {
+      if (!Array.isArray(state.providers)) state.providers = [];
+      if (p) { const i = state.providers.findIndex(x => x.id === p.id); if (i >= 0) state.providers[i] = rec; else state.providers.push(rec); }
+      else state.providers.push(rec);
+      state.activeProvider = rec.id;
+      save(); renderSetupList(); updateTopbar(); renderSetupCta();
+      toast('Provider saved', 'ok');
+    } catch (e) {
+      toast('Could not save provider: ' + e.message, 'err');
+    }
   };
   f.querySelector('#suTest').onclick = async () => {
     const line = f.querySelector('#suTestLine');
@@ -2230,7 +2335,7 @@ function renderSetupForm(p) {
         body: JSON.stringify({ model: q('model').value.trim(), messages: [{ role: 'user', content: 'Reply with: OK' }], max_tokens: 8, stream: false })
       });
       clearTimeout(to);
-      if (!res.ok) throw await toApiError(res);
+      if (!res.ok) throw apiError(res.status, await readErrBody(res));
       await res.json();
       line.className = 'test-line ok';
       line.innerHTML = I('ok','ic-xs') + ' Connected — ' + Math.round(performance.now() - t0) + ' ms';
@@ -2286,8 +2391,8 @@ function renderDrawer() {
         '<button class="hib del" data-cdel="' + c.id + '" aria-label="Delete chat">' + I('trash') + '</button></span></div>').join('')
       : '<div class="dw-empty">No saved chats yet.</div>') + '</div>' +
     /* About */
-    '<div class="dw-sec"><div class="dw-h">About</div><div class="about-t"><b>DevNix AI 1.0</b> — a local-first AI coding workspace.<br><br>' +
-    'Conversations, projects and provider settings live in this browser. Provider requests are relayed through <b>devnix-ai.onrender.com</b>, which forwards your key per request and stores nothing. Uploaded code is never executed; previews run inside a sandboxed frame.</div></div>';
+    '<div class="dw-sec"><div class="dw-h">About</div><div class="about-t"><b>DevNix AI 1.1</b> — a local-first AI coding workspace.<br><br>' +
+    'Conversations, projects and provider settings live in this browser. Provider requests are relayed through <b>devnix-ai.onrender.com</b>, which forwards your key per request and stores nothing. Requests are automatically sanitized and adapted to each provider. Uploaded code is never executed; previews run inside a sandboxed frame.</div></div>';
   b.querySelector('#dwSetup').onclick = () => { closeOv(drawerEl); openSetup(); };
   b.querySelector('#dwProj')?.addEventListener('click', () => { closeOv(drawerEl); openProjectSheet(); });
   b.querySelector('#dwZip')?.addEventListener('click', downloadProjectZip);
@@ -2375,10 +2480,12 @@ function save() {
   }
 }
 function load() {
+  /* FIX: providers is ALWAYS initialized, even with empty storage */
+  state.providers = [];
   try {
     const d = JSON.parse(localStorage.getItem(CFG.KEY) || 'null');
     if (!d) return;
-    state.providers = Array.isArray(d.providers) ? d.providers : [];
+    state.providers = Array.isArray(d.providers) ? d.providers.filter(p => p && p.id) : [];
     state.activeProvider = d.activeProvider || state.providers[0]?.id || null;
     state.deepThink = THINK_LEVELS.some(l => l.id === d.deepThink) ? d.deepThink : 'balanced';
     state.webSearch = !!d.webSearch;
