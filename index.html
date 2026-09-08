@@ -830,6 +830,8 @@ function getActiveProvider() {
   const list = state.providers || [];
   return list.find(p => p.id === state.activeProvider) || list[0] || null;
 }
+const ANVIL_PROXY_URL = window.ANVIL_PROXY_URL || '/api/chat';
+
 function buildURL(base) {
   let u = String(base || '').trim().replace(/\/+$/, '');
   if (!u) throw new Error('Base URL is not configured.');
@@ -871,10 +873,20 @@ async function chatStream(opts) {
   bump();
   let res;
   try {
-    res = await fetch(buildURL(p.baseURL), {
+    res = await fetch(ANVIL_PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (p.apiKey || '') },
-      body: JSON.stringify(body), signal: ctrl.signal
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        baseURL: p.baseURL,
+        apiKey: p.apiKey || '',
+        model: body.model,
+        messages: body.messages,
+        stream: true,
+        ...(body.temperature != null ? { temperature: body.temperature } : {}),
+        ...(body.max_tokens != null ? { max_tokens: body.max_tokens } : {}),
+        ...(body.reasoning_effort ? { reasoning_effort: body.reasoning_effort } : {})
+      }),
+      signal: ctrl.signal
     });
   } catch (e) {
     clearTimeout(idle);
@@ -2168,10 +2180,17 @@ function renderSetupForm(p) {
     try {
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 20000);
-      const res = await fetch(buildURL(q('baseURL').value), {
+      const res = await fetch(ANVIL_PROXY_URL, {
         method: 'POST', signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + q('apiKey').value.trim() },
-        body: JSON.stringify({ model: q('model').value.trim(), messages: [{ role: 'user', content: 'Reply with: OK' }], max_tokens: 8, stream: false })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          baseURL: q('baseURL').value.trim(),
+          apiKey: q('apiKey').value.trim(),
+          model: q('model').value.trim(),
+          messages: [{ role: 'user', content: 'Reply with: OK' }],
+          max_tokens: 8,
+          stream: false
+        })
       });
       clearTimeout(to);
       if (!res.ok) throw await toApiError(res);
