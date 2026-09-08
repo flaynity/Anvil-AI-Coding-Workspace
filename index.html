@@ -830,8 +830,11 @@ function getActiveProvider() {
   const list = state.providers || [];
   return list.find(p => p.id === state.activeProvider) || list[0] || null;
 }
-const ANVIL_PROXY_URL = window.ANVIL_PROXY_URL || '/api/chat';
-
+const ANVIL_PROXY_URL = (window.ANVIL_PROXY_URL || (window.location.origin + '/api/chat')).replace(/\/$/, '');
+function proxyBody(p, messages, stream, extra={}) {
+  const body = { baseURL: p.baseURL, apiKey: p.apiKey || '', model: p.model || 'default', messages, stream, ...extra };
+  return body;
+}
 function buildURL(base) {
   let u = String(base || '').trim().replace(/\/+$/, '');
   if (!u) throw new Error('Base URL is not configured.');
@@ -873,20 +876,15 @@ async function chatStream(opts) {
   bump();
   let res;
   try {
+    const proxyPayload = proxyBody(p, opts.messages, true);
+    if (body.temperature != null) proxyPayload.temperature = body.temperature;
+    if (body.max_tokens != null) proxyPayload.max_tokens = body.max_tokens;
+    if (body.reasoning_effort) proxyPayload.reasoning_effort = body.reasoning_effort;
     res = await fetch(ANVIL_PROXY_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        baseURL: p.baseURL,
-        apiKey: p.apiKey || '',
-        model: body.model,
-        messages: body.messages,
-        stream: true,
-        ...(body.temperature != null ? { temperature: body.temperature } : {}),
-        ...(body.max_tokens != null ? { max_tokens: body.max_tokens } : {}),
-        ...(body.reasoning_effort ? { reasoning_effort: body.reasoning_effort } : {})
-      }),
-      signal: ctrl.signal
+      body: JSON.stringify(proxyPayload), signal: ctrl.signal,
+      credentials: 'same-origin'
     });
   } catch (e) {
     clearTimeout(idle);
@@ -2180,17 +2178,16 @@ function renderSetupForm(p) {
     try {
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 20000);
+      const testProvider = {
+        baseURL: q('baseURL').value.trim(),
+        apiKey: q('apiKey').value.trim(),
+        model: q('model').value.trim()
+      };
       const res = await fetch(ANVIL_PROXY_URL, {
         method: 'POST', signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          baseURL: q('baseURL').value.trim(),
-          apiKey: q('apiKey').value.trim(),
-          model: q('model').value.trim(),
-          messages: [{ role: 'user', content: 'Reply with: OK' }],
-          max_tokens: 8,
-          stream: false
-        })
+        credentials: 'same-origin',
+        body: JSON.stringify(proxyBody(testProvider, [{ role: 'user', content: 'Reply with: OK' }], false, { max_tokens: 8 }))
       });
       clearTimeout(to);
       if (!res.ok) throw await toApiError(res);
