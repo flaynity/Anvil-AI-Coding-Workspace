@@ -526,10 +526,10 @@ button{touch-action:manipulation; font-family:var(--sans)}
    CONFIG
 ===================================================================== */
 const CFG = {
-  PROXY_BASE: (window.__API_ORIGIN__ || document.querySelector('meta[name="api-origin"]')?.content || localStorage.getItem('kodo.apiOrigin') || 'https://devnix-ai.onrender.com').replace(/\/$/, ''),
+  PROXY_BASE: (window.__API_ORIGIN__ || document.querySelector('meta[name="api-origin"]')?.content || localStorage.getItem('kodo.apiOrigin') || ((location.protocol === 'http:' || location.protocol === 'https:') ? location.origin : '')).replace(/\/$/, ''),
   MAX_FILE_MB: 25, MAX_ZIP_MB: 120, MAX_TOTAL_ZIP_MB: 150, MAX_FILES: 400,
   MAX_AI_IMAGE_MB: 4, FILE_CTX_CHARS: 24000, TOTAL_CTX_CHARS: 96000,
-  STREAM_TIMEOUT_MS: 180000, MAX_HISTORY_MSGS: 16, MAX_CHATS: 30,
+  STREAM_TIMEOUT_MS: 120000, MAX_HISTORY_MSGS: 16, MAX_CHATS: 30,
   STORE_FILE_CAP: 120000, KEY: 'kodo.v1'
 };
 const PROVIDER_PRESETS = [
@@ -885,13 +885,17 @@ function buildURL(base) {
   if (/\/chat\/completions$/.test(u)) target = u;
   else if (/\/v\d+[a-z]*(\/|$)/i.test(u)) target = u + '/chat/completions';
   else target = u + '/v1/chat/completions';
-  if (!CFG.PROXY_BASE) return target;
+
+  // Always relay through the configured proxy. When the frontend and proxy are
+  // deployed together, CFG.PROXY_BASE is the current origin, so this becomes
+  // a same-origin request and cannot fail because of a stale hard-coded host.
+  if (!CFG.PROXY_BASE) throw new Error('Proxy URL is not configured. Set API Origin in localStorage (kodo.apiOrigin) or deploy frontend with the proxy.');
   try {
     const t = new URL(target);
     const px = new URL(CFG.PROXY_BASE);
-    if (t.host === px.host) return target;
+    if (t.origin === px.origin) return t.href;
     return px.origin + '/host/' + t.host + t.pathname;
-  } catch (e) { return target; }
+  } catch (e) { throw new Error('Invalid provider or proxy URL.'); }
 }
 function normalizeAuth(key) {
   const v = String(key || '').trim();
@@ -1024,35 +1028,20 @@ async function chatStream(opts) {
   bump();
   let res = null, usedMode = 0;
   for (let mode = 0; mode < 3; mode++) {
-    let r = null, lastNetworkError = null;
-    const attempts = mode === 0 ? 3 : 2;
-    for (let attempt = 0; attempt < attempts; attempt++) {
-      try {
-        // Warm the proxy before the real provider request. This avoids a race
-        // where a free host wakes for /healthz but the immediately-following
-        // POST is still rejected/reset while the instance is starting.
-        if (CFG.PROXY_BASE && attempt === 0 && mode === 0) {
-          try { await fetch(CFG.PROXY_BASE + '/healthz', { cache: 'no-store', signal: AbortSignal.timeout(20000) }); } catch (_) {}
-        }
-        r = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json, text/plain', 'Authorization': normalizeAuth(p.apiKey), 'Cache-Control': 'no-cache', 'X-Request-Id': uid() },
-          body: JSON.stringify(mkBody(mode)),
-          signal: ctrl.signal
-        });
-        break;
-      } catch (e) {
-        lastNetworkError = e;
-        if (state.stopRequested) throw new Error('STOPPED');
-        if (e.name === 'AbortError' && timedOut) break;
-        if (attempt + 1 < attempts) await new Promise(resolve => setTimeout(resolve, 1500 * (attempt + 1)));
-      }
-    }
-    if (!r) {
+    let r;
+    try {
+      r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json, text/plain', 'Authorization': normalizeAuth(p.apiKey), 'Cache-Control': 'no-cache' },
+        body: JSON.stringify(mkBody(mode)),
+        signal: ctrl.signal
+      });
+    } catch (e) {
       clearTimeout(idle);
+      if (state.stopRequested) throw new Error('STOPPED');
       throw new Error(timedOut
         ? 'The provider did not respond in time (idle timeout after ' + (CFG.STREAM_TIMEOUT_MS / 1000) + 's). If the proxy was idle it may be waking up — press Retry.'
-        : 'Could not reach the proxy after automatic connection retries. The proxy may still be waking up; press Retry once more.');
+        : 'Could not reach the proxy. If it was just deployed or idle, wait a few seconds and press Retry (free hosting cold start).');
     }
     if (r.ok) { res = r; usedMode = mode; break; }
     const raw = await readErrBody(r);
@@ -2538,7 +2527,7 @@ function renderDrawer() {
       : '<div class="dw-empty">No saved chats yet.</div>') + '</div>' +
     /* About */
     '<div class="dw-sec"><div class="dw-h">About</div><div class="about-t"><b>DevNix AI 1.2</b> — a local-first AI coding workspace.<br><br>' +
-    'Conversations, projects and provider settings live in this browser. Provider requests are relayed through <b>devnix-ai.onrender.com</b>, which forwards your key per request and stores nothing. Uploaded code is never executed; previews run inside a sandboxed frame.</div></div>';
+    'Conversations, projects and provider settings live in this browser. Provider requests are relayed through your configured proxy, which forwards your key per request and stores nothing. Uploaded code is never executed; previews run inside a sandboxed frame.</div></div>';
   b.querySelector('#dwSetup').onclick = () => { closeOv(drawerEl); openSetup(); };
   b.querySelector('#dwProj')?.addEventListener('click', () => { closeOv(drawerEl); openProjectSheet(); });
   b.querySelector('#dwZip')?.addEventListener('click', downloadProjectZip);
