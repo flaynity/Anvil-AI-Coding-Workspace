@@ -11,7 +11,8 @@ const https = require('https');
 const { URL } = require('url');
 
 const PORT = process.env.PORT || 3000;
-const TIMEOUT_MS = parseInt(process.env.TIMEOUT_MS || '300000', 10);   // idle timeout
+const TIMEOUT_MS = parseInt(process.env.TIMEOUT_MS || '300000', 10);   // upstream idle timeout
+const MAX_BODY_BYTES = parseInt(process.env.MAX_BODY_BYTES || String(8 * 1024 * 1024), 10);
 const RATE_PER_MIN = parseInt(process.env.RATE_LIMIT || '60', 10);     // per-IP limit
 
 /* ---- Provider directory: /<slug>/... -> upstream base ---- */
@@ -41,9 +42,12 @@ const AGENTS = { 'https:': new https.Agent({ keepAlive: true, maxSockets: 64 }),
                  'http:' : new http.Agent({ keepAlive: true, maxSockets: 64 }) };
 
 function setCORS(res) {
+  // This proxy is intentionally public because API keys are supplied per request.
+  // Wildcard CORS is safe here because credentials/cookies are never accepted.
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Api-Key, X-Request-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Api-Key, X-Request-Id');
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Type, X-Request-Id');
   res.setHeader('Access-Control-Max-Age', '86400');
 }
 function sendErr(res, status, message) {
@@ -138,9 +142,16 @@ http.createServer((req, res) => {
     const headers = {};
     for (const [k, v] of Object.entries(req.headers)) if (!STRIP_REQ.has(k.toLowerCase())) headers[k] = v;
     headers['accept-encoding'] = 'identity';
+    headers['accept'] = headers['accept'] || 'text/event-stream, application/json';
     if (!headers['authorization']) return sendErr(res, 401, 'Missing API key: send an Authorization header (set in Set Up AI).');
 
     const tu = new URL(target);
+    // Prevent accidental forwarding of the browser Host header and make the
+    // upstream request unambiguously target the resolved provider.
+    headers.host = tu.host;
+
+    const declaredLength = Number(req.headers['content-length'] || 0);
+    if (declaredLength > MAX_BODY_BYTES) return sendErr(res, 413, 'Request body is too large.');
     const upreq = (/^https:/.test(tu.protocol) ? https : http).request(tu, {
       method, headers: { ...headers, host: tu.host }, agent: AGENTS[tu.protocol]
     }, upres => {
@@ -162,6 +173,14 @@ http.createServer((req, res) => {
       sendErr(res, /timeout/i.test(msg) ? 504 : 502, msg);
     });
     res.on('close', () => { try { upreq.destroy(); } catch (_) {} });   // Stop button passthrough
+    let received = 0;
+    req.on('data', chunk => {
+      received += chunk.length;
+      if (received > MAX_BODY_BYTES) {
+        try { req.destroy(); } catch (_) {}
+        try { upreq.destroy(); } catch (_) {}
+      }
+    });
     req.pipe(upreq);                                                    // zero buffering = fast
   } catch (err) { sendErr(res, 500, 'Proxy error: ' + ((err && err.message) || 'unknown')); }
 }).listen(PORT, () => console.log('Kodo Universal AI Proxy on :' + PORT));
