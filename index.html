@@ -1028,7 +1028,7 @@ async function chatStream(opts) {
     try {
       r = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json, text/plain', 'Authorization': normalizeAuth(p.apiKey) },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json, text/plain', 'Authorization': normalizeAuth(p.apiKey), 'Cache-Control': 'no-cache' },
         body: JSON.stringify(mkBody(mode)),
         signal: ctrl.signal
       });
@@ -1098,7 +1098,13 @@ async function chatStream(opts) {
     } catch (e) {
       clearTimeout(idle);
       if (state.stopRequested) throw new Error('STOPPED');
-      if (full) throw new Error('STOPPED');
+      // If the provider already delivered content, keep that real provider
+      // response instead of converting a late stream-close into a fake
+      // "Continue" flow. Never synthesize a demo response.
+      if (full.trim()) {
+        clearTimeout(idle);
+        return full;
+      }
       throw new Error(timedOut ? 'The provider did not respond in time (timeout).' : 'The connection to the provider was interrupted.');
     }
     clearTimeout(idle);
@@ -1177,7 +1183,6 @@ function buildRequestMessages(userMsg, ai, flags) {
   // from prior turns only, then append the exact current user request as the final
   // message. This prevents stale "continue" turns from becoming the prompt.
   const currentId = userMsg?.id;
-  const prior = state.messages.filter(m => m && m.id !== currentId && m.role !== 'assistant' || (m && m.id !== currentId && m.role === 'assistant'));
   // Keep only messages that occurred before this turn; for normal sends this is
   // equivalent to state.messages.slice(0,-1), while retries/continues remain safe.
   const idx = state.messages.findIndex(m => m?.id === currentId);
