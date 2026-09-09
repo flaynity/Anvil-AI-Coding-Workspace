@@ -526,7 +526,7 @@ button{touch-action:manipulation; font-family:var(--sans)}
    CONFIG
 ===================================================================== */
 const CFG = {
-  PROXY_BASE: (window.__API_ORIGIN__ || document.querySelector('meta[name="api-origin"]')?.content || localStorage.getItem('kodo.apiOrigin') || ((location.protocol === 'http:' || location.protocol === 'https:') ? location.origin : '')).replace(/\/$/, ''),
+  PROXY_BASE: (window.__API_ORIGIN__ || document.querySelector('meta[name="api-origin"]')?.content || localStorage.getItem('kodo.apiOrigin') || 'https://devnix-ai.onrender.com').replace(/\/$/, ''),
   MAX_FILE_MB: 25, MAX_ZIP_MB: 120, MAX_TOTAL_ZIP_MB: 150, MAX_FILES: 400,
   MAX_AI_IMAGE_MB: 4, FILE_CTX_CHARS: 24000, TOTAL_CTX_CHARS: 96000,
   STREAM_TIMEOUT_MS: 120000, MAX_HISTORY_MSGS: 16, MAX_CHATS: 30,
@@ -884,18 +884,15 @@ function buildURL(base) {
   let target;
   if (/\/chat\/completions$/.test(u)) target = u;
   else if (/\/v\d+[a-z]*(\/|$)/i.test(u)) target = u + '/chat/completions';
+  else if (/\/openai$/i.test(u)) target = u + '/v1/chat/completions';
   else target = u + '/v1/chat/completions';
-
-  // Always relay through the configured proxy. When the frontend and proxy are
-  // deployed together, CFG.PROXY_BASE is the current origin, so this becomes
-  // a same-origin request and cannot fail because of a stale hard-coded host.
-  if (!CFG.PROXY_BASE) throw new Error('Proxy URL is not configured. Set API Origin in localStorage (kodo.apiOrigin) or deploy frontend with the proxy.');
+  if (!CFG.PROXY_BASE) return target;
   try {
     const t = new URL(target);
     const px = new URL(CFG.PROXY_BASE);
-    if (t.origin === px.origin) return t.href;
+    if (t.host === px.host) return target;
     return px.origin + '/host/' + t.host + t.pathname;
-  } catch (e) { throw new Error('Invalid provider or proxy URL.'); }
+  } catch (e) { return target; }
 }
 function normalizeAuth(key) {
   const v = String(key || '').trim();
@@ -1004,6 +1001,20 @@ async function chatStream(opts) {
   let timedOut = false, idle = null;
   const bump = () => { clearTimeout(idle); idle = setTimeout(() => { timedOut = true; ctrl.abort(); }, CFG.STREAM_TIMEOUT_MS); };
   const url = buildURL(p.baseURL);
+  const endpointCandidates = (() => {
+    const a = [url];
+    try {
+      const u = new URL(url);
+      const path = u.pathname.replace(/\/+$/, '');
+      if (/\/v1\/chat\/completions$/i.test(path)) {
+        a.push(u.origin + path.replace(/\/v1\/chat\/completions$/i, '/chat/completions'));
+      }
+      if (/\/chat\/completions$/i.test(path) && !/\/v1\//i.test(path)) {
+        a.push(u.origin + path.replace(/\/chat\/completions$/i, '/v1/chat/completions'));
+      }
+    } catch (_) {}
+    return [...new Set(a)];
+  })();
   const mkBody = mode => {
     let msgs = sanitizeMessages(opts.messages);
     if (mode >= 1) msgs = stripImages(msgs);
@@ -1027,23 +1038,32 @@ async function chatStream(opts) {
   };
   bump();
   let res = null, usedMode = 0;
+  let last404 = null;
   for (let mode = 0; mode < 3; mode++) {
     let r;
-    try {
-      r = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json, text/plain', 'Authorization': normalizeAuth(p.apiKey), 'Cache-Control': 'no-cache' },
+    for (let ei = 0; ei < endpointCandidates.length; ei++) {
+      const endpoint = endpointCandidates[ei];
+      try {
+        r = await fetch(endpoint, {
+          method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json, text/plain', 'Authorization': normalizeAuth(p.apiKey) },
         body: JSON.stringify(mkBody(mode)),
-        signal: ctrl.signal
-      });
-    } catch (e) {
-      clearTimeout(idle);
+          signal: ctrl.signal
+        });
+        if (r.status === 404 && ei < endpointCandidates.length - 1) {
+          last404 = await readErrBody(r);
+          continue;
+        }
+        break;
+      } catch (e) {
+        clearTimeout(idle);
       if (state.stopRequested) throw new Error('STOPPED');
       throw new Error(timedOut
         ? 'The provider did not respond in time (idle timeout after ' + (CFG.STREAM_TIMEOUT_MS / 1000) + 's). If the proxy was idle it may be waking up — press Retry.'
         : 'Could not reach the proxy. If it was just deployed or idle, wait a few seconds and press Retry (free hosting cold start).');
+      }
     }
-    if (r.ok) { res = r; usedMode = mode; break; }
+    if (r && r.ok) { res = r; usedMode = mode; break; }
     const raw = await readErrBody(r);
     if ((r.status === 400 || r.status === 422) && mode < 2 && !state.stopRequested) continue;
     clearTimeout(idle);
@@ -1102,13 +1122,7 @@ async function chatStream(opts) {
     } catch (e) {
       clearTimeout(idle);
       if (state.stopRequested) throw new Error('STOPPED');
-      // If the provider already delivered content, keep that real provider
-      // response instead of converting a late stream-close into a fake
-      // "Continue" flow. Never synthesize a demo response.
-      if (full.trim()) {
-        clearTimeout(idle);
-        return full;
-      }
+      if (full) throw new Error('STOPPED');
       throw new Error(timedOut ? 'The provider did not respond in time (timeout).' : 'The connection to the provider was interrupted.');
     }
     clearTimeout(idle);
@@ -1180,25 +1194,31 @@ function contentHasText(c) {
   return false;
 }
 function buildRequestMessages(userMsg, ai, flags) {
-  const sys = sysBase() + buildProjectContext() +
-    (flags?.continuation ? '\n\nYour previous response was cut off. Re-output EVERY affected file completely in the required format.' : '');
+  const sys = sysBase() +
+    '\n\nCURRENT-TURN RULES: The user message below is the authoritative request for this turn. Answer it directly. Do not ask the user to paste previous context, previous text, or repeat the request. The full relevant project context is already included above. If the request is a coding task, make the requested changes and output the required file blocks.' +
+    buildProjectContext() +
+    (flags?.continuation ? '\n\nYour previous response was cut off. Continue from the existing response and re-output EVERY affected file completely in the required format.' : '');
   const hist = [];
-  // Do not assume the current user message is the last state entry. Build history
-  // from prior turns only, then append the exact current user request as the final
-  // message. This prevents stale "continue" turns from becoming the prompt.
   const currentId = userMsg?.id;
-  // Keep only messages that occurred before this turn; for normal sends this is
-  // equivalent to state.messages.slice(0,-1), while retries/continues remain safe.
   const idx = state.messages.findIndex(m => m?.id === currentId);
   const before = idx >= 0 ? state.messages.slice(0, idx) : state.messages.slice(0, -1);
+
+  // Keep useful prior turns, but never let a stale/empty assistant placeholder
+  // become the apparent current request. The exact current user message is
+  // appended last, every time.
   for (const m of before.slice(-CFG.MAX_HISTORY_MSGS)) {
-    if (m.role === 'user') hist.push({ role: 'user', content: userContentFor(m) });
-    else if (m.role === 'assistant') hist.push({ role: 'assistant', content: (m.text || '').slice(0, 4000) || '(Updated project files.)' });
+    if (!m || (m.role !== 'user' && m.role !== 'assistant')) continue;
+    if (m.role === 'user') {
+      const c = userContentFor(m);
+      if (contentHasText(c)) hist.push({ role: 'user', content: c });
+    } else {
+      const text = String(m.text || '').trim();
+      if (text) hist.push({ role: 'assistant', content: text.slice(0, 4000) });
+    }
   }
+
   const curContent = userContentFor(userMsg);
   if (!contentHasText(curContent)) throw new Error('EMPTY_USER_REQUEST');
-  // Never allow a previous user turn to sit immediately before the current turn
-  // after a retry/continue; the current request must always be last.
   while (hist.length && hist[hist.length - 1].role === 'user') hist.pop();
   hist.push({ role: 'user', content: curContent });
   return [{ role: 'system', content: sys }, ...hist];
@@ -2527,7 +2547,7 @@ function renderDrawer() {
       : '<div class="dw-empty">No saved chats yet.</div>') + '</div>' +
     /* About */
     '<div class="dw-sec"><div class="dw-h">About</div><div class="about-t"><b>DevNix AI 1.2</b> — a local-first AI coding workspace.<br><br>' +
-    'Conversations, projects and provider settings live in this browser. Provider requests are relayed through your configured proxy, which forwards your key per request and stores nothing. Uploaded code is never executed; previews run inside a sandboxed frame.</div></div>';
+    'Conversations, projects and provider settings live in this browser. Provider requests are relayed through <b>devnix-ai.onrender.com</b>, which forwards your key per request and stores nothing. Uploaded code is never executed; previews run inside a sandboxed frame.</div></div>';
   b.querySelector('#dwSetup').onclick = () => { closeOv(drawerEl); openSetup(); };
   b.querySelector('#dwProj')?.addEventListener('click', () => { closeOv(drawerEl); openProjectSheet(); });
   b.querySelector('#dwZip')?.addEventListener('click', downloadProjectZip);
