@@ -118,7 +118,7 @@ http.createServer((req, res) => {
     const path = u.pathname;
 
     if (method === 'GET' && (path === '/' || path === '/healthz')) {
-      res.writeHead(200, { 'Content-Type': path === '/' ? 'text/html; charset=utf-8' : 'application/json' });
+      res.writeHead(200, { 'Content-Type': path === '/' ? 'text/html; charset=utf-8' : 'application/json', 'Cache-Control': 'no-store', 'Connection': 'keep-alive' });
       res.end(path === '/' ? PAGE : JSON.stringify({ status: 'ok', providers: Object.keys(PROVIDERS).length }));
       return;
     }
@@ -149,6 +149,7 @@ http.createServer((req, res) => {
       out['cache-control'] = out['cache-control'] || 'no-cache, no-transform';
       out['x-accel-buffering'] = 'no';
       out['x-proxy-stream'] = 'true';
+      out['x-request-id'] = req.headers['x-request-id'] || '';
       res.writeHead(upres.statusCode || 502, out);
       if (res.flushHeaders) res.flushHeaders();          // keep SSE flowing immediately
       upres.pipe(res);
