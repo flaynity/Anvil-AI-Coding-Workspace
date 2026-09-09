@@ -13,6 +13,7 @@ const { URL } = require('url');
 const PORT = process.env.PORT || 3000;
 const TIMEOUT_MS = parseInt(process.env.TIMEOUT_MS || '300000', 10);   // idle timeout
 const RATE_PER_MIN = parseInt(process.env.RATE_LIMIT || '60', 10);     // per-IP limit
+const REQUEST_TIMEOUT_MS = parseInt(process.env.REQUEST_TIMEOUT_MS || '300000', 10);
 
 /* ---- Provider directory: /<slug>/... -> upstream base ---- */
 const PROVIDERS = {
@@ -36,7 +37,7 @@ const ALLOWED = /\/(chat\/completions|completions|models|embeddings|responses)\/
 const escHTML = s => String(s).replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 const STRIP_REQ = new Set(['host','connection','keep-alive','transfer-encoding','upgrade','te','trailer',
   'proxy-authorization','accept-encoding','content-length','origin','referer','cookie']);
-const STRIP_RES = new Set(['connection','keep-alive','transfer-encoding','content-encoding','set-cookie']);
+const STRIP_RES = new Set(['connection','keep-alive','transfer-encoding','content-encoding','set-cookie','content-length']);
 const AGENTS = { 'https:': new https.Agent({ keepAlive: true, maxSockets: 64 }),
                  'http:' : new http.Agent({ keepAlive: true, maxSockets: 64 }) };
 
@@ -138,24 +139,22 @@ http.createServer((req, res) => {
     const headers = {};
     for (const [k, v] of Object.entries(req.headers)) if (!STRIP_REQ.has(k.toLowerCase())) headers[k] = v;
     headers['accept-encoding'] = 'identity';
+    headers['x-request-id'] = headers['x-request-id'] || ('kodo-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8));
     if (!headers['authorization']) return sendErr(res, 401, 'Missing API key: send an Authorization header (set in Set Up AI).');
 
     const tu = new URL(target);
     const upreq = (/^https:/.test(tu.protocol) ? https : http).request(tu, {
-      method, headers: { ...headers, host: tu.host, 'accept-encoding': 'identity' }, agent: AGENTS[tu.protocol]
+      method, headers: { ...headers, host: tu.host }, agent: AGENTS[tu.protocol]
     }, upres => {
       const out = {};
       for (const [k, v] of Object.entries(upres.headers)) if (!STRIP_RES.has(k.toLowerCase())) out[k] = v;
-      out['cache-control'] = out['cache-control'] || 'no-cache, no-transform';
-      out['x-accel-buffering'] = 'no';
-      out['x-proxy-stream'] = 'true';
       res.writeHead(upres.statusCode || 502, out);
       if (res.flushHeaders) res.flushHeaders();          // keep SSE flowing immediately
       upres.pipe(res);
       upres.on('error', () => { try { res.destroy(); } catch (_) {} });
     });
     upreq.on('socket', s => { s.setNoDelay(true); });
-    upreq.setTimeout(TIMEOUT_MS, () => upreq.destroy(new Error('Upstream idle timeout after ' + Math.round(TIMEOUT_MS / 1000) + 's.')));
+    upreq.setTimeout(Math.max(TIMEOUT_MS, REQUEST_TIMEOUT_MS), () => upreq.destroy(new Error('Upstream idle timeout after ' + Math.round(Math.max(TIMEOUT_MS, REQUEST_TIMEOUT_MS) / 1000) + 's.')));
     upreq.on('error', err => {
       const c = err.code || '';
       const msg = c === 'ENOTFOUND' || c === 'EAI_AGAIN' ? 'Cannot resolve upstream host.'
@@ -164,9 +163,7 @@ http.createServer((req, res) => {
         : 'Upstream request failed: ' + (err.message || 'unknown');
       sendErr(res, /timeout/i.test(msg) ? 504 : 502, msg);
     });
-    res.on('close', () => {
-      if (!res.writableFinished) { try { upreq.destroy(); } catch (_) {} }
-    });   // Stop button / client disconnect passthrough
+    res.on('close', () => { try { upreq.destroy(); } catch (_) {} });   // Stop button passthrough
     req.pipe(upreq);                                                    // zero buffering = fast
   } catch (err) { sendErr(res, 500, 'Proxy error: ' + ((err && err.message) || 'unknown')); }
 }).listen(PORT, () => console.log('Kodo Universal AI Proxy on :' + PORT));
