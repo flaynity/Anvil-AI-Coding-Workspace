@@ -142,10 +142,13 @@ http.createServer((req, res) => {
 
     const tu = new URL(target);
     const upreq = (/^https:/.test(tu.protocol) ? https : http).request(tu, {
-      method, headers: { ...headers, host: tu.host }, agent: AGENTS[tu.protocol]
+      method, headers: { ...headers, host: tu.host, 'accept-encoding': 'identity' }, agent: AGENTS[tu.protocol]
     }, upres => {
       const out = {};
       for (const [k, v] of Object.entries(upres.headers)) if (!STRIP_RES.has(k.toLowerCase())) out[k] = v;
+      out['cache-control'] = out['cache-control'] || 'no-cache, no-transform';
+      out['x-accel-buffering'] = 'no';
+      out['x-proxy-stream'] = 'true';
       res.writeHead(upres.statusCode || 502, out);
       if (res.flushHeaders) res.flushHeaders();          // keep SSE flowing immediately
       upres.pipe(res);
@@ -161,7 +164,9 @@ http.createServer((req, res) => {
         : 'Upstream request failed: ' + (err.message || 'unknown');
       sendErr(res, /timeout/i.test(msg) ? 504 : 502, msg);
     });
-    res.on('close', () => { try { upreq.destroy(); } catch (_) {} });   // Stop button passthrough
+    res.on('close', () => {
+      if (!res.writableFinished) { try { upreq.destroy(); } catch (_) {} }
+    });   // Stop button / client disconnect passthrough
     req.pipe(upreq);                                                    // zero buffering = fast
   } catch (err) { sendErr(res, 500, 'Proxy error: ' + ((err && err.message) || 'unknown')); }
 }).listen(PORT, () => console.log('Kodo Universal AI Proxy on :' + PORT));
