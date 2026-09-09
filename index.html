@@ -526,7 +526,7 @@ button{touch-action:manipulation; font-family:var(--sans)}
    CONFIG
 ===================================================================== */
 const CFG = {
-  PROXY_BASE: (window.__API_ORIGIN__ || document.querySelector('meta[name="api-origin"]')?.content || localStorage.getItem('kodo.apiOrigin') || 'https://devnix-ai.onrender.com').replace(/\/$/, ''),
+  PROXY_BASE: 'https://devnix-ai.onrender.com',
   MAX_FILE_MB: 25, MAX_ZIP_MB: 120, MAX_TOTAL_ZIP_MB: 150, MAX_FILES: 400,
   MAX_AI_IMAGE_MB: 4, FILE_CTX_CHARS: 24000, TOTAL_CTX_CHARS: 96000,
   STREAM_TIMEOUT_MS: 120000, MAX_HISTORY_MSGS: 16, MAX_CHATS: 30,
@@ -893,11 +893,6 @@ function buildURL(base) {
     return px.origin + '/host/' + t.host + t.pathname;
   } catch (e) { return target; }
 }
-function normalizeAuth(key) {
-  const v = String(key || '').trim();
-  if (!v) return '';
-  return /^Bearer\s+/i.test(v) ? v : 'Bearer ' + v;
-}
 async function readErrBody(res) {
   try { return await res.text(); } catch (e) { return ''; }
 }
@@ -974,24 +969,6 @@ function foldSystem(msgs) {
 /* ---- Streaming client: SSE + plain-text + JSON, with auto-fallback.
    FIX: providers that stream raw text (no "data:" lines) or return
    content as an array are now handled — no more silent empty replies. ---- */
-function extractAIText(j) {
-  if (j == null) return '';
-  if (typeof j === 'string') return j;
-  const choice = j?.choices?.[0];
-  const candidates = [
-    choice?.delta?.content, choice?.message?.content, choice?.text,
-    choice?.delta?.text, j?.output_text, j?.content, j?.text
-  ];
-  for (const c of candidates) {
-    if (typeof c === 'string' && c) return c;
-    if (Array.isArray(c)) {
-      const t = c.map(x => typeof x === 'string' ? x : (x?.text || x?.content || '')).join('');
-      if (t) return t;
-    }
-  }
-  return '';
-}
-
 async function chatStream(opts) {
   const p = getActiveProvider();
   if (!p) throw new Error('NO_PROVIDER');
@@ -1024,7 +1001,7 @@ async function chatStream(opts) {
     try {
       r = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json, text/plain', 'Authorization': normalizeAuth(p.apiKey) },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (p.apiKey || '') },
         body: JSON.stringify(mkBody(mode)),
         signal: ctrl.signal
       });
@@ -1049,7 +1026,10 @@ async function chatStream(opts) {
   if (!res.body || ct.includes('application/json')) {
     clearTimeout(idle);
     const j = await res.json().catch(() => { throw new Error('The provider returned invalid JSON.'); });
-    full = extractAIText(j);
+    const c = j?.choices?.[0]?.message?.content ?? j?.choices?.[0]?.text ?? '';
+    full = typeof c === 'string' ? c
+      : Array.isArray(c) ? c.map(x => (x && typeof x.text === 'string') ? x.text : '').join('')
+      : String(c || '');
     if (!full.trim()) throw new Error('The provider returned an empty response.');
     opts.onDelta(full);
   } else {
@@ -1076,7 +1056,7 @@ async function chatStream(opts) {
           if (data === '[DONE]') continue;
           try {
             const j = JSON.parse(data);
-            const piece = extractAIText(j);
+            const piece = j?.choices?.[0]?.delta?.content || '';
             if (piece) { full += piece; opts.onDelta(piece); }
           } catch (e) { /* malformed chunk: skip */ }
         }
@@ -1087,7 +1067,7 @@ async function chatStream(opts) {
         if (line.startsWith('data:')) {
           const data = line.slice(5).trim();
           if (data && data !== '[DONE]') {
-            try { const j = JSON.parse(data); const piece = extractAIText(j); if (piece) { full += piece; opts.onDelta(piece); } } catch (e) {}
+            try { const j = JSON.parse(data); const piece = j?.choices?.[0]?.delta?.content || ''; if (piece) { full += piece; opts.onDelta(piece); } } catch (e) {}
           }
         }
       }
@@ -1169,10 +1149,10 @@ function buildRequestMessages(userMsg, ai, flags) {
     else hist.push({ role: 'assistant', content: (m.text || '').slice(0, 4000) || '(Updated project files.)' });
   }
   const curContent = userContentFor(userMsg);
-  // Always make the current turn the final user message. This prevents a stale
-  // history record from becoming the effective prompt after retries/continues.
-  if (hist.length && hist[hist.length - 1].role === 'user') hist.pop();
-  hist.push({ role: 'user', content: curContent });
+  const lastContent = hist.length ? hist[hist.length - 1].content : null;
+  if (!hist.length || JSON.stringify(lastContent) !== JSON.stringify(curContent)) {
+    hist.push({ role: 'user', content: curContent });
+  }
   return [{ role: 'system', content: sys }, ...hist];
 }
 
@@ -2435,7 +2415,7 @@ function renderSetupForm(p) {
       const to = setTimeout(() => ctrl.abort(), 45000);
       const res = await fetch(buildURL(q('baseURL').value), {
         method: 'POST', signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json, text/plain', 'Authorization': normalizeAuth(q('apiKey').value.trim()) },
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + q('apiKey').value.trim() },
         body: JSON.stringify({ model: q('model').value.trim(), messages: [{ role: 'user', content: 'Reply with: OK' }], max_tokens: 8, stream: false })
       });
       clearTimeout(to);
