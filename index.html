@@ -526,6 +526,8 @@ button{touch-action:manipulation; font-family:var(--sans)}
    CONFIG
 ===================================================================== */
 const CFG = {
+  // Set VITE/Kodo proxy here when the frontend is hosted separately.
+  // If this page is served by the proxy itself, same-origin routing is used.
   PROXY_BASE: 'https://devnix-ai.onrender.com',
   MAX_FILE_MB: 25, MAX_ZIP_MB: 120, MAX_TOTAL_ZIP_MB: 150, MAX_FILES: 400,
   MAX_AI_IMAGE_MB: 4, FILE_CTX_CHARS: 24000, TOTAL_CTX_CHARS: 96000,
@@ -882,16 +884,25 @@ function buildURL(base) {
   if (!u) throw new Error('Base URL is not configured.');
   if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
   let target;
-  if (/\/chat\/completions$/.test(u)) target = u;
+  if (/\/chat\/completions$/i.test(u)) target = u;
   else if (/\/v\d+[a-z]*(\/|$)/i.test(u)) target = u + '/chat/completions';
   else target = u + '/v1/chat/completions';
-  if (!CFG.PROXY_BASE) return target;
+
+  // Route every external provider through the CORS proxy.
+  // Same-host URLs are already proxy routes and must not be wrapped twice.
+  const proxyBase = String(CFG.PROXY_BASE || (location && location.origin) || '').trim().replace(/\/+$/, '');
+  if (!proxyBase) return target;
   try {
     const t = new URL(target);
-    const px = new URL(CFG.PROXY_BASE);
+    const px = new URL(proxyBase);
     if (t.host === px.host) return target;
-    return px.origin + '/host/' + t.host + t.pathname;
+    return px.origin + '/host/' + t.host + t.pathname + t.search;
   } catch (e) { return target; }
+}
+function normalizeAuth(key) {
+  const v = String(key || '').trim();
+  if (!v) return '';
+  return /^Bearer\s+/i.test(v) ? v : 'Bearer ' + v;
 }
 async function readErrBody(res) {
   try { return await res.text(); } catch (e) { return ''; }
@@ -1001,7 +1012,7 @@ async function chatStream(opts) {
     try {
       r = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (p.apiKey || '') },
+        headers: { 'Content-Type': 'application/json', 'Authorization': normalizeAuth(p.apiKey) },
         body: JSON.stringify(mkBody(mode)),
         signal: ctrl.signal
       });
@@ -1056,7 +1067,10 @@ async function chatStream(opts) {
           if (data === '[DONE]') continue;
           try {
             const j = JSON.parse(data);
-            const piece = j?.choices?.[0]?.delta?.content || '';
+            const rawPiece = j?.choices?.[0]?.delta?.content ?? j?.choices?.[0]?.message?.content ?? j?.choices?.[0]?.text ?? '';
+            const piece = Array.isArray(rawPiece)
+              ? rawPiece.map(x => typeof x === 'string' ? x : (x?.text || x?.content || '')).join('')
+              : (typeof rawPiece === 'string' ? rawPiece : '');
             if (piece) { full += piece; opts.onDelta(piece); }
           } catch (e) { /* malformed chunk: skip */ }
         }
@@ -1067,7 +1081,7 @@ async function chatStream(opts) {
         if (line.startsWith('data:')) {
           const data = line.slice(5).trim();
           if (data && data !== '[DONE]') {
-            try { const j = JSON.parse(data); const piece = j?.choices?.[0]?.delta?.content || ''; if (piece) { full += piece; opts.onDelta(piece); } } catch (e) {}
+            try { const j = JSON.parse(data); const rawPiece = j?.choices?.[0]?.delta?.content ?? j?.choices?.[0]?.message?.content ?? j?.choices?.[0]?.text ?? ''; const piece = Array.isArray(rawPiece) ? rawPiece.map(x => typeof x === 'string' ? x : (x?.text || x?.content || '')).join('') : (typeof rawPiece === 'string' ? rawPiece : ''); if (piece) { full += piece; opts.onDelta(piece); } } catch (e) {}
           }
         }
       }
@@ -2415,7 +2429,7 @@ function renderSetupForm(p) {
       const to = setTimeout(() => ctrl.abort(), 45000);
       const res = await fetch(buildURL(q('baseURL').value), {
         method: 'POST', signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + q('apiKey').value.trim() },
+        headers: { 'Content-Type': 'application/json', 'Authorization': normalizeAuth(q('apiKey').value.trim()) },
         body: JSON.stringify({ model: q('model').value.trim(), messages: [{ role: 'user', content: 'Reply with: OK' }], max_tokens: 8, stream: false })
       });
       clearTimeout(to);
