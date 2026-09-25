@@ -490,14 +490,50 @@ button{touch-action:manipulation; font-family:var(--sans)}
   #ovViewer .panel{left:50%;top:50%;transform:translate(-50%,-50%);width:min(960px,94vw);height:min(86dvh,900px);border-radius:16px;animation:pop .22s var(--ease)}
   #ovViewer.tall .panel{height:96dvh}
 }
-.cv-head{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 16px;border-bottom:1px solid var(--line);flex:none;min-height:56px}
+.cv-head{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line);flex:none;min-height:56px;flex-wrap:wrap;row-gap:8px}
 .cv-name{font-weight:650;font-size:13.5px;font-family:var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cv-bdg{flex:none}
 .segs{display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden;flex:none}
 .seg{padding:5px 12px;font-size:12px;font-weight:650;background:#fff;border:none;cursor:pointer;color:var(--ink-3)}
 .seg.on{background:var(--ink);color:#fff}
+/* Code Page top bar: X | Code | Preview */
+.cv-topbar{display:flex;align-items:center;gap:6px;flex:none}
+.cv-tabs{display:flex;align-items:center;gap:3px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:3px;flex:none}
+.cv-tab{
+  height:32px;padding:0 14px;border-radius:8px;border:none;background:none;color:var(--ink-3);
+  font-size:12.5px;font-weight:650;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  transition:background .15s,color .15s;
+}
+.cv-tab .ic{width:14px;height:14px}
+.cv-tab:hover{color:var(--ink)}
+.cv-tab.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.cv-tab[disabled]{opacity:.4;cursor:not-allowed}
+.cv-spacer{flex:1 1 auto;min-width:8px}
+.cv-fullcopy{
+  height:34px;padding:0 13px;border-radius:9px;border:1px solid var(--line-2);background:#fff;color:var(--ink-2);
+  font-size:12.5px;font-weight:650;cursor:pointer;display:inline-flex;align-items:center;gap:7px;flex:none;
+  transition:background .15s,border-color .15s,color .15s;white-space:nowrap;
+}
+.cv-fullcopy:hover{border-color:var(--ink);color:var(--ink)}
+.cv-fullcopy.copied{background:var(--ink);border-color:var(--ink);color:#fff}
+.cv-fullcopy .ic{width:14px;height:14px}
+@media(max-width:560px){
+  .cv-fullcopy .lbl{display:none}
+  .cv-fullcopy{padding:0 10px}
+}
 .cv-body{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--code-bg);position:relative}
 .code-surface{flex:1;min-height:0;overflow:auto;padding:14px 0 20px;position:relative}
+/* preview mode inside the Code Page */
+.cv-preview-wrap{flex:1;min-height:0;display:none;background:#fff;position:relative}
+.cv-preview-wrap .pv-frame{width:100%;height:100%;border:none;display:block;background:#fff}
+.cv-preview-note{
+  position:absolute;left:0;right:0;top:0;padding:7px 14px;font-size:11.5px;color:var(--ink-3);
+  background:var(--surface);border-bottom:1px solid var(--line);z-index:2;
+}
+.cv-preview-wrap.has-note .pv-frame{position:absolute;top:31px;left:0;right:0;bottom:0;height:auto}
+.cv-unavail{flex:1;min-height:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:#fff;padding:30px;text-align:center}
+.cv-unavail .ic{width:30px;height:30px;color:var(--ink-4)}
+.cv-unavail p{font-size:13.5px;color:var(--ink-3);max-width:320px}
 .cl{display:flex;min-width:max-content}
 .cl .ln{width:54px;flex:none;text-align:right;padding-right:15px;color:var(--code-dim);font-family:var(--mono);font-size:11.5px;line-height:1.7;user-select:none}
 .cl code{font-family:var(--mono);font-size:12.8px;line-height:1.7;color:var(--code-ink);white-space:pre;padding-right:28px}
@@ -1881,6 +1917,30 @@ async function runReview(m) {
       issues: (Array.isArray(j.issues) ? j.issues : []).slice(0, 5).map(i => ({ file: String(i?.file || '').slice(0, 120), note: String(i?.note || '').slice(0, 240) })) };
   } catch (err) { return { verdict: 'unknown', summary: raw.trim().slice(0, 280), issues: [] }; }
 }
+/* =====================================================================
+   TASK-AWARE STATUS LABELS
+   These map an observable, real stage of runTurn() to wording that fits
+   the kind of request being made. They never claim an operation happened
+   that didn't — they only change how a real stage is described.
+===================================================================== */
+const STATUS_LABELS = {
+  question: { start: 'Reading your message',    ctx: 'Preparing a response',      stream: 'Generating response' },
+  fix:      { start: 'Analyzing your project',   ctx: 'Inspecting relevant files', stream: 'Applying the fix' },
+  analyze:  { start: 'Reading your files',       ctx: 'Analyzing structure',       stream: 'Preparing findings' },
+  modify:   { start: 'Inspecting your project',  ctx: 'Planning the update',       stream: 'Updating files' },
+  create:   { start: 'Understanding your request', ctx: 'Planning implementation', stream: 'Generating files' }
+};
+function classifyTask(userMsg) {
+  const text = String(userMsg?.text || '').toLowerCase();
+  const hasProject = state.project.files.length > 0;
+  const hasAttachments = (userMsg?.attachments?.length || 0) > 0 || state.pending.length > 0;
+  if (hasProject && /\b(fix|bug|error|broken|crash|not work|isn'?t working|doesn'?t work)\b/.test(text)) return 'fix';
+  if ((hasProject || hasAttachments) && /\b(analy[sz]e|explain|review|understand|summar)\b/.test(text) && !/\b(add|change|update|modify|refactor|implement|build|create)\b/.test(text)) return 'analyze';
+  if (hasProject && /\b(add|change|update|modify|refactor|remove|delete|implement|edit)\b/.test(text)) return 'modify';
+  if (/\b(build|create|generate|make|write)\b/.test(text) || (!hasProject && /\b(website|app|component|page|script|project)\b/.test(text))) return 'create';
+  if (hasProject) return 'modify';
+  return 'question';
+}
 async function runTurn(userMsg, opts = {}) {
   if (state.streaming) return;
   const ai = { id: uid(), role: 'assistant', ts: Date.now(), text: '', events: [], files: [], filesLabel: null,
@@ -1892,15 +1952,17 @@ async function runTurn(userMsg, opts = {}) {
   const onFallback = mode => toast(mode >= 2
     ? 'Provider rejected the standard request format — retried with a simplified format.'
     : 'Image input is not supported by this model — retried in text-only mode.');
+  const taskType = classifyTask(userMsg);
+  const labels = STATUS_LABELS[taskType] || STATUS_LABELS.question;
   try {
-    evAdd(ai, 'Request received');
+    evAdd(ai, labels.start);
     if (userMsg.attachments?.length || state.pending.length) evAdd(ai, 'Files received');
     if (!opts.isRetry) commitAttachments(userMsg);
     if (state.project.files.length) evAdd(ai, 'Project structure analyzed', state.project.files.length + ' files');
     const messages = buildRequestMessages(userMsg, ai, { continuation: opts.isContinue });
-    evAdd(ai, 'Context prepared', state.project.files.length ? state.project.files.length + ' files in context' : 'no project files');
+    evAdd(ai, labels.ctx, state.project.files.length ? state.project.files.length + ' files in context' : 'no project files');
     const p = getActiveProvider();
-    evAdd(ai, 'Streaming from ' + (p?.name || 'AI Provider'));
+    evAdd(ai, labels.stream, 'via ' + (p?.name || 'AI Provider'));
     const parser = makeParser(ai);
     let raw;
     try {
@@ -2128,7 +2190,7 @@ function closeOv(el) {
   el.classList.remove('on');
   const i = ovStack.indexOf(el); if (i >= 0) ovStack.splice(i, 1);
   if (!ovStack.length) $('#scrim').classList.remove('on');
-  if (el.id === 'ovViewer') cancelReveal();
+  if (el.id === 'ovViewer') { cancelReveal(); closeCvPreview(); }
   if (el.id === 'ovPreview') closePreview();
 }
 $('#scrim').onclick = () => closeOv();
@@ -2273,34 +2335,98 @@ function openProjectSheet() {
    CODE VIEWER
 ===================================================================== */
 let revealCancel = null;
+let cvPreviewUrls = [];
 function cancelReveal() { if (revealCancel) { revealCancel(); revealCancel = null; } }
+function closeCvPreview() { cvPreviewUrls.forEach(u => URL.revokeObjectURL(u)); cvPreviewUrls = []; }
 function openViewer(path) {
   const f = getProjectFile(path);
   if (!f) { toast('File content is not available.', 'err'); return; }
   const ch = [...state.changedFiles].reverse().find(c => c.path === path);
   const el = sheet('#ovViewer', 'sheet tall', '', '', '');
   el.querySelector('.panel').style.setProperty('--w', '960px');
+  const isHtml = /\.html?$/i.test(path) && f.isText;
+  const canPreview = f.isText && (isHtml || bestHtmlFor(path));
   el.querySelector('.sh-head').innerHTML =
-    '<span class="sh-title">' + I(fileIcon(f)) + '<span style="min-width:0"><div class="cv-name">' + esc(path) + '</div>' +
+    '<div class="cv-topbar">' +
+      '<button class="ibtn" data-close aria-label="Close" title="Close">' + I('x') + '</button>' +
+      '<div class="cv-tabs" role="tablist">' +
+        '<button class="cv-tab on" id="cvTabCode" role="tab" aria-selected="true">' + I('code','ic-xs') + '<span>Code</span></button>' +
+        '<button class="cv-tab" id="cvTabPreview" role="tab" aria-selected="false"' + (canPreview ? '' : ' disabled title="Preview unavailable for this file type"') + '>' + I('eye','ic-xs') + '<span>Preview</span></button>' +
+      '</div>' +
+    '</div>' +
+    '<span class="sh-title" style="min-width:0"><span style="min-width:0"><div class="cv-name">' + esc(path) + '</div>' +
     '<div class="sh-sub">' + esc(f.lang) + (dirName(path) ? ' · ' + esc(dirName(path)) + '/' : '') + '</div></span></span>' +
     (ch ? '<span class="cv-bdg bdg ' + (ch.change === 'added' ? 'add' : 'mod') + '">' + ch.change + '</span>' : '') +
-    '<span style="margin-left:auto"></span>' +
+    '<span class="cv-spacer"></span>' +
     (f.prevContent != null ? '<span class="segs"><button class="seg on" data-tab="file">File</button><button class="seg" data-tab="diff">Changes</button></span>' : '') +
-    '<button class="ibtn" id="cvCopy" aria-label="Copy code" title="Copy">' + I('copy') + '</button>' +
+    '<button class="cv-fullcopy" id="cvCopy" aria-label="Copy the entire file" title="Copy the entire file">' + I('copy','ic-xs') + '<span class="lbl">Full Copy</span></button>' +
     '<button class="ibtn" id="cvDl" aria-label="Download file" title="Download">' + I('dl') + '</button>' +
-    '<button class="ibtn" id="cvTall" aria-label="Expand" title="Expand">' + I('expand') + '</button>' +
-    '<button class="ibtn" data-close aria-label="Close" title="Close">' + I('x') + '</button>';
+    '<button class="ibtn" id="cvTall" aria-label="Expand" title="Expand">' + I('expand') + '</button>';
   el.querySelector('.sh-body').style.display = 'none';
   el.querySelector('.panel').insertAdjacentHTML('beforeend',
     '<div class="cv-body"><div class="code-surface" id="cvCode" tabindex="0"></div>' +
     '<div class="diff-wrap" id="cvDiff"></div>' +
     '<button class="skip" id="cvSkip" hidden>' + I('skip','ic-xs') + 'Skip</button></div>' +
+    '<div class="cv-preview-wrap" id="cvPreview"><iframe class="pv-frame" sandbox="allow-scripts" title="File preview"></iframe></div>' +
+    '<div class="cv-unavail" id="cvUnavail">' + I('eye') + '<p>Preview isn\'t available for this file type. You can still view and copy the source in Code mode.</p></div>' +
     '<div class="cv-foot"><span>' + (f.isText ? f.content.split('\n').length + ' lines' : 'binary') + '</span><span>' + fmtSize(f.size) + '</span>' +
     (f.origin === 'generated' ? '<span>generated by Coding Agent</span>' : '<span>project file</span>') + '</div>');
   el.querySelectorAll('[data-close]').forEach(b => b.onclick = () => closeOv(el));
-  el.querySelector('#cvCopy').onclick = async () => { if (await copyText(f.content)) toast('Copied to clipboard', 'ok'); };
+  const copyBtn = el.querySelector('#cvCopy');
+  let copyResetT = null;
+  copyBtn.onclick = async () => {
+    const ok = await copyText(f.content);
+    if (ok) {
+      clearTimeout(copyResetT);
+      copyBtn.classList.add('copied');
+      copyBtn.querySelector('.lbl').textContent = 'Copied';
+      toast('Copied to clipboard', 'ok');
+      copyResetT = setTimeout(() => { copyBtn.classList.remove('copied'); copyBtn.querySelector('.lbl').textContent = 'Full Copy'; }, 1800);
+    } else {
+      toast('Could not copy — try selecting the code manually.', 'err');
+    }
+  };
   el.querySelector('#cvDl').onclick = () => { downloadBlob(new Blob([f.content], { type: mimeFromName(f.path) }), f.name); toast('Downloaded ' + f.name, 'ok'); };
   el.querySelector('#cvTall').onclick = () => el.classList.toggle('tall');
+
+  /* Code / Preview top-bar switching */
+  const codeSurface = el.querySelector('#cvCode'), diffWrap = el.querySelector('.diff-wrap');
+  const previewWrap = el.querySelector('#cvPreview'), unavailEl = el.querySelector('#cvUnavail');
+  const tabCode = el.querySelector('#cvTabCode'), tabPreview = el.querySelector('#cvTabPreview');
+  const previewFrame = previewWrap.querySelector('.pv-frame');
+  let previewLoaded = false;
+  function showCodeMode() {
+    tabCode.classList.add('on'); tabCode.setAttribute('aria-selected', 'true');
+    tabPreview.classList.remove('on'); tabPreview.setAttribute('aria-selected', 'false');
+    previewWrap.style.display = 'none'; unavailEl.style.display = 'none';
+    codeSurface.style.display = ''; // diff-wrap visibility handled by segs below
+    const activeSeg = el.querySelector('.seg.on');
+    if (activeSeg?.dataset.tab === 'diff') diffWrap.style.display = 'block'; else codeSurface.style.display = 'block';
+  }
+  function showPreviewMode() {
+    if (!canPreview) return;
+    tabPreview.classList.add('on'); tabPreview.setAttribute('aria-selected', 'true');
+    tabCode.classList.remove('on'); tabCode.setAttribute('aria-selected', 'false');
+    codeSurface.style.display = 'none'; diffWrap.style.display = 'none';
+    if (isHtml) {
+      unavailEl.style.display = 'none'; previewWrap.style.display = 'block'; previewWrap.classList.remove('has-note');
+      previewWrap.querySelector('.cv-preview-note')?.remove();
+      if (!previewLoaded) { closeCvPreview(); const built = buildPreviewDoc(f); cvPreviewUrls = built.urls; previewFrame.src = built.docUrl; previewLoaded = true; }
+    } else {
+      const via = bestHtmlFor(path);
+      if (!via) { previewWrap.style.display = 'none'; unavailEl.style.display = 'flex'; return; }
+      unavailEl.style.display = 'none'; previewWrap.style.display = 'block'; previewWrap.classList.add('has-note');
+      if (!previewWrap.querySelector('.cv-preview-note')) {
+        const note = document.createElement('div'); note.className = 'cv-preview-note';
+        note.textContent = 'Previewing via ' + via.path + ' (this file is linked from it)';
+        previewWrap.prepend(note);
+      }
+      if (!previewLoaded) { closeCvPreview(); const built = buildPreviewDoc(via); cvPreviewUrls = built.urls; previewFrame.src = built.docUrl; previewLoaded = true; }
+    }
+  }
+  tabCode.onclick = showCodeMode;
+  tabPreview.onclick = showPreviewMode;
+  if (!canPreview) unavailEl.style.display = 'none';
 
   const codeEl = el.querySelector('#cvCode'), diffEl = el.querySelector('#cvDiff'), skipBtn = el.querySelector('#cvSkip');
   const lines = highlightLines(f.content, f.lang);
@@ -2334,6 +2460,7 @@ function openViewer(path) {
   }
   if (f.prevContent != null) {
     el.querySelectorAll('.seg').forEach(s => s.onclick = () => {
+      showCodeMode();
       el.querySelectorAll('.seg').forEach(x => x.classList.remove('on'));
       s.classList.add('on');
       const isDiff = s.dataset.tab === 'diff';
@@ -2342,6 +2469,7 @@ function openViewer(path) {
       if (isDiff) { cancelReveal(); renderDiff(diffEl, f.prevContent, f.content); }
     });
   }
+  showCodeMode();
   openOv(el);
 }
 function lcsOps(A, B) {
@@ -2393,9 +2521,9 @@ function resolveRel(basePath, rel) {
   for (const seg of rel.split('/')) { if (!seg || seg === '.') continue; if (seg === '..') parts.pop(); else parts.push(seg); }
   return parts.join('/');
 }
-function openPreview() {
-  const html = state.project.files.find(f => /^index\.html?$/i.test(f.path) && f.isText) || state.project.files.find(f => /\.html?$/i.test(f.path) && f.isText);
-  if (!html) { toast('No HTML file in the project to preview.', 'err'); return; }
+function buildPreviewDoc(html) {
+  // Builds a sandboxed, self-contained preview document for a given HTML
+  // project file, inlining/mapping any local assets it references.
   const map = {};
   for (const f of state.project.files) {
     if (f.path === html.path) continue;
@@ -2410,7 +2538,24 @@ function openPreview() {
     return r && map[r] ? ' ' + a + eq + q + map[r] + q : m;
   });
   const docUrl = URL.createObjectURL(new Blob([doc], { type: 'text/html' }));
-  previewUrls = [docUrl, ...Object.values(map).filter(Boolean)];
+  return { docUrl, urls: [docUrl, ...Object.values(map).filter(Boolean)] };
+}
+function bestHtmlFor(path) {
+  // Finds the most relevant HTML file to preview a non-HTML file (e.g. a
+  // .css or .js file) through, preferring an HTML file that references it.
+  const htmls = state.project.files.filter(f => /\.html?$/i.test(f.path) && f.isText);
+  if (!htmls.length) return null;
+  const name = baseName(path);
+  const referencing = htmls.find(h => h.content.includes(name) || h.content.includes(path));
+  if (referencing) return referencing;
+  return htmls.find(h => /^index\.html?$/i.test(h.path)) || htmls[0];
+}
+function openPreview() {
+  const html = state.project.files.find(f => /^index\.html?$/i.test(f.path) && f.isText) || state.project.files.find(f => /\.html?$/i.test(f.path) && f.isText);
+  if (!html) { toast('No HTML file in the project to preview.', 'err'); return; }
+  const built = buildPreviewDoc(html);
+  const docUrl = built.docUrl;
+  previewUrls = built.urls;
   const el = sheet('#ovPreview', 'sheet tall',
     '<span class="sh-title">' + I('eye') + '<span><div>Preview</div><div class="sh-sub">' + esc(html.path) + ' · sandboxed</div></span></span>' +
     '<span style="margin-left:auto"></span>' +
