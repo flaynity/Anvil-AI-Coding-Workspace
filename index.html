@@ -36,7 +36,7 @@ button{touch-action:manipulation; font-family:var(--sans)}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:8px;border:3px solid #fff}
 .code-surface::-webkit-scrollbar-thumb{background:#33343B;border:3px solid var(--code-bg)}
-.ic{width:19px;height:19px;flex:none;display:block}
+.ic{width:19px;height:19px;min-width:19px;min-height:19px;flex:none;display:inline-block;vertical-align:middle;overflow:visible;color:currentColor}
 .ic-s{width:15px;height:15px}
 .ic-xs{width:13px;height:13px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -776,7 +776,10 @@ const ICONS = {
   shield:'<path d="M12 3.5l7 2.6v5.2c0 4.6-3 7.8-7 9.2-4-1.4-7-4.6-7-9.2V6.1z"/><path d="M9 12l2.2 2.2 4.3-4.5"/>',
   zap:'<path d="M13 3L5 13.5h5.5L10 21l8-10.5h-5.5z"/>'
 };
-const I = (name, cls) => '<svg class="ic ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+const I = (name, cls) => {
+  const body = ICONS[name] || ICONS.file || '<circle cx="12" cy="12" r="8"/>';
+  return '<svg class="ic ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
+};
 
 /* =====================================================================
    LANGUAGE / FILE META
