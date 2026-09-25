@@ -1023,17 +1023,18 @@ function sanitizeMessages(msgs) {
           parts.push({ type: 'image_url', image_url: { url: pt.image_url.url } });
         }
       }
-      if (!parts.some(p => p.type === 'text')) parts.unshift({ type: 'text', text: '(see the attached image)' });
-      if (!parts.length) parts.push({ type: 'text', text: '(continue)' });
+      if (!parts.some(p => p.type === 'text')) {
+        throw new Error('The API request contains no text content.');
+      }
       c = parts;
     } else {
       c = typeof c === 'string' ? c : (c == null ? '' : String(c));
       c = c.replace(/\u0000/g, '');
-      if (!c.trim()) c = role === 'assistant' ? '(no text output)' : '(continue)';
+      if (!c.trim()) throw new Error('The API request contains an empty message.');
     }
     out.push({ role, content: c });
   }
-  if (!out.length) out.push({ role: 'user', content: '(continue)' });
+  if (!out.length) throw new Error('No valid API messages were prepared.');
   return out;
 }
 function stripImages(msgs) {
@@ -1133,11 +1134,13 @@ async function chatStream(opts) {
   if (!res.body || ct.includes('application/json')) {
     clearTimeout(idle);
     const j = await res.json().catch(() => { throw new Error('The provider returned invalid JSON.'); });
-    const c = j?.choices?.[0]?.message?.content ?? j?.choices?.[0]?.text ?? '';
+    const c = j?.choices?.[0]?.message?.content ?? j?.choices?.[0]?.text;
     full = typeof c === 'string' ? c
       : Array.isArray(c) ? c.map(x => (x && typeof x.text === 'string') ? x.text : '').join('')
-      : String(c || '');
-    if (!full.trim()) throw new Error('The provider returned an empty response.');
+      : '';
+    if (!full.trim()) {
+      throw new Error('The provider returned no message content. Check the selected API endpoint/model.');
+    }
     opts.onDelta(full);
   } else {
     const reader = res.body.getReader(), dec = new TextDecoder();
@@ -1174,7 +1177,17 @@ async function chatStream(opts) {
         if (line.startsWith('data:')) {
           const data = line.slice(5).trim();
           if (data && data !== '[DONE]') {
-            try { const j = JSON.parse(data); const piece = j?.choices?.[0]?.delta?.content || ''; if (piece) { full += piece; opts.onDelta(piece); } } catch (e) {}
+            try {
+              const j = JSON.parse(data);
+              const piece = j?.choices?.[0]?.delta?.content
+                ?? j?.choices?.[0]?.message?.content
+                ?? j?.choices?.[0]?.text
+                ?? '';
+              const textPiece = typeof piece === 'string' ? piece
+                : Array.isArray(piece) ? piece.map(x => (x && typeof x.text === 'string') ? x.text : '').join('')
+                : '';
+              if (textPiece) { full += textPiece; opts.onDelta(textPiece); }
+            } catch (e) {}
           }
         }
       }
@@ -1255,8 +1268,10 @@ function buildRequestMessages(userMsg, ai, flags) {
   // created by runTurn() is still empty while the request is being prepared,
   // so it must NEVER be sent to the provider as fake context.
   const previous = state.messages.filter(m =>
-    m && m !== userMsg && m.role === 'user' ||
-    m && m !== userMsg && m.role === 'assistant' && String(m.text || '').trim()
+    m && m !== userMsg && (
+      m.role === 'user' ||
+      (m.role === 'assistant' && String(m.text || '').trim())
+    )
   );
   for (const m of previous.slice(-CFG.MAX_HISTORY_MSGS)) {
     if (m.role === 'user') {
@@ -1978,7 +1993,7 @@ function retryTurn(ai) {
   runTurn(lastUser, { isRetry: true });
 }
 function continueTurn(ai) {
-  const um = { id: uid(), role: 'user', ts: Date.now(), text: 'Continue', attachments: [], images: [], events: [], files: [] };
+  const um = { id: uid(), role: 'user', ts: Date.now(), text: 'Continue the previous response from exactly where it stopped. Do not restart or describe missing context.', attachments: [], images: [], events: [], files: [] };
   state.messages.push(um); appendMessage(um);
   runTurn(um, { isContinue: true });
 }
