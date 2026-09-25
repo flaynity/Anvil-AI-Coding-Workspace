@@ -1104,27 +1104,46 @@ async function chatStream(opts) {
   };
   bump();
   let res = null, usedMode = 0;
+  let lastNetworkError = null;
   for (let mode = 0; mode < 3; mode++) {
     let r;
+    const requestBody = JSON.stringify(mkBody(mode));
     try {
       r = await fetch(url, {
         method: 'POST',
         headers: proxyHeaders(p.apiKey, targetURL),
-        body: JSON.stringify(mkBody(mode)),
+        body: requestBody,
+        cache: 'no-store',
         signal: ctrl.signal
       });
     } catch (e) {
+      lastNetworkError = e;
+      if (state.stopRequested) {
+        clearTimeout(idle);
+        throw new Error('STOPPED');
+      }
+      // A request containing image data can fail at the browser/proxy
+      // boundary without exposing an HTTP status. Retry immediately without
+      // images before treating it as a proxy outage.
+      if (mode < 1 && opts.messages.some(m => Array.isArray(m?.content) && m.content.some(p => p?.type === 'image_url'))) {
+        continue;
+      }
+      if (mode < 2) continue;
       clearTimeout(idle);
-      if (state.stopRequested) throw new Error('STOPPED');
-      throw new Error(timedOut
-        ? 'The provider did not respond in time (idle timeout).'
-        : 'Could not reach the API proxy. Deploy the Cloudflare Worker and set window.ANVIL_PROXY_URL if the Worker is on a different origin.');
+      const detail = e?.name === 'AbortError'
+        ? (timedOut ? 'The provider did not respond in time (idle timeout).' : 'The API proxy request was aborted.')
+        : (e?.message ? 'Proxy request failed: ' + e.message : 'Could not reach the API proxy.');
+      throw new Error(detail + ' Check that the deployed Cloudflare Worker URL in window.ANVIL_PROXY_URL is reachable.');
     }
     if (r.ok) { res = r; usedMode = mode; break; }
     const raw = await readErrBody(r);
     if ((r.status === 400 || r.status === 422) && mode < 2 && !state.stopRequested) continue;
     clearTimeout(idle);
     throw apiError(r.status, raw);
+  }
+  if (!res && lastNetworkError) {
+    clearTimeout(idle);
+    throw new Error('Could not reach the API proxy: ' + (lastNetworkError.message || 'network request failed') + '.');
   }
   if (!res) { clearTimeout(idle); throw new Error('The provider rejected the request.'); }
   if (usedMode > 0 && opts.onFallback) opts.onFallback(usedMode);
