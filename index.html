@@ -1249,15 +1249,16 @@ function buildRequestMessages(userMsg, ai, flags) {
   const sys = sysBase() + buildProjectContext() +
     (flags?.continuation ? '\n\nYour previous response was cut off. Re-output EVERY affected file completely in the required format.' : '');
   const hist = [];
-  const msgs = state.messages.slice(0, -1);
-  for (const m of msgs.slice(-CFG.MAX_HISTORY_MSGS)) {
+  // Build history from earlier turns only. runTurn() adds the current user
+  // message before calling this function, so exclude that exact object here.
+  const previous = state.messages.filter(m => m !== userMsg && m.role !== 'system');
+  for (const m of previous.slice(-CFG.MAX_HISTORY_MSGS)) {
     if (m.role === 'user') hist.push({ role: 'user', content: userContentFor(m) });
-    else hist.push({ role: 'assistant', content: (m.text || '').slice(0, 4000) || '(Updated project files.)' });
+    else if (m.role === 'assistant') hist.push({ role: 'assistant', content: (m.text || '').slice(0, 4000) || '(Updated project files.)' });
   }
-  const curContent = userContentFor(userMsg);
-  // Always append the current user message. Do not deduplicate it against history:
-  // identical prompts are still new turns and must never be dropped.
-  hist.push({ role: 'user', content: curContent });
+  // The current user message must be the final message sent to the model.
+  // Never deduplicate it against earlier messages.
+  hist.push({ role: 'user', content: userContentFor(userMsg) });
   return [{ role: 'system', content: sys }, ...hist];
 }
 
