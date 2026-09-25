@@ -1057,6 +1057,20 @@ function foldSystem(msgs) {
   return [{ role: 'user', content: sys }, ...rest];
 }
 
+/* UNIVERSAL CLOUDFLARE API PROXY */
+function getProxyURL() {
+  const configured = String(window.ANVIL_PROXY_URL || '').trim();
+  return configured ? configured.replace(/\/$/, '') : '/api/proxy';
+}
+function proxyTargetURL(base) { return buildURL(base); }
+function proxyHeaders(apiKey, targetURL) {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + (apiKey || ''),
+    'X-Target-URL': targetURL
+  };
+}
+
 /* REAL AI STREAMING ENGINE */
 async function chatStream(opts) {
   const p = getActiveProvider();
@@ -1065,7 +1079,8 @@ async function chatStream(opts) {
   state.abort = ctrl; state.stopRequested = false;
   let timedOut = false, idle = null;
   const bump = () => { clearTimeout(idle); idle = setTimeout(() => { timedOut = true; ctrl.abort(); }, CFG.STREAM_TIMEOUT_MS); };
-  const url = buildURL(p.baseURL);
+  const targetURL = proxyTargetURL(p.baseURL);
+  const url = getProxyURL();
   const mkBody = mode => {
     let msgs = sanitizeMessages(opts.messages);
     if (mode >= 1) msgs = stripImages(msgs);
@@ -1090,10 +1105,7 @@ async function chatStream(opts) {
     try {
       r = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + (p.apiKey || '')
-        },
+        headers: proxyHeaders(p.apiKey, targetURL),
         body: JSON.stringify(mkBody(mode)),
         signal: ctrl.signal
       });
@@ -1102,7 +1114,7 @@ async function chatStream(opts) {
       if (state.stopRequested) throw new Error('STOPPED');
       throw new Error(timedOut
         ? 'The provider did not respond in time (idle timeout).'
-        : 'Network error or CORS restriction. Verify that the provider API Base URL and your API Key are valid.');
+        : 'Could not reach the API proxy. Deploy the Cloudflare Worker and set window.ANVIL_PROXY_URL if the Worker is on a different origin.');
     }
     if (r.ok) { res = r; usedMode = mode; break; }
     const raw = await readErrBody(r);
@@ -2476,21 +2488,21 @@ function renderSetupForm(p) {
   f.querySelector('#suTest').onclick = async () => {
     const line = f.querySelector('#suTestLine');
     line.hidden = false; line.className = 'test-line';
-    line.innerHTML = '<span class="spin sm"></span> Testing direct connection…';
+    line.innerHTML = '<span class="spin sm"></span> Testing connection through proxy…';
     const t0 = performance.now();
     try {
       const ctrl = new AbortController();
       const to = setTimeout(() => ctrl.abort(), 20000);
-      const res = await fetch(buildURL(q('baseURL').value), {
+      const res = await fetch(getProxyURL(), {
         method: 'POST', signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + q('apiKey').value.trim() },
+        headers: proxyHeaders(q('apiKey').value.trim(), proxyTargetURL(q('baseURL').value)),
         body: JSON.stringify({ model: q('model').value.trim(), messages: [{ role: 'user', content: 'Reply with: OK' }], max_tokens: 8, stream: false })
       });
       clearTimeout(to);
       if (!res.ok) throw apiError(res.status, await readErrBody(res));
       await res.json();
       line.className = 'test-line ok';
-      line.innerHTML = I('ok','ic-xs') + ' Connected directly — ' + Math.round(performance.now() - t0) + ' ms';
+      line.innerHTML = I('ok','ic-xs') + ' Connected through proxy — ' + Math.round(performance.now() - t0) + ' ms';
     } catch (e) {
       line.className = 'test-line err';
       line.innerHTML = I('errC','ic-xs') + ' ' + esc(e.message || 'Connection failed.');
