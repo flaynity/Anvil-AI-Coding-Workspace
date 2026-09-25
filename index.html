@@ -1086,7 +1086,9 @@ async function chatStream(opts) {
     let msgs = sanitizeMessages(opts.messages);
     if (mode >= 1) msgs = stripImages(msgs);
     if (mode >= 2) msgs = foldSystem(msgs);
-    const body = { model: p.model, messages: msgs, stream: true };
+    // Use the provider's normal Chat Completions response path. This avoids
+    // provider-specific streaming/demo adapters from replacing or mangling content.
+    const body = { model: p.model, messages: msgs, stream: false };
     if (mode < 2) {
       const t = opts.temp != null ? opts.temp
         : (p.temperature !== '' && p.temperature != null && !isNaN(+p.temperature) ? +p.temperature : null);
@@ -1271,6 +1273,8 @@ function buildRequestMessages(userMsg, ai, flags) {
   // never deduplicate it, and never let an empty assistant turn precede it.
   const current = userContentFor(userMsg);
   if (Array.isArray(current) || String(current || '').trim()) {
+    // Send the exact current request as a fresh user turn. Do not rewrite it,
+    // replace it with a continuation marker, or rely on provider-side history.
     hist.push({ role: 'user', content: current });
   } else {
     throw new Error('The current user message is empty.');
