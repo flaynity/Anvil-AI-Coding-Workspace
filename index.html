@@ -1897,7 +1897,7 @@ async function runTurn(userMsg, opts = {}) {
     if (userMsg.attachments?.length || state.pending.length) evAdd(ai, 'Files received');
     if (!opts.isRetry) commitAttachments(userMsg);
     if (state.project.files.length) evAdd(ai, 'Project structure analyzed', state.project.files.length + ' files');
-    const { messages } = buildRequestMessages(userMsg, ai, { continuation: opts.isContinue });
+    const messages = buildRequestMessages(userMsg, ai, { continuation: opts.isContinue });
     evAdd(ai, 'Context prepared', state.project.files.length ? state.project.files.length + ' files in context' : 'no project files');
     const p = getActiveProvider();
     evAdd(ai, 'Streaming from ' + (p?.name || 'AI Provider'));
