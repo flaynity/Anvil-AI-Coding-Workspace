@@ -1203,6 +1203,7 @@ function sysBase() {
   '- Only include files that actually need to change for this request. Never invent unrelated files.\n' +
   '- If the request needs no file changes (a question or explanation), reply with prose only and no file blocks.\n\n' +
   'ENGINEERING RULES:\n' +
+  '- The latest user message is the active request. Answer that message directly. Never claim that there is no current question or prior context when a user message is present.\n' +
   '- If project files are provided in context, they are the SOURCE OF TRUTH. Modify only what the request requires; preserve unrelated code, structure and functionality.\n' +
   '- Keep the project\'s existing conventions, formatting style and frameworks.\n' +
   '- Prefer minimal, correct changes. Keep HTML references, script tags and relative paths consistent with the file tree.\n' +
@@ -1254,10 +1255,9 @@ function buildRequestMessages(userMsg, ai, flags) {
     else hist.push({ role: 'assistant', content: (m.text || '').slice(0, 4000) || '(Updated project files.)' });
   }
   const curContent = userContentFor(userMsg);
-  const lastContent = hist.length ? hist[hist.length - 1].content : null;
-  if (!hist.length || JSON.stringify(lastContent) !== JSON.stringify(curContent)) {
-    hist.push({ role: 'user', content: curContent });
-  }
+  // Always append the current user message. Do not deduplicate it against history:
+  // identical prompts are still new turns and must never be dropped.
+  hist.push({ role: 'user', content: curContent });
   return [{ role: 'system', content: sys }, ...hist];
 }
 
