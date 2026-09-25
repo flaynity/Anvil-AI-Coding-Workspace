@@ -11,8 +11,8 @@
 :root{
   --bg:#FFFFFF; --ink:#0A0A0A; --ink-2:#3F3F46; --ink-3:#52525B; --ink-4:#8E8E96;
   --line:#E8E8EA; --line-2:#D9D9DE; --surface:#FAFAFA; --surface-2:#F4F4F5;
-  --ok:#1F1F23; --err:#1F1F23; --warn:#3F3F46;
-  --code-bg:#0B0B0D; --code-ink:#F1F1F3; --code-dim:#8E8E96;
+  --ok:#166534; --err:#991B1B; --warn:#92400E;
+  --code-bg:#101013; --code-ink:#D6D7DC; --code-dim:#4B4E58;
   --r-xl:26px;
   --shadow:0 2px 6px rgba(0,0,0,.05), 0 10px 30px rgba(0,0,0,.09);
   --float-bg:rgba(255,255,255,.88);
@@ -36,7 +36,7 @@ button{touch-action:manipulation; font-family:var(--sans)}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:8px;border:3px solid #fff}
 .code-surface::-webkit-scrollbar-thumb{background:#33343B;border:3px solid var(--code-bg)}
-.ic{width:19px;height:19px;min-width:19px;min-height:19px;flex:none;display:inline-block;vertical-align:middle;overflow:visible;color:currentColor}
+.ic{width:19px;height:19px;flex:none;display:block}
 .ic-s{width:15px;height:15px}
 .ic-xs{width:13px;height:13px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -96,7 +96,7 @@ button{touch-action:manipulation; font-family:var(--sans)}
 .pi:hover{background:var(--surface)}
 .pi .ic{width:16px;height:16px;color:var(--ink-3)}
 .pi.danger{color:var(--err)} .pi.danger .ic{color:var(--err)}
-.pi.danger:hover{background:var(--surface-2)}
+.pi.danger:hover{background:#FDF1F1}
 .pop-sep{height:1px;background:var(--line);margin:5px 9px}
 
 /* ============ CHAT (full-height, scrolls under floating bars) ============ */
@@ -132,7 +132,6 @@ button{touch-action:manipulation; font-family:var(--sans)}
 .m-label .ic{width:14px;height:14px}
 .m-model{color:var(--ink-4);font-weight:600;letter-spacing:.06em}
 .m-meta{font-size:11px;color:var(--ink-4)}
-.m-actions{display:flex;align-items:center;gap:4px;margin-top:2px;flex-wrap:wrap}.m-action{height:30px;padding:0 9px;border:1px solid transparent;background:transparent;border-radius:8px;color:var(--ink-3);font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px;cursor:pointer}.m-action:hover{background:var(--surface-2);color:var(--ink);border-color:var(--line)}.m-action .ic{width:14px;height:14px}
 
 /* prose */
 .prose{font-size:15px;line-height:1.7;color:var(--ink);word-break:break-word}
@@ -214,9 +213,9 @@ button{touch-action:manipulation; font-family:var(--sans)}
 .fcard-name{font-size:13.5px;font-weight:650;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
 .fcard-st{flex:none;color:var(--ink-3);display:flex;align-items:center}
 .bdg{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:1px 6px;border:1px solid var(--line-2);color:var(--ink-3)}
-.bdg.add{color:var(--ok);border-color:var(--line-2)}
-.bdg.mod{color:var(--warn);border-color:var(--line-2)}
-.bdg.fail{color:var(--err);border-color:var(--line-2)}
+.bdg.add{color:var(--ok);border-color:#CBE3D2}
+.bdg.mod{color:var(--warn);border-color:#EAD9C0}
+.bdg.fail{color:var(--err);border-color:#EFCBCB}
 .dots::after{content:'';animation:dots 1.2s steps(1,end) infinite}
 @keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
 .spin{width:15px;height:15px;border-radius:50%;border:2px solid var(--line-2);border-top-color:var(--ink);animation:rot .7s linear infinite;flex:none}
@@ -515,8 +514,8 @@ button{touch-action:manipulation; font-family:var(--sans)}
 .diff-wrap{flex:1;min-height:0;overflow:auto;background:#fff;padding:14px 14px 24px;display:none}
 .dl{display:flex;font-family:var(--mono);font-size:12.3px;line-height:1.65;white-space:pre;padding:0 10px;border-radius:4px}
 .dl .sign{width:20px;flex:none;user-select:none}
-.dl.del{background:var(--surface);color:#7F1D1D}
-.dl.add{background:var(--surface);color:var(--ink-2)}
+.dl.del{background:#FBEFEF;color:#7F1D1D}
+.dl.add{background:#EFF7F1;color:#14532D}
 .dl.ctx{color:var(--ink-3)}
 .dl.note{color:var(--ink-4);font-style:italic}
 .cv-foot{display:flex;gap:16px;padding:9px 18px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3);flex:none;background:#fff;flex-wrap:wrap}
@@ -776,10 +775,7 @@ const ICONS = {
   shield:'<path d="M12 3.5l7 2.6v5.2c0 4.6-3 7.8-7 9.2-4-1.4-7-4.6-7-9.2V6.1z"/><path d="M9 12l2.2 2.2 4.3-4.5"/>',
   zap:'<path d="M13 3L5 13.5h5.5L10 21l8-10.5h-5.5z"/>'
 };
-const I = (name, cls) => {
-  const body = ICONS[name] || ICONS.file || '<circle cx="12" cy="12" r="8"/>';
-  return '<svg class="ic ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
-};
+const I = (name, cls) => '<svg class="ic ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
 
 /* =====================================================================
    LANGUAGE / FILE META
@@ -1244,7 +1240,7 @@ function sysBase() {
   '- The latest user message is the active request. Answer that message directly. Never claim that there is no current question or prior context when a user message is present.\n' +
   '- If project files are provided in context, they are the SOURCE OF TRUTH. Modify only what the request requires; preserve unrelated code, structure and functionality.\n' +
   '- Keep the project\'s existing conventions, formatting style and frameworks.\n' +
-  '- Prefer minimal, correct changes. Keep HTML references, script tags and relative paths consistent with the file tree.\n' +\n  '- For implementation requests, produce runnable, complete code that directly satisfies the request; never replace real implementation with a mock, demo, placeholder, pseudo-code, or explanation-only answer.\n' +\n  '- When modifying an existing project, inspect and preserve the existing implementation and update the affected code instead of generating an unrelated replacement project.\n' +
+  '- Prefer minimal, correct changes. Keep HTML references, script tags and relative paths consistent with the file tree.\n' +
   '- Never claim to have run tests or tools you cannot run.\n' +
   '- Write your prose reply in the user\'s language.';
   if (state.webSearch) s += '\n- The user enabled web knowledge context: rely on your most up-to-date general knowledge and say so when uncertain about freshness.';
@@ -1691,7 +1687,6 @@ function renderAssistantInto(w, m) {
     '<div class="prose"></div>' +
     '<div class="files-slot"></div>' +
     '<div class="extras-slot"></div>' +
-    '<div class="m-actions"></div>' +
     '<div class="m-meta"></div>';
   const th = w.querySelector('.thought');
   th.querySelector('.th-head').onclick = () => {
@@ -1704,12 +1699,6 @@ function renderAssistantInto(w, m) {
   updateFileGroup(m);
   updateExtras(m);
   w.querySelector('.m-meta').textContent = m.role === 'assistant' && m.ts ? fmtTime(m.ts) : '';
-  const actions = w.querySelector('.m-actions');
-  if (actions) {
-    actions.innerHTML = m.text ? '<button class="m-action" data-ma="copy">' + I('copy','ic-xs') + 'Copy</button><button class="m-action" data-ma="retry">' + I('refresh','ic-xs') + 'Retry</button>' : '';
-    actions.querySelector('[data-ma="copy"]')?.addEventListener('click', async () => { if (await copyText(m.text || '')) toast('Response copied', 'ok'); });
-    actions.querySelector('[data-ma="retry"]')?.addEventListener('click', () => retryTurn(m));
-  }
 }
 function updateThoughtUI(m) {
   const w = nodeOf.get(m.id); if (!w) return;
@@ -1774,19 +1763,19 @@ function updateFileGroup(m) {
   if (!m.files?.length) { slot.innerHTML = ''; return; }
   const label = m.filesLabel || 'Generated Files';
   slot.innerHTML = '<div class="fgroup"><div class="fgroup-h">' + I('code','ic-xs') + esc(label) + ' · ' + m.files.length + '</div>' +
-    m.files.map((f, fi) => {
+    m.files.map(f => {
       const gen = f.status === 'generating';
       const action = gen ? 'Generating' : f.status === 'failed' ? 'Failed' : 'Generated';
       const st = gen ? '<span class="spin sm"></span>' : f.status === 'failed' ? I('warn') : I('check');
       const bdg = f.change === 'added' ? '<span class="bdg add">Added</span>' : f.change === 'modified' ? '<span class="bdg mod">Modified</span>' : f.status === 'failed' ? '<span class="bdg fail">Failed</span>' : '';
-      return '<button type="button" class="fcard' + (gen ? ' gen' : '') + (f.status === 'failed' ? ' dead' : '') + '" data-fidx="' + fi + '"' + (f.status === 'failed' ? ' aria-disabled="true"' : '') + '>' +
+      return '<button class="fcard' + (gen ? ' gen' : '') + (f.status === 'failed' ? ' dead' : '') + '" data-fpath="' + esc(f.path) + '"' + (f.status === 'failed' ? ' aria-disabled="true"' : '') + '>' +
         '<span class="fcard-ic">' + I(fileIcon(fileMeta(f.path))) + '</span>' +
         '<span class="fcard-m"><span class="fcard-top"><span>' + esc(fileMeta(f.path).lang) + '</span>' + bdg + '<span class="' + (gen ? 'dots' : '') + '">' + action + '</span></span>' +
         '<span class="fcard-name">' + esc(f.path) + '</span></span>' +
         '<span class="fcard-st">' + st + '</span></button>';
     }).join('') + '</div>';
   slot.querySelectorAll('.fcard').forEach(b => b.onclick = () => {
-    const f = m.files[Number(b.dataset.fidx)];
+    const f = m.files.find(x => x.path === b.dataset.fpath);
     if (!f) return;
     if (f.status === 'generating') { toast('Still generating this file…', 'err'); return; }
     if (f.status === 'failed') { toast('This file could not be generated.', 'err'); return; }
@@ -2010,12 +1999,6 @@ function finalizeTurn(ai) {
     if (!w.querySelector('.thought').dataset.touched) w.querySelector('.thought').classList.remove('open');
     w.querySelector('.prose').innerHTML = mdRender(ai.text);
     w.querySelector('.m-meta').textContent = fmtTime(Date.now());
-    const actions = w.querySelector('.m-actions');
-    if (actions) {
-      actions.innerHTML = ai.text ? '<button class="m-action" data-ma="copy">' + I('copy','ic-xs') + 'Copy</button><button class="m-action" data-ma="retry">' + I('refresh','ic-xs') + 'Retry</button>' : '';
-      actions.querySelector('[data-ma="copy"]')?.addEventListener('click', async () => { if (await copyText(ai.text || '')) toast('Response copied', 'ok'); });
-      actions.querySelector('[data-ma="retry"]')?.addEventListener('click', () => retryTurn(ai));
-    }
   }
   updateAgentCards(ai); updateFileGroup(ai); updateExtras(ai); updateThoughtUI(ai);
   scrollBottom();
@@ -2292,7 +2275,6 @@ function openProjectSheet() {
 let revealCancel = null;
 function cancelReveal() { if (revealCancel) { revealCancel(); revealCancel = null; } }
 function openViewer(path) {
-  path = safePath(path) || String(path || '');
   const f = getProjectFile(path);
   if (!f) { toast('File content is not available.', 'err'); return; }
   const ch = [...state.changedFiles].reverse().find(c => c.path === path);
@@ -2511,7 +2493,7 @@ function renderSetupForm(p) {
       ['off|Don\'t send','low|Low','medium|Medium','high|High'].map(o => { const [val, lb] = o.split('|'); return '<option value="' + val + '"' + ((p?.reasoningEffort || 'off') === val ? ' selected' : '') + '>' + lb + '</option>'; }).join('') +
     '</select></div>' +
     '<div class="fld"><label>Temperature</label><input data-f="temperature" type="number" min="0" max="2" step="0.1" value="' + (p ? esc(String(p.temperature ?? 0.7)) : '0.7') + '"></div>' +
-    '<div class="fld"><label>Max Tokens</label><input data-f="maxTokens" type="number" min="0" step="256" value="' + (p ? esc(String(p.maxTokens ?? 16384)) : '16384') + '"></div>' +
+    '<div class="fld"><label>Max Tokens</label><input data-f="maxTokens" type="number" min="0" step="256" value="' + (p ? esc(String(p.maxTokens ?? 8192)) : '8192') + '"></div>' +
     '</div>' +
     '<div class="test-line" id="suTestLine" hidden></div>' +
     '<div class="act-row" style="margin-top:14px">' +
@@ -2570,7 +2552,7 @@ function renderSetupForm(p) {
       const res = await fetch(getProxyURL(), {
         method: 'POST', signal: ctrl.signal,
         headers: proxyHeaders(q('apiKey').value.trim(), proxyTargetURL(q('baseURL').value)),
-        body: JSON.stringify({ model: q('model').value.trim(), messages: [{ role: 'user', content: 'Reply with: OK' }], max_tokens: 16, stream: false })
+        body: JSON.stringify({ model: q('model').value.trim(), messages: [{ role: 'user', content: 'Reply with: OK' }], max_tokens: 8, stream: false })
       });
       clearTimeout(to);
       if (!res.ok) throw apiError(res.status, await readErrBody(res));
