@@ -1243,22 +1243,38 @@ function userContentFor(m) {
   if (names.length) text += (text ? '\n\n' : '') + '[Attached: ' + names.join(', ') + (state.project.files.length ? ' — contents are provided in the project context]' : ']');
   const imgs = (m.images || []).slice(0, 2);
   if (imgs.length) return [{ type: 'text', text: text || 'Describe the attached image.' }, ...imgs.map(u => ({ type: 'image_url', image_url: { url: u } }))];
-  return text || '(continue)';
+  return text || (names.length ? 'Please help with the attached files.' : '');
 }
 function buildRequestMessages(userMsg, ai, flags) {
   const sys = sysBase() + buildProjectContext() +
     (flags?.continuation ? '\n\nYour previous response was cut off. Re-output EVERY affected file completely in the required format.' : '');
   const hist = [];
-  // Build history from earlier turns only. runTurn() adds the current user
-  // message before calling this function, so exclude that exact object here.
-  const previous = state.messages.filter(m => m !== userMsg && m.role !== 'system');
+  // Only send completed conversation turns as history. The assistant message
+  // created by runTurn() is still empty while the request is being prepared,
+  // so it must NEVER be sent to the provider as fake context.
+  const previous = state.messages.filter(m =>
+    m && m !== userMsg && m.role === 'user' ||
+    m && m !== userMsg && m.role === 'assistant' && String(m.text || '').trim()
+  );
   for (const m of previous.slice(-CFG.MAX_HISTORY_MSGS)) {
-    if (m.role === 'user') hist.push({ role: 'user', content: userContentFor(m) });
-    else if (m.role === 'assistant') hist.push({ role: 'assistant', content: (m.text || '').slice(0, 4000) || '(Updated project files.)' });
+    if (m.role === 'user') {
+      const content = userContentFor(m);
+      if (Array.isArray(content) || String(content || '').trim()) hist.push({ role: 'user', content });
+    } else if (m.role === 'assistant') {
+      const content = String(m.text || '').trim();
+      if (content) hist.push({ role: 'assistant', content: content.slice(0, 4000) });
+    }
   }
-  // The current user message must be the final message sent to the model.
-  // Never deduplicate it against earlier messages.
-  hist.push({ role: 'user', content: userContentFor(userMsg) });
+
+  // HARD GUARANTEE: the exact message typed by the user is always the final
+  // user message in the provider payload. Never replace it with a placeholder,
+  // never deduplicate it, and never let an empty assistant turn precede it.
+  const current = userContentFor(userMsg);
+  if (Array.isArray(current) || String(current || '').trim()) {
+    hist.push({ role: 'user', content: current });
+  } else {
+    throw new Error('The current user message is empty.');
+  }
   return [{ role: 'system', content: sys }, ...hist];
 }
 
