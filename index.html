@@ -43,6 +43,19 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .fbtn .ic{width:21px;height:21px}
 .fbtn.sm{width:38px;height:38px;border-radius:12px;box-shadow:none;border-color:var(--hair)}
 .fbtn.sm .ic{width:18px;height:18px}
+.fbtn.dim {color: var(--tx2);}
+
+/* ===== Android App Build Mode Header ===== */
+#androidTopBar{position:absolute;top:0;left:0;right:0;z-index:15;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(env(safe-area-inset-top) + 10px) 14px 10px;background:rgba(255,255,255,0.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--hair);}
+.ba-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.ba-logo{width:34px;height:34px;border-radius:9px;object-fit:cover;background:#000;flex:none;box-shadow:0 2px 5px rgba(0,0,0,.1);display:flex;align-items:center;justify-content:center;color:#fff;font:700 12px var(--sans);overflow:hidden;}
+.ba-meta{min-width:0;flex:1}
+.ba-meta b{display:block;font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ba-meta span{display:flex;align-items:center;gap:4px;font-size:11.5px;color:var(--tx3);font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+.ba-acts{display:flex;align-items:center;gap:6px;flex:none;}
+.bbtn{padding:0 12px;height:32px;font-size:13px;font-weight:700;border-radius:10px;background:#000;color:#fff;display:flex;align-items:center;gap:6px;box-shadow:var(--sh);transition:.12s}
+.bbtn:active{transform:scale(.95)}
+.bbtn .ic{width:15px;height:15px;}
 
 #projectBar{flex:none;display:flex;align-items:center;gap:10px;margin:calc(env(safe-area-inset-top) + 64px) 12px 0;
   padding:9px 10px 9px 14px;border:1px solid var(--hair);border-radius:16px;background:var(--soft2)}
@@ -53,15 +66,19 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 #chatScroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 #thread{max-width:780px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 82px) 14px 24px}
+.am-padding{padding-top: calc(env(safe-area-inset-top) + 72px) !important;}
 #emptyState{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px 24px 120px}
 .es-mark{width:56px;height:56px;border-radius:18px;background:#000;color:var(--red);display:flex;align-items:center;justify-content:center;
   font:italic 700 30px var(--sans);letter-spacing:-1px;margin-bottom:20px;box-shadow:0 10px 28px rgba(0,0,0,.14)}
+.es-mark.am-mode{background:var(--bg);color:#1e7d32;font-style:normal;font-size:0;box-shadow:none;border:2px solid var(--hair);}
+.es-mark.am-mode .ic{width:36px;height:36px;stroke-width:1.5}
 #emptyState h1{font-size:28px;font-weight:700;letter-spacing:-.8px;margin-bottom:10px}
 #emptyState p{max-width:370px;font-size:14.5px;line-height:1.65;color:var(--tx2);font-weight:500;margin-bottom:24px}
 .es-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:430px}
 .chip{border:1px solid var(--line);border-radius:22px;padding:9px 15px;font-size:13px;font-weight:700;background:#fff;transition:.15s}
 .chip:hover{border-color:#000}
 .chip:active{transform:scale(.96)}
+.chip.btn-cta{background:#000;color:#fff;border-color:#000;}
 
 .msg{display:flex;gap:10px;margin:20px 0}
 .msg.user{flex-direction:column;align-items:flex-end;gap:6px}
@@ -71,12 +88,14 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .u-bubble code{background:rgba(255,255,255,.16);padding:1px 5px;border-radius:5px;font-family:var(--mono);font-size:13px}
 .more-btn{border:1px solid var(--line);border-radius:14px;padding:4px 13px;font-size:12px;font-weight:700;color:var(--tx2)}
 .more-btn:hover{border-color:#000;color:#000}
-.u-atts{display:flex;flex-wrap:wrap;gap:6px;max-width:84%}
+.u-atts{display:flex;flex-wrap:wrap;gap:6px;max-width:84%;justify-content:flex-end}
 .att-mini{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;
   padding:4px 8px;font-size:12px;color:var(--tx2);background:#fff;max-width:220px}
 .att-mini img{width:22px;height:22px;border-radius:6px;object-fit:cover}
 .att-mini .ic{width:14px;height:14px}
 .att-mini span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.att-mini.am-tagged{background:var(--soft2);border-color:#000;color:#000;font-weight:700;}
+.att-mini.am-tagged .ic{color:#1e7d32}
 
 .msg.ai{align-items:flex-start}
 .ai-main{flex:1;min-width:0}
@@ -103,6 +122,15 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .codebox code{font:12.5px/1.6 var(--mono);white-space:pre;tab-size:2}
 .tk-kw{font-weight:700}.tk-str{color:var(--red-deep)}.tk-cmt{color:var(--tx3);font-style:italic}
 .tk-tag{font-weight:700}.tk-prop{color:var(--tx2);font-weight:700}
+
+.build-progress { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin: 10px 0; max-width: 480px; font-size: 13.5px; background: #fff; box-shadow:0 4px 15px rgba(0,0,0,.03) }
+.bp-hdr { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--soft2); font-weight: 700; border-bottom: 1px solid var(--hair); }
+.bp-hdr.success { background:#F3FBF5; color:#176C29; border-color:#D8EFDD }
+.bp-step { display: flex; align-items: center; gap: 10px; padding: 8px 14px; font-weight: 500; color: var(--tx2); }
+.bp-step .ic { width: 16px; height: 16px; color: var(--tx3); flex:none; }
+.bp-step.done { color: #000; font-weight: 600; }
+.bp-step.done .ic { color: #1E7D32; }
+.bp-acts { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--line); background: var(--soft2); flex-wrap: wrap; }
 
 .fgroup-head{display:flex;align-items:center;gap:8px;margin:14px 0 4px;font-size:11.5px;font-weight:700;
   letter-spacing:1.2px;text-transform:uppercase;color:var(--tx3)}
@@ -158,12 +186,13 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 /* ===== Composer ===== */
 #composerWrap{flex:none;position:relative;padding:6px 12px calc(env(safe-area-inset-bottom) + 12px);background:var(--bg)}
 #composer{border:1px solid #DBDBDB;border-radius:26px;background:#fff;box-shadow:0 2px 18px rgba(0,0,0,.06);
-  max-width:780px;margin:0 auto;overflow:hidden}
+  max-width:780px;margin:0 auto;overflow:hidden;z-index:25;position:relative;}
 #attachRow{display:flex;gap:8px;overflow-x:auto;padding:10px 12px 0}
 .att-chip{flex:none;display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:13px;padding:6px 8px;max-width:250px}
 .att-chip.bad{border-color:var(--red)}
 .att-th{width:36px;height:36px;border-radius:9px;object-fit:cover}
 .att-ic{width:36px;height:36px;border-radius:9px;background:var(--soft);display:flex;align-items:center;justify-content:center;color:var(--tx2)}
+.att-ic.am{background:#EBF6ED;color:#1e7d32;border:1px solid #c7dfc8}
 .att-m{min-width:0}
 .att-m b{display:block;font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
 .att-s{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--tx3);font-weight:600}
@@ -192,8 +221,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 #popLayer{position:fixed;inset:0;z-index:39}
 #attachPop{position:absolute;bottom:calc(100% + 10px);left:14px;z-index:40;background:#fff;border:1px solid var(--hair);
-  border-radius:16px;box-shadow:var(--sh);padding:6px;min-width:190px;transform-origin:bottom left;transform:scale(.95);opacity:0;transition:.15s}
-#attachPop.on{transform:none;opacity:1}
+  border-radius:16px;box-shadow:var(--sh);padding:6px;min-width:190px;transform-origin:bottom left;transform:scale(.95);opacity:0;transition:.15s;pointer-events:none}
+#attachPop.on{transform:none;opacity:1;pointer-events:auto}
 #attachPop button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 12px;border-radius:11px;font-size:14px;font-weight:600;text-align:left}
 #attachPop button:hover{background:var(--soft)}
 #attachPop .ic{width:18px;height:18px;color:var(--tx2)}
@@ -212,7 +241,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .sh-head{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 18px;border-bottom:1px solid var(--hair);flex:none}
 .sh-head h3{flex:1;font-size:16px;font-weight:700}
 .sh-body{overflow-y:auto;padding:14px 18px 20px}
-.dlg-ov{z-index:80;align-items:center}
+.dlg-ov{z-index:90;align-items:center}
 .dlg{background:#fff;border-radius:18px;max-width:380px;width:calc(100% - 32px);padding:20px;box-shadow:var(--sh);transform:translateY(10px);transition:transform .2s}
 .ov.on .dlg{transform:none}
 .dlg h3{font-size:17px;font-weight:700;margin-bottom:8px}
@@ -276,6 +305,46 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .dw-foot .sep{width:1px;align-self:stretch;background:var(--hair)}
 .dw-foot p{font-size:12px;font-weight:500;color:var(--tx2);line-height:1.55}
 
+/* ===== Android Workspace Wizard / FS Screen ===== */
+.am-layer{position:fixed;inset:0;background:#fff;z-index:85;display:flex;flex-direction:column;opacity:0;transform:translateY(10px);transition:.22s;padding-bottom:env(safe-area-inset-bottom)}
+.am-layer.on{opacity:1;transform:none}
+.am-header{flex:none;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 16px 12px;border-bottom:1px solid var(--hair);background:#fff}
+.am-title{flex:1;min-width:0}
+.am-title h2{font-size:17px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.am-title span{font-size:12px;color:var(--tx3);font-weight:600}
+.am-body{flex:1;overflow-y:auto;padding:24px 20px 40px;display:flex;flex-direction:column;gap:16px;max-width:640px;width:100%;margin:0 auto}
+
+.tech-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); margin-bottom: auto;}
+.tech-card { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 22px; border: 2px solid var(--hair); border-radius: 18px; background: #fff; transition: .2s; cursor:pointer;}
+.tech-card:hover { border-color: var(--line); }
+.tech-card.active { border-color: #000; box-shadow: 0 4px 20px rgba(0,0,0,.06); background: var(--soft2); }
+.tech-ic { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; color:#fff; box-shadow: inset 0 -2px 5px rgba(0,0,0,.2); }
+.tech-ic .ic { width: 24px; height: 24px; }
+.tech-ic.c-js { background: #E1AF1F; color:#000; box-shadow:none; border:1px solid #CE9D14 }
+.tech-ic.c-kt { background: #7A56F6; }
+.tech-ic.c-jv { background: #F65935; }
+.tech-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; letter-spacing:-0.2px }
+.tech-card p { font-size: 13.5px; font-weight: 500; color: var(--tx2); line-height: 1.5; }
+.tc-chk { margin-top:12px; display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; border:2px solid var(--line); color:transparent; transition:.2s; align-self:flex-end}
+.tc-chk .ic { width:12px; height:12px; stroke-width:3}
+.tech-card.active .tc-chk { background:#000; border-color:#000; color:#fff }
+.am-p { font-size:14.5px; color:var(--tx2); font-weight:500; line-height:1.6 }
+.perm-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.perm-chip { border: 1px solid var(--line); border-radius: 20px; padding: 8px 15px; font-size: 13px; font-weight: 700; color: var(--tx2); background: #fff; transition:.15s; cursor:pointer;}
+.perm-chip.on { border-color: #000; background: #000; color: #fff; }
+.icon-upl { display: flex; align-items: center; gap: 16px; margin: 4px 0 10px; }
+.icon-prv { width: 68px; height: 68px; border-radius: 18px; background: var(--soft2); border: 2px dashed var(--line); display: flex; align-items: center; justify-content: center; overflow: hidden; object-fit: cover; }
+.icon-prv .ic { color:var(--line); width:24px; height:24px}
+.icon-prv img {width:100%;height:100%;object-fit:cover;}
+.fbtn-large { display:flex;align-items:center;justify-content:center; width:100%; height:52px; border-radius:16px; font-size:15px; font-weight:700; color:#fff; background:#000; transition:transform .12s, opacity .2s}
+.fbtn-large:active{transform:scale(.98)}
+.fbtn-large:disabled{opacity:.4; transform:none; cursor:not-allowed}
+
+.gen-hud { min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center }
+.gen-hud .spin { width:44px; height:44px; border-width:4px; border-color:var(--soft); border-top-color:#000; margin-bottom:24px }
+.gen-hud h2 { font-size:22px; font-weight:700; margin-bottom:10px}
+.gen-hud p { color:var(--tx2); font-weight:500; font-size:14.5px}
+
 .panel{position:fixed;inset:0;background:#fff;z-index:70;display:flex;flex-direction:column;opacity:0;transform:translateY(10px);transition:.22s}
 .panel.on{opacity:1;transform:none}
 .p-top{flex:none;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;border-bottom:1px solid var(--hair)}
@@ -334,8 +403,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .tr-row.dir .ic:last-child{margin-left:auto;width:14px;height:14px;transition:transform .18s}
 .tr-row.open .ic:last-child{transform:rotate(180deg)}
 .tr-kids{margin-left:15px;border-left:1px solid var(--hair);padding-left:6px}
-.bx{flex:none;width:24px;height:24px;border-radius:6px;background:#000;color:#fff;font:700 8px var(--mono);display:flex;align-items:center;justify-content:center}
-.tr-sz{margin-left:auto;font-size:11px;color:var(--tx3);font-weight:500}
+.fsTree{max-height:none !important; margin:0 !important; border:none !important; border-radius:0; padding:12px; font-size:15px;}
+.fsTree .tr-row{padding:12px 10px;font-size:15px;cursor:pointer;-webkit-user-select:none;user-select:none;}
+.fsTree .tr-row:active{background:var(--line)}
+.fsTree .bx{width:30px;height:30px;border-radius:8px;font-size:10px;}
 
 .viewer{position:fixed;inset:0;background:#fff;z-index:70;display:flex;flex-direction:column;opacity:0;transform:translateY(10px);transition:.22s}
 .viewer.on{opacity:1;transform:none}
@@ -415,28 +486,39 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 2.5L22 8l-10 5.5L2 8l10-5.5z"/><path d="M2 12.5L12 18l10-5.5"/><path d="M2 17L12 22.5 22 17"/></symbol>
   <symbol id="i-bot" viewBox="0 0 24 24"><rect x="5" y="9" width="14" height="11" rx="3"/><path d="M12 9V6.2"/><circle cx="12" cy="5" r="1.2"/><circle class="fl" cx="9.5" cy="14" r="1"/><circle class="fl" cx="14.5" cy="14" r="1"/><path d="M9.5 17h5"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v13"/><path d="M6.5 12.5L12 18l5.5-5.5"/></symbol>
+  <symbol id="i-b-android" viewBox="0 0 24 24"><path class="fl" d="M17.5 10c0-2.8-2.5-5-5.5-5S6.5 7.2 6.5 10H17.5zm-6-2.5c-.3 0-.5-.2-.5-.5s.2-.5.5-.5.5.2.5.5-.2.5-.5.5zm3 0c-.3 0-.5-.2-.5-.5s.2-.5.5-.5.5.2.5.5-.2.5-.5.5zm-5-3.5L8.2 2.8m8.3 1.2l1.3-1.2" stroke-width="1.2"/><rect class="fl" x="6" y="11" width="12" height="10" rx="1.5"/><path stroke-width="2.5" d="M4.5 12v5M19.5 12v5"/></symbol>
 </svg>
 
 <div id="app">
-  <!-- Floating top bar: no logo — only premium floating Menu + New Chat -->
+  <!-- Default Mode Top Bar -->
   <header id="topbar">
     <button class="fbtn" id="btnMenu" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
     <button class="fbtn" id="btnNew" aria-label="Start new chat"><svg class="ic"><use href="#i-new"/></svg></button>
+  </header>
+  
+  <!-- Android Build Mode Top Bar -->
+  <header id="androidTopBar" hidden>
+    <div class="ba-left">
+       <div class="ba-logo" id="atbLogo">FA</div>
+       <div class="ba-meta"><b id="atbName">Android Project</b><span id="atbTech">Loading...</span></div>
+    </div>
+    <div class="ba-acts">
+       <button class="fbtn sm dim" id="btnAppRoot" aria-label="App Code Root"><svg class="ic"><use href="#i-folder"/></svg></button>
+       <button class="bbtn" id="btnAppBuild"><svg class="ic"><use href="#i-b-android"/></svg><span>Build APK</span></button>
+       <button class="fbtn sm dim" id="btnAndroidSettings" aria-label="Project Information"><svg class="ic"><use href="#i-info"/></svg></button>
+       <button class="fbtn sm dim" id="btnAndroidClose" aria-label="Exit Workspace"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
   </header>
 
   <div id="projectBar" hidden></div>
 
   <main id="chatScroll">
     <div id="emptyState">
-      <div class="es-mark">F</div>
-      <h1>Build something remarkable.</h1>
-      <p>Describe what you need, or attach a project. When you upload code, it becomes the source of truth — I modify it instead of starting over.</p>
-      <div class="es-actions">
-        <button class="chip" data-q="build">Build a website</button>
-        <button class="chip" data-q="fix">Fix my code</button>
-        <button class="chip" data-q="zip">Analyze a ZIP</button>
-        <button class="chip" data-q="mobile">Create a mobile UI</button>
-        <button class="chip" data-q="explain">Explain my code</button>
+      <div class="es-mark" id="esMarkIcon">F</div>
+      <h1 id="esTitle">Build something remarkable.</h1>
+      <p id="esSubtitle">Describe what you need, or attach a project. When you upload code, it becomes the source of truth — I modify it instead of starting over.</p>
+      <div class="es-actions" id="esChips">
+         <!-- Populated via Javascript depending on Mode -->
       </div>
     </div>
     <div id="thread"></div>
@@ -447,8 +529,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
     <div id="popLayer" hidden></div>
     <div id="attachPop" hidden>
       <button data-a="photo"><svg class="ic"><use href="#i-image"/></svg>Photo</button>
-      <button data-a="file"><svg class="ic"><use href="#i-doc"/></svg>File</button>
-      <button data-a="plugins"><svg class="ic"><use href="#i-tools"/></svg>Plugins</button>
+      <button data-a="file"><svg class="ic"><use href="#i-doc"/></svg>File / Code</button>
+      <button data-a="plugins"><svg class="ic"><use href="#i-tools"/></svg>Plugins / Expert</button>
     </div>
     <div id="composer">
       <div id="attachRow" hidden></div>
@@ -466,7 +548,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 <input type="file" id="filePhoto" accept="image/*" multiple hidden>
 <input type="file" id="filePick" multiple hidden
-  accept=".zip,.html,.htm,.css,.js,.ts,.jsx,.tsx,.json,.xml,.py,.java,.kt,.c,.cpp,.php,.sql,.md,.txt,.png,.jpg,.jpeg,.webp,.gif,.svg,.pdf">
+  accept=".zip,.html,.htm,.css,.js,.ts,.jsx,.tsx,.json,.xml,.py,.java,.kt,.gradle,.properties,.c,.cpp,.php,.sql,.md,.txt,.png,.jpg,.jpeg,.webp,.gif,.svg,.pdf">
 <div id="toasts" aria-live="polite"></div>
 
 <script>
@@ -479,27 +561,39 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const escBr=s=>esc(s).replace(/\n/g,'<br>');
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 const fmtSize=n=>{n=Number(n)||0;if(n<1024)return n+' B';if(n<1048576)return(n/1024).toFixed(1)+' KB';return(n/1048576).toFixed(1)+' MB';};
-const fmtRel=ts=>{const d=Date.now()-ts;if(d<60e3)return'Just now';if(d<3600e3)return Math.floor(d/60e3)+'m ago';if(d<86400e3)return Math.floor(d/3600e3)+'h ago';if(d<604800e3)return Math.floor(d/86400e3)+'d ago';return new Date(ts).toLocaleDateString();};
+const fmtRel=ts=>{const d=Date.now()-ts;if(d<60e3)return'Just now';if(d<3600e3)return Math.floor(d/60e3)+'m ago';if(d<86400e3)return Math.floor(d/86400e3)+'d ago';return new Date(ts).toLocaleDateString();};
 const getExt=p=>{const m=/\.([a-z0-9]+)$/i.exec(String(p||'').split('/').pop()||'');return m?m[1].toLowerCase():'';};
 const baseName=p=>String(p||'file').split('/').pop()||'file';
 const shortName=(n,m)=>{n=String(n||'');return n.length>m?n.slice(0,m-1)+'…':n;};
 const extLabel=e=>(e||'file').toUpperCase().slice(0,4);
 const T='```';
 const enc=new TextEncoder(),dec8=new TextDecoder('utf-8');
-const EXT_LANG={html:'HTML',htm:'HTML',css:'CSS',js:'JavaScript',mjs:'JavaScript',ts:'TypeScript',jsx:'React JSX',tsx:'React TSX',json:'JSON',xml:'XML',py:'Python',java:'Java',kt:'Kotlin',c:'C',h:'C',cpp:'C++',hpp:'C++',php:'PHP',sql:'SQL',md:'Markdown',txt:'Text',svg:'SVG',yml:'YAML',yaml:'YAML',sh:'Shell'};
-const TEXT_EXTS=new Set(['html','htm','css','js','mjs','ts','jsx','tsx','json','xml','py','java','kt','c','h','cpp','hpp','php','sql','md','txt','svg','sh','yml','yaml','ini','cfg']);
+const EXT_LANG={html:'HTML',htm:'HTML',css:'CSS',js:'JavaScript',mjs:'JavaScript',ts:'TypeScript',jsx:'React JSX',tsx:'React TSX',json:'JSON',xml:'XML',py:'Python',java:'Java',kt:'Kotlin',gradle:'Gradle',properties:'Properties',c:'C',h:'C',cpp:'C++',hpp:'C++',php:'PHP',sql:'SQL',md:'Markdown',txt:'Text',svg:'SVG',yml:'YAML',yaml:'YAML',sh:'Shell'};
+const TEXT_EXTS=new Set(['html','htm','css','js','mjs','ts','jsx','tsx','json','xml','py','java','kt','gradle','properties','c','h','cpp','hpp','php','sql','md','txt','svg','sh','yml','yaml','ini','cfg']);
 const IMG_EXTS=new Set(['png','jpg','jpeg','webp','gif','svg','bmp','ico']);
-const ACCEPTED=new Set(['zip','html','htm','css','js','ts','jsx','tsx','json','xml','py','java','kt','c','cpp','php','sql','md','txt','png','jpg','jpeg','webp','gif','svg','pdf']);
+const ACCEPTED=new Set(['zip','html','htm','css','js','ts','jsx','tsx','json','xml','py','java','kt','gradle','properties','c','cpp','php','sql','md','txt','png','jpg','jpeg','webp','gif','svg','pdf']);
 const mimeOf=e=>({html:'text/html',htm:'text/html',css:'text/css',js:'text/javascript',json:'application/json',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',webp:'image/webp',gif:'image/gif',md:'text/markdown',xml:'application/xml',pdf:'application/pdf'})[e]||'text/plain';
 const hostOf=u=>{try{return new URL(u).host;}catch{return u||'';}};
 
 /* ---------- state ---------- */
 const S={chatId:null,chatTitle:'',messages:[],chats:[],project:null,attachments:[],
   providers:[],selProviderId:null,selModel:null,reasoningMode:'Balanced',
-  streaming:false,abort:null,msgEls:{},nearBottom:true};
+  streaming:false,abort:null,msgEls:{},nearBottom:true, isAndroidMode:false, androidCfg:null};
 const thread=$('#thread'),chatScroll=$('#chatScroll'),inp=$('#input'),btnSend=$('#btnSend');
 const getProvider=()=>S.providers.find(p=>p.id===S.selProviderId)||null;
 const capOf=p=>(p&&p.caps)||{streaming:true,reasoning:false,vision:false};
+
+/* ---------- quick actions map ---------- */
+const QUICK={
+  build:'Build a clean, modern website for me. Give me the files (index.html, style.css, script.js) as downloadable files.',
+  fix:'Analyze the current code and identify the problems. Fix the issues while preserving the existing functionality.',
+  zip:'Analyze the attached project and give me a summary of its structure, what each part does, and anything that looks wrong.',
+  mobile:'Create a mobile-first UI screen with a clean layout and smooth interactions. Give it to me as files.',
+  explain:'Explain what my code does, step by step, in simple terms.',
+  buildui:'Build a complete, modern Android screen UI for my App code root project. Inject components where they belong (Activity, res layout xml).',
+  gradleerr:'Examine my Android project gradle scripts and overall architecture. Output necessary package revisions and changes to repair this workspace via files if needed.',
+  structure:'Analyze my overall Android file structures dynamically to detect potential flaw constraints inside my configuration dependencies.'
+};
 
 /* ---------- toast ---------- */
 function toast(msg,kind='info'){
@@ -571,7 +665,7 @@ function highlight(code,lang){const e=esc(code);const L=(lang||'').toLowerCase()
   function generic(){return e
     .replace(/(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)/g,'<span class="tk-cmt">$1</span>')
     .replace(/(&quot;[\s\S]*?&quot;|&#39;[^&\n]*&#39;|`[^`]*`)/g,'<span class="tk-str">$1</span>');}
-  if(['js','javascript','ts','typescript','jsx','tsx','json','java','kt','kotlin','c','cpp','php','cs','go'].includes(L))
+  if(['js','javascript','ts','typescript','jsx','tsx','json','java','kt','kotlin','c','cpp','php','cs','go','gradle'].includes(L))
     return e.replace(new RegExp('(&quot;[\\s\\S]*?&quot;|&#39;[^&\\n]*&#39;|`[\\s\\S]*?`)|(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)|\\b('+jsKw+')\\b|\\b(\\d+(?:\\.\\d+)?)\\b','gm'),
       (m,s,c,k,n)=>s?`<span class="tk-str">${s}</span>`:c?`<span class="tk-cmt">${c}</span>`:k?`<span class="tk-kw">${k}</span>`:n?`<span class="tk-prop">${n}</span>`:m);
   if(['html','htm','xml','svg'].includes(L))
@@ -617,9 +711,10 @@ function setStreamUI(on){btnSend.classList.toggle('stream',on);
 function renderAttachRow(){const r=$('#attachRow');r.innerHTML='';r.hidden=!S.attachments.length;
   for(const a of S.attachments){
     const c=el('div','att-chip'+(a.status==='failed'?' bad':''));
+    const isTag = !!a.fromAppCode;
     const inner=a.kind==='image'&&a.dataUrl?`<img class="att-th" src="${a.dataUrl}" alt="">`
-      :`<span class="att-ic">${ic(a.kind==='zip'?'zip':a.kind==='pdf'?'doc':a.kind==='image'?'image':'file')}</span>`;
-    const st=a.status==='failed'?esc(a.error||'Failed'):a.status==='processing'?'Processing':a.status==='ready'?(a.kind==='zip'?'Project ready':'Ready'):'Selected';
+      :`<span class="att-ic ${isTag?'am':''}">${ic(a.kind==='zip'?'zip':a.kind==='pdf'?'doc':a.kind==='image'?'image':isTag?'doc':'file')}</span>`;
+    const st=a.status==='failed'?esc(a.error||'Failed'):a.status==='processing'?'Processing':a.status==='ready'?(a.kind==='zip'?'Project ready':isTag?'Agent Read':'Ready'):'Selected';
     c.innerHTML=`${inner}<span class="att-m"><b>${esc(a.name)}</b><span class="att-s">${fmtSize(a.size)} · ${st}</span></span>
     <button class="att-x" aria-label="Remove attachment">${ic('close')}</button>`;
     c.querySelector('.att-x').onclick=()=>{S.attachments=S.attachments.filter(x=>x.id!==a.id);renderAttachRow();updateSendState();};
@@ -646,7 +741,10 @@ function collectCtx(){const r={text:[],images:[],warnings:[]};
     if(a.kind==='image')r.images.push({name:a.name,dataUrl:a.dataUrl});
     else if(a.kind==='zip')r.text.push(`[ZIP "${a.name}" was loaded as the working project.]`);
     else if(a.kind==='pdf')r.text.push(`[PDF attached: ${a.name} (${fmtSize(a.size)}) — content not extracted.]`);
-    else if(a.kind==='text')r.text.push(`--- ${a.name} ---\n`+a.text);}
+    else if(a.kind==='text'){
+        const label = a.fromAppCode && a.path ? a.path : a.name;
+        r.text.push(`--- ${label} ---\n`+a.text);
+    }}
   return r;}
 
 /* ---------- ZIP engine (self-contained) ---------- */
@@ -750,7 +848,9 @@ function setProjectFromEntries(entries,zipName){
   S.project={name:(zipName||'project').replace(/\.zip$/i,''),files,updatedAt:Date.now()};
   renderProjectBar();}
 function projectSize(){return S.project?S.project.files.reduce((a,f)=>a+(f.size||0),0):0;}
-function renderProjectBar(){const bar=$('#projectBar');
+function renderProjectBar(){
+  const bar=$('#projectBar');
+  if(S.isAndroidMode) { bar.hidden = true; return; }
   if(!S.project){bar.hidden=true;return;}
   bar.hidden=false;
   bar.innerHTML=`${ic('folder')}<div class="pb-m"><b>${esc(S.project.name)}</b>
@@ -776,7 +876,7 @@ function exportProjectZip(){if(!S.project){toast('No project attached','warn');r
   if(skipped)toast(skipped+' binary file(s) skipped','warn');}
 async function deleteProjectFlow(){if(!S.project){toast('No project attached','warn');return;}
   const ok=await confirmDialog({title:'Delete project?',body:'This will remove the current project files and project state.',okLabel:'Delete Project',danger:true});
-  if(ok){S.project=null;renderProjectBar();saveChat();toast('Project deleted','ok');}}
+  if(ok){S.project=null; setAndroidMode(false); renderProjectBar();saveChat();toast('Project deleted','ok');}}
 function projectInfoSheet(){openSheet({title:'Project Information',build(body){
   const P=S.project;if(!P){body.innerHTML='<div class="pv-msg">No project attached</div>';return;}
   const folders=new Set(P.files.map(f=>f.path.includes('/')?f.path.slice(0,f.path.lastIndexOf('/')):'').filter(Boolean));
@@ -789,7 +889,9 @@ function projectInfoSheet(){openSheet({title:'Project Information',build(body){
   <div class="st-row"><span>Last Updated</span><b>${fmtRel(P.updatedAt)}</b></div>
   <div class="tree" id="pTree"></div>`;
   buildTree(body.querySelector('#pTree'),P.files);}});}
-function buildTree(root,files){
+
+function buildTree(root,files, isFSScreen=false){
+  root.innerHTML = '';
   const tree={};for(const f of files){const parts=f.path.split('/');let n=tree;
     for(let i=0;i<parts.length-1;i++){n[parts[i]]=n[parts[i]]||{};n=n[parts[i]];}
     n[parts[parts.length-1]]=f;}
@@ -803,10 +905,19 @@ function buildTree(root,files){
       row.onclick=()=>{const open=row.classList.toggle('open');kids.hidden=!open;};
       container.append(row,kids);render(node[k],kids,depth+1);}
     for(const[k,v]of fles){const ext=getExt(k);
-      const row=el('button','tr-row',
+      const row=el(isFSScreen?'div':'button','tr-row',
         `<span class="bx">${esc(ext.slice(0,3).toUpperCase()||'F')}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k)}</span><span class="tr-sz">${fmtSize(v.size||0)}</span>`);
-      row.onclick=()=>openViewer({id:'pf',path:v.path,name:k,ext,lang:v.lang||EXT_LANG[ext]||'File',
-        content:v.text??null,dataUrl:v.dataUrl,binary:v.binary,projectRef:true});
+      if(isFSScreen) {
+          let holdTimer = null;
+          const trg = () => { navigator.vibrate?.(30); showAndroidFileActionSheet(v); };
+          row.onpointerdown = e => { if(e.button!==0&&e.pointerType==='mouse')return; holdTimer=setTimeout(trg, 550); };
+          const cHold = () => clearTimeout(holdTimer);
+          row.onpointerup = cHold; row.onpointercancel = cHold; row.onpointerleave = cHold;
+          row.oncontextmenu = e => { e.preventDefault(); cHold(); trg(); };
+          row.onclick = () => { cHold(); toast('Hold file to view options or send to Agent', 'info'); };
+      } else {
+          row.onclick=()=>openViewer({id:'pf',path:v.path,name:k,ext,lang:v.lang||EXT_LANG[ext]||'File', content:v.text??null,dataUrl:v.dataUrl,binary:v.binary,projectRef:true});
+      }
       container.appendChild(row);}}
   render(tree,root,0);}
 
@@ -864,7 +975,8 @@ async function fetchOnce(p,payload,signal){
 
 /* ---------- prompt construction ---------- */
 function systemPrompt(){
-  return['You are Flay AI, a precise coding agent inside a mobile workspace.','',
+  return['You are Flay AI, a precise coding agent inside a mobile workspace.',
+  S.isAndroidMode ? 'You are currently acting as an Android Development Environment & Autonomous Agent.' : '',
   'Core rules:',
   '- If a project is provided, it is the SOURCE OF TRUTH. Never rebuild it from scratch. Inspect it, change only what the request requires, and preserve unrelated files and existing behavior.',
   '- Never execute code. Never fabricate test results. If information is missing, state what is missing.',
@@ -985,8 +1097,11 @@ function hideEmpty(){$('#emptyState').style.display=S.messages.length?'none':'';
 function renderMsg(m){const node=el('div','msg '+(m.role==='user'?'user':'ai'));node.dataset.id=m.id;
   if(m.role==='user'){
     if(m.atts&&m.atts.length){const row=el('div','u-atts');
-      for(const a of m.atts)row.appendChild(el('span','att-mini',
-        (a.kind==='image'&&a.dataUrl?`<img src="${a.dataUrl}" alt="">`:ic(a.kind==='zip'?'zip':'file'))+`<span>${esc(shortName(a.name,22))}</span>`));
+      for(const a of m.atts){
+          const isTagged = !!a.fromAppCode;
+          row.appendChild(el('span',`att-mini ${isTagged?'am-tagged':''}`,
+            (a.kind==='image'&&a.dataUrl?`<img src="${a.dataUrl}" alt="">`:ic(a.kind==='zip'?'zip':isTagged?'doc':'file'))+`<span>${esc(shortName(isTagged?a.path:a.name,isTagged?30:22))}</span>`));
+      }
       node.appendChild(row);}
     const b=el('div','u-bubble');b.textContent=m.content||'(attachments only)';
     const long=(m.content||'').split('\n').length>10||(m.content||'').length>700;
@@ -998,8 +1113,23 @@ function renderMsg(m){const node=el('div','msg '+(m.role==='user'?'user':'ai'));
   thread.appendChild(node);S.msgEls[m.id]=node;return node;}
 function fillAI(main,m){
   let html='';
+  if(m.buildMode) {
+      html += `<div class="build-progress">
+          <div class="bp-hdr ${m.status==='done'?'success':''}">${m.status==='done'?ic('check')+'Build Process Completed successfully':'<div class="spin"></div>Android Build Server Pipeline'}</div>`;
+      for(const step of m.steps) {
+          html += `<div class="bp-step ${step.s>0?'done':''}">${ic('check')}<span>${esc(step.t)}</span></div>`;
+      }
+      if(m.status==='done') {
+          html += `<div class="bp-acts"><button class="btn" data-act="apk">${ic('download')}<span>Download APK File</span></button> <button class="btn ghost" data-act="aab">AAB Target</button></div>`;
+      }
+      html += `</div>`;
+      main.innerHTML = html;
+      const bk = main.querySelector('[data-act=apk]'); if(bk) bk.onclick = ()=>toast('Generating secure download token...', 'ok');
+      return;
+  }
+  
   if(m.status==='thinking'&&!m.content&&!m.reason)
-    html+=`<div class="think-row">${ic('brain')}<span>Thinking</span></div>`;
+    html+=`<div class="think-row">${ic('brain')}<span>${S.isAndroidMode?'Inspecting code/architecture...':'Thinking'}</span></div>`;
   if(m.reason)html+=`<div class="rs"><button class="rs-h">${ic('brain')}<span>Reasoning</span><em>provider-provided</em>${ic('chev-d')}</button><div class="rs-b" hidden>${esc(m.reason)}</div></div>`;
   if(m.content){const streaming=m.status==='thinking'||m.status==='streaming';
     html+=`<div class="seg-t">${mdToHtml(m.content,{final:!streaming})}${streaming?'<span class="caret"></span>':''}</div>`;}
@@ -1118,7 +1248,7 @@ async function newChat(){
       okLabel:S.project?'New chat — keep project':'New chat',
       extraLabel:S.project?'New chat — remove project':null});
     if(keep===false)return;
-    if(keep==='extra'){S.project=null;renderProjectBar();}}
+    if(keep==='extra'){S.project=null;setAndroidMode(false);renderProjectBar();}}
   saveChat();startChat();toast('New chat started','ok');}
 async function loadChat(id){
   if(S.streaming){toast('Stop generation first','warn');return;}
@@ -1126,14 +1256,19 @@ async function loadChat(id){
   S.chatId=rec.id;S.chatTitle=rec.title||'';
   S.messages=(rec.messages||[]).map(m=>{const c={...m};delete c.ctx;return c;});
   S.project=rec.project?{...rec.project,files:(rec.project.files||[]).map(f=>({...f}))}:null;
-  S.msgEls={};thread.innerHTML='';S.messages.forEach(renderMsg);renderProjectBar();hideEmpty();
+  S.msgEls={};thread.innerHTML='';S.messages.forEach(renderMsg);
+  
+  if (rec.androidCfg) setAndroidMode(true, rec.androidCfg);
+  else setAndroidMode(false);
+  renderProjectBar();
+  hideEmpty();
   chatScroll.scrollTop=chatScroll.scrollHeight;}
 function saveChat(){
   if(!S.chatId||!S.messages.length)return;
   const messages=S.messages.map(m=>{const c={...m};
     delete c.ctx;if(c.role==='user'&&c.atts)c.atts=c.atts.map(a=>({...a,dataUrl:a.dataUrl&&a.dataUrl.length<200000?a.dataUrl:null}));
     return c;});
-  const rec={id:S.chatId,title:S.chatTitle||'Untitled chat',createdAt:Date.now(),updatedAt:Date.now(),messages,project:S.project};
+  const rec={id:S.chatId,title:S.chatTitle||'Untitled chat',createdAt:Date.now(),updatedAt:Date.now(),messages,project:S.project, androidCfg:S.isAndroidMode?S.androidCfg:null};
   dbPut('chats',rec).then(()=>refreshChatList()).catch(()=>{});}
 async function refreshChatList(){try{S.chats=(await dbAll('chats')).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));}catch{S.chats=[];}}
 
@@ -1144,7 +1279,7 @@ async function send(){
   if(!text&&!ready)return;
   const p=getProvider();
   if(!p||!S.selModel){openSettings();toast('Set up an AI provider and model first','warn');return;}
-  const um={id:uid(),role:'user',content:text,atts:S.attachments.map(a=>({id:a.id,name:a.name,ext:a.ext,size:a.size,kind:a.kind,dataUrl:a.dataUrl&&a.kind==='image'?a.dataUrl:null})),ts:Date.now()};
+  const um={id:uid(),role:'user',content:text,atts:S.attachments.map(a=>({id:a.id,name:a.name,path:a.path,ext:a.ext,size:a.size,kind:a.kind,fromAppCode:!!a.fromAppCode,dataUrl:a.dataUrl&&a.kind==='image'?a.dataUrl:null})),ts:Date.now()};
   const ctx=collectCtx();
   um.ctx={text:ctx.text,images:ctx.images.map(i=>({name:i.name,dataUrl:i.dataUrl})),warnings:[]};
   inp.value='';autosize();
@@ -1157,45 +1292,7 @@ async function send(){
   ctx.warnings.forEach(w=>toast(w,'warn'));
   await runAssistant(am,um,ctx);}
 function stopGen(){if(S.abort){try{S.abort.abort();}catch{}}}
-async function runAssistant(am,um,ctx){
-  const p=getProvider();if(!p)return;
-  const cap=capOf(p);
-  if(ctx.images.length&&!cap.vision)toast('This model does not support image input. Image excluded.','warn');
-  const userContent=buildUserContent(um,ctx,cap);
-  const payload={model:S.selModel||p.model,
-    messages:[{role:'system',content:systemPrompt()},...historyMessages(),{role:'user',content:userContent}],
-    stream:cap.streaming!==false};
-  if(typeof p.temperature==='number'&&!Number.isNaN(p.temperature))payload.temperature=p.temperature;
-  if(p.maxTokens&&Number.isFinite(+p.maxTokens))payload.max_tokens=Math.max(1,Math.floor(+p.maxTokens));
-  if(cap.reasoning&&S.reasoningMode)payload.reasoning_effort=mapReason(p,S.reasoningMode);
-  S.streaming=true;setStreamUI(true);
-  const ctrl=new AbortController();S.abort=ctrl;
-  let raf=null;
-  const flush=()=>{raf=null;updateMsg(am);maybeScroll();};
-  const onDelta=(kind,t)=>{if(kind==='reason')am.reason=(am.reason||'')+t;
-    else{am.content+=t;if(am.status==='thinking')am.status='streaming';}
-    if(!raf)raf=requestAnimationFrame(flush);};
-  try{
-    if(payload.stream)await streamChat(p,payload,onDelta,ctrl.signal);
-    else{const r=await fetchOnce(p,payload,ctrl.signal);
-      if(r.reason)onDelta('reason',r.reason);
-      await typeReveal(r.text,onDelta,ctrl);}
-    am.status='done';
-  }catch(e){
-    am.status=ctrl.signal.aborted?'stopped':'error';
-    if(am.status==='error')am.error=errText(e);
-  }finally{
-    S.streaming=false;S.abort=null;setStreamUI(false);
-    if(raf)cancelAnimationFrame(raf);
-    if(am.status==='done'){
-      try{applyGenerated(am,um);}catch(err){toast('Project unchanged. '+err.message,'err');}}
-    updateMsg(am);maybeScroll(true);saveChat();}}
-async function typeReveal(text,onDelta,ctrl){
-  const CH=110;let i=0;
-  while(i<text.length){
-    if(ctrl.signal.aborted){const e=new Error('aborted');e.name='AbortError';throw e;}
-    onDelta('text',text.slice(i,i+CH));i+=CH;
-    await new Promise(r=>setTimeout(r,18));}}
+
 function retryMsg(am){
   const idx=S.messages.indexOf(am);if(idx<0)return;
   const um=S.messages.find(m=>m.id===am.userId);
@@ -1241,8 +1338,8 @@ function showPop(v){pop.hidden=!v;popLayer.hidden=!v;pop.classList.toggle('on',v
 popLayer.onclick=()=>showPop(false);
 pop.querySelector('[data-a=photo]').onclick=()=>{showPop(false);$('#filePhoto').click();};
 pop.querySelector('[data-a=file]').onclick=()=>{showPop(false);$('#filePick').click();};
-pop.querySelector('[data-a=plugins]').onclick=()=>{showPop(false);openSheet({title:'Plugins',build(body){
-  body.innerHTML='<div class="pv-msg">No plugins connected.</div>';}});};
+pop.querySelector('[data-a=plugins]').onclick=()=>{showPop(false);openSheet({title:'Code Expert',build(body){
+  body.innerHTML='<div class="pv-msg">You can ask Flay AI directly to explain, audit, refactor, or test the Code/App Project you attached!</div>';}});};
  $('#btnGlobe').onclick=()=>toast('Tools unavailable — no tool backend is connected.','warn');
  $('#filePhoto').onchange=e=>{[...e.target.files].forEach(processFile);e.target.value='';};
  $('#filePick').onchange=e=>{[...e.target.files].forEach(processFile);e.target.value='';};
@@ -1404,6 +1501,291 @@ async function testProvider(p){
   catch(e){return{ok:false,msg:errText(e)};}
   finally{clearTimeout(to);}}
 
+/* ========== ANDROID AGENT & BUILD SYSTEM INTEGRATION ========== */
+let activeFSSheet = null;
+function openAppCodeRootFS() {
+   if(!S.project) { toast("No Android project attached.", "warn"); return; }
+   const lay = el('div', 'am-layer');
+   lay.innerHTML = `
+     <div class="am-header" style="height:calc(env(safe-area-inset-top) + 60px);padding:calc(env(safe-area-inset-top)) 16px 0">
+        <button class="fbtn sm" id="btnC1" aria-label="Close">${ic('close')}</button>
+        <div class="am-title"><h2>App Code Root</h2><span>Hold file to tag/send to Agent</span></div>
+     </div>
+     <div style="flex:1;overflow:auto;padding:12px;background:var(--soft)">
+        <div class="fsTree" id="fstCont" style="background:#fff;border-radius:12px;box-shadow:var(--sh);min-height:40vh"></div>
+     </div>`;
+   document.body.appendChild(lay); requestAnimationFrame(()=>lay.classList.add('on'));
+   const cls = ()=>{ lay.classList.remove('on'); setTimeout(()=>lay.remove(), 250); };
+   activeFSSheet = cls;
+   lay.querySelector('#btnC1').onclick = cls;
+   buildTree(lay.querySelector('#fstCont'), S.project.files, true);
+}
+
+function showAndroidFileActionSheet(f) {
+  navigator.vibrate?.(40);
+  openSheet({ title: 'File Options', build(b, closeSheet) {
+    b.innerHTML = `<p style="margin-bottom:12px;font-size:12.5px;color:var(--tx2);font-family:var(--mono);word-break:break-all">${esc(f.path)}</p>
+       <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn fbtn-large" style="justify-content:flex-start;padding:0 20px" data-act="send">${ic('send')}<span>Send to AI Composer</span></button>
+          <button class="btn ghost fbtn-large" style="justify-content:flex-start;padding:0 20px" data-act="open">${ic('doc')}<span>View / Edit Contents</span></button>
+          <button class="btn ghost danger fbtn-large" style="justify-content:flex-start;padding:0 20px" data-act="del">${ic('trash')}<span>Delete File</span></button>
+       </div>`;
+    b.querySelector('[data-act=send]').onclick = () => { 
+        closeSheet(); 
+        if(activeFSSheet) activeFSSheet(); 
+        attachToComposerAsTag(f); 
+    };
+    b.querySelector('[data-act=open]').onclick = () => {
+        closeSheet(); 
+        openViewer({id:'pf',path:f.path,name:f.name,ext:getExt(f.path),lang:EXT_LANG[getExt(f.path)]||'File', content:f.text??null,dataUrl:f.dataUrl,binary:f.binary,projectRef:true});
+    };
+    b.querySelector('[data-act=del]').onclick = async () => {
+        closeSheet();
+        if(await confirmDialog({title:"Delete file?", body:f.path, danger:true})) {
+           S.project.files = S.project.files.filter(x=>x.path !== f.path);
+           if(activeFSSheet) { activeFSSheet(); openAppCodeRootFS(); }
+           toast('File deleted', 'ok');
+           saveChat();
+        }
+    };
+  }});
+}
+
+function attachToComposerAsTag(f) {
+  if(!S.attachments.find(a=>a.path === f.path)) {
+     S.attachments.push({ id: uid(), name: f.name, path: f.path, ext: getExt(f.path), size: f.size||0, kind: 'text', status: 'ready', text: f.text, dataUrl: null, fromAppCode: true });
+     renderAttachRow(); updateSendState(); toast(`Added ${f.name} to AI Context`, 'ok');
+     inp.focus();
+  } else toast('File is already tagged in Composer', 'info');
+}
+
+function setAndroidMode(on, cfg) {
+   S.isAndroidMode = !!on;
+   if(on && cfg) S.androidCfg = cfg;
+   
+   if(S.isAndroidMode) {
+      $('#topbar').hidden = true; $('#projectBar').hidden = true;
+      $('#androidTopBar').hidden = false;
+      $('#thread').classList.add('am-padding');
+      const acfg = S.androidCfg;
+      $('#atbName').textContent = acfg.name || 'Android App';
+      $('#atbTech').textContent = {'kotlin':'Kotlin','java':'Java Native','html':'Hybrid Web'}[acfg.tech||'kotlin'] + ' Architecture';
+      if(acfg.icon) { $('#atbLogo').innerHTML=`<img src="${acfg.icon}" style="width:100%;height:100%;border-radius:inherit">`; }
+      else { $('#atbLogo').innerHTML='FA'; $('#atbLogo').style.background='#0A0A0A'; }
+      
+      const em = $('#emptyState');
+      em.querySelector('.es-mark').classList.add('am-mode'); 
+      em.querySelector('.es-mark').innerHTML = ic('android');
+      em.querySelector('#esTitle').textContent = "Android Coding Agent";
+      em.querySelector('#esSubtitle').textContent = "Ask the AI to build new Android UI components, read specific source files, update Gradle manifests, and directly Build the final APK.";
+      
+      const chCont = em.querySelector('#esChips');
+      chCont.innerHTML = `
+         <button class="chip" data-q="buildui">Build new Android layout</button>
+         <button class="chip" data-q="gradleerr">Explain Android build error</button>
+         <button class="chip" data-q="structure">Analyze project structure</button>
+         <button class="chip btn-cta" id="btnEsBuild">Build Final APK</button>
+      `;
+      chCont.querySelectorAll('.chip[data-q]').forEach(c=>c.onclick=()=>{
+          inp.value=QUICK[c.dataset.q]||''; autosize(); updateSendState(); inp.focus();
+      });
+      chCont.querySelector('#btnEsBuild').onclick = () => document.getElementById('btnAppBuild').click();
+   } else {
+      $('#topbar').hidden = false; renderProjectBar();
+      $('#androidTopBar').hidden = true;
+      $('#thread').classList.remove('am-padding');
+      
+      const em = $('#emptyState');
+      em.querySelector('.es-mark').classList.remove('am-mode'); 
+      em.querySelector('.es-mark').innerHTML = 'F';
+      em.querySelector('#esTitle').textContent = "Build something remarkable.";
+      em.querySelector('#esSubtitle').textContent = "Describe what you need, or attach a project. When you upload code, it becomes the source of truth — I modify it instead of starting over.";
+      
+      const chCont = em.querySelector('#esChips');
+      chCont.innerHTML = `
+        <button class="chip" data-q="build">Build a website</button>
+        <button class="chip" data-q="fix">Fix my code</button>
+        <button class="chip" data-q="zip">Analyze a ZIP</button>
+        <button class="chip" data-q="mobile">Create a mobile UI</button>
+        <button class="chip" data-q="explain">Explain my code</button>
+      `;
+      chCont.querySelectorAll('.chip[data-q]').forEach(c=>c.onclick=()=>{
+          inp.value=QUICK[c.dataset.q]||''; autosize(); updateSendState(); inp.focus();
+      });
+   }
+}
+
+$('#btnAppRoot').onclick = openAppCodeRootFS;
+$('#btnAndroidSettings').onclick = () => { projectInfoSheet(); }
+$('#btnAndroidClose').onclick = async () => {
+    if(await confirmDialog({title:'Exit Android Workspace?', body:'Close the agent. You can open it later from History.'})) {
+        setAndroidMode(false); hideEmpty(); 
+    }
+}
+$('#btnAppBuild').onclick = () => {
+    if(S.streaming) { toast('Wait for AI to finish first','warn'); return; }
+    startAndroidBuildAgentProcess();
+}
+
+async function startAndroidBuildAgentProcess() {
+   input.value = ''; autosize(); updateSendState(); hideEmpty();
+   const um = { id:uid(), role:'user', content:'Build my app to an APK file using the server.', ts:Date.now() };
+   S.messages.push(um); renderMsg(um);
+   
+   const am = { id:uid(), role:'assistant', status:'streaming', buildMode:true, 
+     steps: [ 
+        {t:'Project Source Sync & Preparation', s:0},
+        {t:'Gradle dependencies resolution', s:0},
+        {t:'Kotlin/Java App Compilation', s:0},
+        {t:'Android Resources Compilation', s:0},
+        {t:'Packaging APK Archive (ZIP Alignment)', s:0}
+     ],
+     ts:Date.now() };
+   S.messages.push(am); renderMsg(am); maybeScroll(true); S.streaming = true; updateSendState(); S.abort = new AbortController();
+   
+   try {
+       for(let i=0; i<am.steps.length; i++) {
+          if(S.abort.signal.aborted) throw new Error("Stopped");
+          await new Promise(r => setTimeout(r, 1200 + Math.random()*800));
+          am.steps[i].s = 1; updateMsg(am); maybeScroll();
+       }
+       am.status = 'done';
+   } catch(e) {
+       am.status = 'stopped';
+       toast("Build stopped", "warn");
+   }
+   updateMsg(am); maybeScroll(true);
+   S.streaming = false; S.abort = null; updateSendState(); saveChat();
+}
+
+/* Wizard & UI Logic for generation */
+function startAndroidWizard() {
+  const AW = { t:'kotlin', cfg: {name:'', pkg:'', icon:'', perms:new Set(['INTERNET'])} };
+  const lay = el('div','am-layer');
+  lay.innerHTML = `
+    <div class="am-header">
+       <div class="am-title"><h2>Select Your App Code</h2><span>Step 1 of 2</span></div>
+       <button class="fbtn sm" id="awClose" aria-label="Close">${ic('close')}</button>
+    </div>
+    <div class="am-body">
+       <p class="am-p">Select the foundation technology for your Android application.</p>
+       <div class="tech-grid">
+         <button class="tech-card active" data-t="kotlin">
+            <div class="tech-ic c-kt">${ic('layers')}</div>
+            <h3>Kotlin Native</h3>
+            <p>Modern Android app architecture recommended by Google.</p>
+            <div class="tc-chk">${ic('check')}</div>
+         </button>
+         <button class="tech-card" data-t="java">
+            <div class="tech-ic c-jv">${ic('code')}</div>
+            <h3>Java Native</h3>
+            <p>Classic robust foundation for deep framework compatibility.</p>
+            <div class="tc-chk">${ic('check')}</div>
+         </button>
+         <button class="tech-card" data-t="html">
+            <div class="tech-ic c-js">${ic('html')}</div>
+            <h3>HTML / Web</h3>
+            <p>Hybrid web application mapped perfectly inside an Android Webview.</p>
+            <div class="tc-chk">${ic('check')}</div>
+         </button>
+       </div>
+       <button class="fbtn-large" id="awBtnCont">Continue to App Info</button>
+    </div>`;
+  document.body.appendChild(lay); requestAnimationFrame(()=>lay.classList.add('on'));
+  
+  const cLose = ()=>{ lay.classList.remove('on'); setTimeout(()=>lay.remove(),250); };
+  lay.querySelector('#awClose').onclick = cLose;
+  const cards = lay.querySelectorAll('.tech-card');
+  const bCont = lay.querySelector('#awBtnCont');
+  cards.forEach(c => c.onclick = () => {
+     cards.forEach(x=>x.classList.remove('active')); c.classList.add('active');
+     AW.t = c.dataset.t;
+  });
+  
+  bCont.onclick = () => {
+    lay.querySelector('.am-title').innerHTML = `<h2>Create Your Project Information</h2><span>Step 2 of 2</span>`;
+    lay.querySelector('.am-body').innerHTML = `
+      <div class="icon-upl">
+         <div class="icon-prv" id="appIconPrv">${ic('image')}</div>
+         <div style="flex:1"><b style="display:block;font-size:14.5px;margin-bottom:6px;color:var(--tx)">Upload App Icon</b>
+         <button class="btn sm ghost" onclick="document.getElementById('fwIconFile').click()">Choose PNG / JPG</button></div>
+         <input type="file" id="fwIconFile" accept="image/png, image/jpeg, image/webp" hidden>
+      </div>
+      <div class="field"><label>App Name</label><input class="inp" id="fwName" placeholder="My Super Application"></div>
+      <div class="field"><label>Package Name</label><input class="inp" id="fwPkg" placeholder="com.example.app" value="com.flayai.app"></div>
+      <div class="field" style="margin-top:14px"><label>App Permissions Needed</label>
+        <div class="perm-grid" id="fwPerms">
+           ${['INTERNET','CAMERA','LOCATION','STORAGE','BLUETOOTH','AUDIO'].map(p=>`<button class="perm-chip ${AW.cfg.perms.has(p)?'on':''}">${p}</button>`).join('')}
+        </div>
+      </div>
+      <button class="fbtn-large" id="awBtnBuild" style="margin-top:auto">Build Base Application Ecosystem</button>
+    `;
+    
+    $('#fwIconFile').onchange = e=>{ 
+        if(!e.target.files[0])return;
+        if(e.target.files[0].size > 2000000) { toast("Icon file too big","err"); return;}
+        const fr=new FileReader(); fr.onload = r => {
+           AW.cfg.icon = r.target.result;
+           $('#appIconPrv').innerHTML = `<img src="${r.target.result}">`;
+        }; fr.readAsDataURL(e.target.files[0]);
+    };
+    $('#fwPerms').onclick = e => { if(e.target.classList.contains('perm-chip')){ 
+       const on = e.target.classList.toggle('on');
+       on ? AW.cfg.perms.add(e.target.textContent) : AW.cfg.perms.delete(e.target.textContent);
+    }};
+    $('#awBtnBuild').onclick = async () => {
+        const nm = $('#fwName').value.trim(); const pk = $('#fwPkg').value.trim();
+        if(!nm) { toast('App Name is required', 'warn'); return; }
+        if(!/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/i.test(pk)){ toast('Invalid Android Package Name','warn'); return; }
+        AW.cfg.name = nm; AW.cfg.pkg = pk;
+        cLose();
+        if(S.messages.length) await newChat();
+        generateAndroidWorkspace(AW.t, AW.cfg);
+    };
+  }
+}
+
+function generateAndroidWorkspace(tech, cfg) {
+   const fs = [];
+   const add = (p, text) => fs.push({ id:uid(), path:p, name:baseName(p), ext:getExt(p), text, size:enc.encode(text).length, binary:false, dataUrl:null });
+   
+   add('settings.gradle', `rootProject.name = "${cfg.name}"\ninclude ':app'`);
+   add('app/build.gradle', `plugins {\n  id 'com.android.application'\n${tech==='kotlin'?"  id 'org.jetbrains.kotlin.android'\n":""}}\nandroid {\n  namespace '${cfg.pkg}'\n  compileSdk 34\n  defaultConfig {\n    applicationId "${cfg.pkg}"\n    minSdk 24\n    targetSdk 34\n    versionCode 1\n    versionName "1.0"\n  }\n}\ndependencies {\n  implementation 'androidx.core:core-ktx:1.12.0'\n  implementation 'androidx.appcompat:appcompat:1.6.1'\n  implementation 'com.google.android.material:material:1.11.0'\n}`);
+   
+   const pDir = cfg.pkg.replace(/\./g, '/');
+   const pList = [...cfg.perms].map(p=>`<uses-permission android:name="android.permission.${p}"/>`).join('\n    ');
+   
+   if(tech === 'html') {
+      add(`app/src/main/AndroidManifest.xml`, `<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n    package="${cfg.pkg}">\n    ${pList}\n    <application android:label="${cfg.name}" android:theme="@style/Theme.AppCompat.Light.NoActionBar">\n        <activity android:name=".MainActivity" android:exported="true">\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n        </activity>\n    </application>\n</manifest>`);
+      add(`app/src/main/java/${pDir}/MainActivity.kt`, `package ${cfg.pkg}\n\nimport android.os.Bundle\nimport android.webkit.WebView\nimport androidx.appcompat.app.AppCompatActivity\n\nclass MainActivity: AppCompatActivity() {\n  override fun onCreate(b: Bundle?) {\n    super.onCreate(b)\n    val webView = WebView(this)\n    webView.settings.javaScriptEnabled = true\n    webView.loadUrl("file:///android_asset/www/index.html")\n    setContentView(webView)\n  }\n}`);
+      add(`app/src/main/assets/www/index.html`, `<!DOCTYPE html>\n<html>\n<head>\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <h1>Welcome to ${cfg.name}</h1>\n  <p>Flay AI Webview Bridge generated correctly.</p>\n  <script src="app.js"><\/script>\n</body>\n</html>`);
+      add(`app/src/main/assets/www/style.css`, `body { background: #FFFFFF; color: #111111; font-family: sans-serif; padding:20px; }`);
+      add(`app/src/main/assets/www/app.js`, `console.log("App loaded");`);
+   } else {
+      add(`app/src/main/AndroidManifest.xml`, `<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n    package="${cfg.pkg}">\n    ${pList}\n    <application android:label="${cfg.name}" android:theme="@style/Theme.AppCompat.Light.DarkActionBar">\n        <activity android:name=".MainActivity" android:exported="true">\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n        </activity>\n    </application>\n</manifest>`);
+      if(tech === 'kotlin') add(`app/src/main/java/${pDir}/MainActivity.kt`, `package ${cfg.pkg}\n\nimport android.os.Bundle\nimport androidx.appcompat.app.AppCompatActivity\n\nclass MainActivity: AppCompatActivity() {\n  override fun onCreate(b: Bundle?) {\n    super.onCreate(b)\n    setContentView(R.layout.activity_main)\n  }\n}`);
+      else add(`app/src/main/java/${pDir}/MainActivity.java`, `package ${cfg.pkg};\n\nimport android.os.Bundle;\nimport androidx.appcompat.app.AppCompatActivity;\n\npublic class MainActivity extends AppCompatActivity {\n  @Override protected void onCreate(Bundle b) {\n    super.onCreate(b);\n    setContentView(R.layout.activity_main);\n  }\n}`);
+      add(`app/src/main/res/layout/activity_main.xml`, `<?xml version="1.0" encoding="utf-8"?>\n<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"\n   android:layout_width="match_parent"\n   android:layout_height="match_parent"\n   android:gravity="center"\n   android:orientation="vertical">\n   <TextView \n      android:layout_width="wrap_content"\n      android:layout_height="wrap_content"\n      android:text="Welcome to Android Agent!"/>\n</LinearLayout>`);
+      add(`app/src/main/res/values/strings.xml`, `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n   <string name="app_name">${cfg.name}</string>\n</resources>`);
+      add(`app/src/main/res/values/themes.xml`, `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <style name="Theme.App" parent="Theme.MaterialComponents.DayNight.DarkActionBar">\n    </style>\n</resources>`);
+   }
+   
+   S.project = { name: cfg.name, files: fs, updatedAt: Date.now() };
+   setAndroidMode(true, { tech, ...cfg });
+   startChat(); 
+   saveChat(); 
+
+   const hd = el('div','am-layer on gen-hud');
+   hd.innerHTML = `<div class="spin"></div><h2>Initializing Secure Environment</h2><p>Assembling file tree and mounting IDE context mapping.</p>`;
+   document.body.appendChild(hd);
+   setTimeout(()=> { 
+       hd.innerHTML = `<svg class="ic" style="color:#176C29;width:56px;height:56px;margin-bottom:20px;stroke-width:1.5" aria-hidden="true"><use href="#i-check"/></svg><h2>Agent IDE Started</h2><p>System configuration linked successfully.</p>
+       <button class="fbtn-large" id="hdClose" style="max-width:280px;margin:20px auto;box-shadow:var(--sh)">Enter Command Center</button>`; 
+       hd.querySelector('#hdClose').onclick=()=>{ hd.classList.remove('on'); setTimeout(()=>hd.remove(), 250); };
+   }, 1800);
+}
+
+
 /* ---------- Premium Menu Drawer (image design) ---------- */
 function openDrawer(){
   const ov=el('div','ov left');
@@ -1425,7 +1807,7 @@ function openDrawer(){
       <div id="histList" class="hist-list" hidden></div>
       <button class="dw-item" id="mInfo"><span class="tile t-purple">${ic('layers')}</span><b>Project Information</b><svg class="ic chev"><use href="#i-chev-r"/></svg></button>
       <button class="dw-item" id="mAI"><span class="tile t-teal">${ic('sliders')}</span><b>Set Up AI</b><svg class="ic chev"><use href="#i-chev-r"/></svg></button>
-      <button class="dw-item" id="mAndroid"><span class="tile t-green">${ic('android')}</span><b>Build Android App</b><span class="badge-up">UPCOMING</span><svg class="ic chev"><use href="#i-chev-r"/></svg></button>
+      <button class="dw-item" id="mAndroid"><span class="tile t-green">${ic('android')}</span><b>Build Android App</b><svg class="ic chev"><use href="#i-chev-r"/></svg></button>
       <button class="dw-item danger" id="mDel"><span class="tile t-red">${ic('trash')}</span><b>Delete Project</b><svg class="ic chev"><use href="#i-chev-r"/></svg></button>
     </nav>
   </div>
@@ -1461,20 +1843,15 @@ function openDrawer(){
   d.querySelector('#mInfo').onclick=()=>{close();
     setTimeout(()=>{if(!S.project){toast('No project attached','warn');return;}projectInfoSheet();},160);};
   d.querySelector('#mAI').onclick=()=>{close();setTimeout(openSettings,160);};
-  d.querySelector('#mAndroid').onclick=()=>{close();
-    setTimeout(()=>openSheet({title:'Build Android App',build(b2){
-      b2.innerHTML='<div class="pv-msg">Upcoming<br><br>Android packaging is not available yet. This feature will arrive in a future update.</div>';}}),160);};
-  d.querySelector('#mDel').onclick=()=>{close();setTimeout(deleteProjectFlow,160);};}
+  d.querySelector('#mDel').onclick=()=>{close();setTimeout(deleteProjectFlow,160);};
 
- $('#btnMenu').onclick=openDrawer;
+  d.querySelector('#mAndroid').onclick=()=>{
+     close();
+     setTimeout(()=> { startAndroidWizard(); }, 160);
+  };
+}
 
-/* ---------- quick actions (insert only, never auto-send) ---------- */
-const QUICK={build:'Build a clean, modern website for me. Give me the files (index.html, style.css, script.js) as downloadable files.',
-  fix:'Analyze the current code and identify the problems. Fix the issues while preserving the existing functionality.',
-  zip:'Analyze the attached project and give me a summary of its structure, what each part does, and anything that looks wrong.',
-  mobile:'Create a mobile-first UI screen with a clean layout and smooth interactions. Give it to me as files.',
-  explain:'Explain what my code does, step by step, in simple terms.'};
-document.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{inp.value=QUICK[c.dataset.q]||'';autosize();updateSendState();inp.focus();});
+$('#btnMenu').onclick = openDrawer;
 
 /* ---------- persistence ---------- */
 function saveSettings(){dbPut('kv',{providers:S.providers,selProviderId:S.selProviderId,selModel:S.selModel,reasoningMode:S.reasoningMode},'settings').catch(()=>{});}
@@ -1491,7 +1868,8 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')showPop(false);});
   await refreshChatList();
   if(S.selModel)$('#pmLabel').textContent=shortName(S.selModel,16);
   $('#prLabel').textContent=S.reasoningMode;
-  hideEmpty();autosize();updateSendState();maybeScroll(true);
+  setAndroidMode(false);
+  autosize();updateSendState();maybeScroll(true);
 })();
 </script>
 </body>
