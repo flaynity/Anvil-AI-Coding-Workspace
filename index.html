@@ -948,14 +948,22 @@ function buildTree(root,files, isFSScreen=false){
   render(tree,root,0);}
 
 /* ---------- provider adapter ---------- */
-function endpoint(base){let b=String(base||'').trim().replace(/\/+$/,'');
+function providerTarget(base){let b=String(base||'').trim().replace(/\/+$/,'');
   if(/\/chat\/completions$/i.test(b))return b;
   if(/\/v\d+$/i.test(b))return b+'/chat/completions';
-  return b+'/v1/chat/completions';}
-function modelsUrl(base){let b=String(base||'').trim().replace(/\/+$/,'');
-  b=b.replace(/\/chat\/completions$/i,'');
-  if(/\/v\d+$/i.test(b))return b+'/models';return b+'/v1/models';}
-const hdrs=p=>{const h={'Content-Type':'application/json'};if(p.apiKey)h.Authorization='Bearer '+p.apiKey;return h;};
+  return b+'/v1/chat/completions';
+}
+const PROXY_URL=(window.ANVIL_PROXY_URL||'https://flayai-agent.flaynity.workers.dev').replace(/\/+$/,'')+'/api/proxy';
+function endpoint(base){return PROXY_URL;}
+function modelsUrl(base){let b=String(base||'').trim().replace(/\/chat\/completions$/i,'').replace(/\/+$/,'');
+  if(/\/v\d+$/i.test(b))return b+'/models';return b+'/v1/models';
+}
+const hdrs=p=>{
+  const h={'Content-Type':'application/json'};
+  if(p.apiKey)h.Authorization='Bearer '+p.apiKey;
+  h['X-Target-URL']=providerTarget(p.baseUrl);
+  return h;
+};
 async function httpErr(res){let detail='';let msg='';
   try{const j=await res.json();msg=j.error&&j.error.message||'';detail=msg||JSON.stringify(j).slice(0,200);}catch{try{detail=(await res.text()).slice(0,200);}catch{}}
   const e=new Error(detail||('HTTP '+res.status));e.status=res.status;
