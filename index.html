@@ -853,22 +853,46 @@ function buildAPIMessages(){
 async function callProvider(msgs,{onDelta}={}){
   const p=getProvider();
   if(!p){const e=new Error('No AI provider configured. Open Menu → Set Up AI.');e.code='nop';throw e;}
-  const url=p.url.replace(/\/+$/,'')+'/chat/completions';
+  const target=p.url.replace(/\/+$/,'')+'/chat/completions';
+  const proxy=(window.ANVIL_PROXY_URL||'https://flayai-agent.flaynity.workers.dev').replace(/\/+$/,'')+'/api/proxy';
   const ctl=new AbortController();S.abort=()=>ctl.abort();
   const doStream=!!onDelta&&capOf(p).streaming!==false;
-  const res=await fetch(url,{method:'POST',signal:ctl.signal,
-    headers:{'Content-Type':'application/json',Authorization:'Bearer '+p.key},
-    body:JSON.stringify({model:p.model,messages:msgs,stream:doStream,temperature:.7})});
-  if(!res.ok){const t=await res.text().catch(()=>'');throw new Error('HTTP '+res.status+' — '+t.slice(0,180));}
-  if(!doStream){const j=await res.json();const c=j.choices?.[0]?.message?.content||'';onDelta&&onDelta(c);return c;}
+  let res;
+  try{
+    res=await fetch(proxy,{method:'POST',signal:ctl.signal,
+      headers:{'Content-Type':'application/json',Accept:doStream?'text/event-stream':'application/json',
+        Authorization:'Bearer '+p.key,'X-Target-URL':target},
+      body:JSON.stringify({model:p.model,messages:msgs,stream:doStream,temperature:.7})});
+  }catch(e){
+    if(e?.name==='AbortError')throw e;
+    throw new Error('Failed to fetch — Cloudflare AI proxy could not be reached.');
+  }
+  if(!res.ok){
+    const t=await res.text().catch(()=>'');
+    throw new Error('HTTP '+res.status+' — '+t.slice(0,220));
+  }
+  if(!doStream){
+    const j=await res.json();
+    const c=j.choices?.[0]?.message?.content||'';
+    onDelta&&onDelta(c);
+    return c;
+  }
+  if(!res.body)throw new Error('AI proxy returned an empty response body.');
   const rd=res.body.getReader();let buf='',acc='';
-  while(true){const{done,value}=await rd.read();if(done)break;
+  while(true){
+    const{done,value}=await rd.read();if(done)break;
     buf+=dec8.decode(value,{stream:true});
     const lines=buf.split('\n');buf=lines.pop();
-    for(const ln of lines){const t=ln.trim();if(!t.startsWith('data:'))continue;
+    for(const ln of lines){
+      const t=ln.trim();if(!t.startsWith('data:'))continue;
       const d=t.slice(5).trim();if(d==='[DONE]')continue;
-      try{const j=JSON.parse(d);const dl2=j.choices?.[0]?.delta?.content||'';
-        if(dl2){acc+=dl2;onDelta(dl2);}}catch{}}}
+      try{
+        const j=JSON.parse(d);
+        const dl2=j.choices?.[0]?.delta?.content||'';
+        if(dl2){acc+=dl2;onDelta(dl2);}
+      }catch{}
+    }
+  }
   return acc;
 }
 
