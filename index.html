@@ -16,6 +16,7 @@
   --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
   --sans:'Space Grotesk','Segoe UI',Tahoma,sans-serif;
   --sh:0 12px 32px rgba(0,0,0,.10);
+  --sh-lg:0 24px 48px rgba(0,0,0,.15);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
@@ -107,6 +108,18 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .think-row{display:flex;align-items:center;gap:8px;color:var(--tx2);font-size:13.5px;font-weight:700;padding:3px 0}
 .think-row .ic{width:17px;height:17px;animation:think 1.5s ease-in-out infinite}
 @keyframes think{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.16);opacity:1}}
+
+/* Advanced Antigravity Agent Activity UI */
+.ag-activity{display:flex;flex-direction:column;gap:8px;margin:8px 0;padding:12px 14px;background:var(--soft2);border:1px solid var(--line);border-radius:14px;}
+.ag-item{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600;color:var(--tx2);animation:fadeIn .3s ease-out;}
+.ag-item .ic{width:16px;height:16px;flex:none;}
+.ag-item.pulse .ic{animation:think 1.5s ease-in-out infinite;color:var(--tx);}
+.ag-item.done{color:var(--tx);}
+.ag-item.done .ic{color:#1E7D32;}
+.ag-item.err{color:var(--red);}
+.ag-item.err .ic{color:var(--red);}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
 .caret{display:inline-block;width:8px;height:15px;background:#000;margin-left:3px;vertical-align:-2px;animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:0}}
 .seg-t{font-size:15px;line-height:1.65;word-break:break-word;margin:4px 0;font-weight:500}
@@ -243,7 +256,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .sh-head{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 18px;border-bottom:1px solid var(--hair);flex:none}
 .sh-head h3{flex:1;font-size:16px;font-weight:700}
 .sh-body{overflow-y:auto;padding:14px 18px 20px}
-.dlg-ov{z-index:90;align-items:center}
+.dlg-ov{z-index:120;align-items:center}
 .dlg{background:#fff;border-radius:18px;max-width:380px;width:calc(100% - 32px);padding:20px;box-shadow:var(--sh);transform:translateY(10px);transition:transform .2s}
 .ov.on .dlg{transform:none}
 .dlg h3{font-size:17px;font-weight:700;margin-bottom:8px}
@@ -313,80 +326,81 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 /* ===== Android Workspace Wizard / FS Screen ===== */
 .am-layer{position:fixed;inset:0;background:#FBFBFB;z-index:85;display:flex;flex-direction:column;opacity:0;transform:translateY(15px) scale(0.98);transition:.26s cubic-bezier(0.2,0.8,0.2,1);padding-bottom:env(safe-area-inset-bottom)}
 .am-layer.on{opacity:1;transform:none}
-.am-header{flex:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 16px 12px;border-bottom:1px solid var(--hair);background:#fff}
+.am-header{flex:none;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 16px 12px;border-bottom:1px solid var(--hair);background:#fff}
 .am-title{flex:1;min-width:0;text-align:center}
 .am-title h2{font-size:18px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .am-title span{font-size:12px;color:var(--tx3);font-weight:600}
-.am-body{flex:1;overflow-y:auto;padding:20px 16px 36px;display:flex;flex-direction:column;gap:16px;max-width:680px;width:100%;margin:0 auto}
+.am-body{flex:1;overflow-y:auto;padding:24px 20px 40px;display:flex;flex-direction:column;gap:16px;max-width:640px;width:100%;margin:0 auto}
 
-.tech-grid { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); margin-bottom: 20px; width: 100%; }
-.tech-card { aspect-ratio: 1/1; min-height: 155px; display: flex; flex-direction: column; align-items: center; justify-content:center; text-align: center; padding: 18px 12px; border: 2px solid var(--line); border-radius: 22px; background: #fff; transition: all .2s cubic-bezier(0.2,0.8,0.2,1); cursor:pointer; position:relative; box-sizing:border-box;}
-.tech-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,.06); }
-.tech-card.active { border-color: #000; box-shadow: 0 12px 32px rgba(0,0,0,.12); background: #fff; transform: translateY(-3px); }
-.tech-card.wide-card { grid-column: 1 / -1; aspect-ratio: 2.1 / 1; min-height: 130px; }
-.tech-ic { width: 56px; height: 56px; border-radius: 17px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; color:#fff; box-shadow: inset 0 -3px 8px rgba(0,0,0,.15); }
+.tech-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: auto;}
+.tech-card { display: flex; flex-direction: column; align-items: center; justify-content:center; text-align: center; padding: 28px 20px; border: 2px solid var(--line); border-radius: 24px; background: #fff; transition: all .2s cubic-bezier(0.2,0.8,0.2,1); cursor:pointer; position:relative; aspect-ratio: 1/1; }
+.tech-card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,.06); }
+.tech-card.active { border-color: #000; box-shadow: 0 12px 32px rgba(0,0,0,.12); background: #fff; transform: translateY(-4px); }
+.tech-ic { width: 64px; height: 64px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; color:#fff; box-shadow: inset 0 -3px 8px rgba(0,0,0,.2); flex: none; }
 .tech-ic .ic { width: 32px; height: 32px; }
-.tech-ic.c-js { background: linear-gradient(135deg, #E44D26, #F16529); color:#fff; }
+.tech-ic.c-js { background: linear-gradient(135deg, #F0DB4F, #D4B81F); color:#000; box-shadow:none; border:1px solid #C4A911 }
 .tech-ic.c-kt { background: linear-gradient(135deg, #7F52FF, #5D29F5); }
-.tech-ic.c-jv { background: linear-gradient(135deg, #E76F00, #C23A0F); }
-.tech-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; letter-spacing:-0.2px; color:var(--tx) }
-.tech-card p { font-size: 12.5px; font-weight: 500; color: var(--tx2); line-height: 1.45; }
-.tc-chk { position:absolute; top:14px; right:14px; display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; border:2px solid var(--line); color:transparent; transition:.2s; background:#fff}
-.tc-chk .ic { width:13px; height:13px; stroke-width:3}
+.tech-ic.c-jv { background: linear-gradient(135deg, #F86E4D, #D64623); }
+.tech-card h3 { font-size: 19px; font-weight: 700; margin-bottom: 8px; letter-spacing:-0.2px; color:var(--tx) }
+.tech-card p { font-size: 13px; font-weight: 500; color: var(--tx2); line-height: 1.4; }
+.tc-chk { position:absolute; top:18px; right:18px; display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; border:2px solid var(--line); color:transparent; transition:.2s; background:#fff}
+.tc-chk .ic { width:14px; height:14px; stroke-width:3}
 .tech-card.active .tc-chk { background:#000; border-color:#000; color:#fff }
 .am-p { font-size:15px; color:var(--tx2); font-weight:500; line-height:1.6; text-align:center; margin-bottom:8px }
 
-.fbtn-large { display:flex;align-items:center;justify-content:center; width:100%; height:60px; min-height:60px; border-radius:20px; font-size:16.5px; font-weight:700; color:#fff; background:#000; transition:transform .12s, box-shadow .2s; box-shadow: 0 8px 24px rgba(0,0,0,0.15)}
+.fbtn-large { display:flex;align-items:center;justify-content:center; width:100%; height:64px; border-radius:20px; font-size:17px; font-weight:700; color:#fff; background:#000; transition:transform .12s, box-shadow .2s; box-shadow: 0 8px 24px rgba(0,0,0,0.15)}
 .fbtn-large:active{transform:scale(.97)}
 .fbtn-large:disabled{opacity:.4; transform:none; cursor:not-allowed; box-shadow:none}
 
 .gen-hud { min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; background:#fff; z-index:95 }
-.gen-hud .spin { width:44px; height:44px; border-width:4px; border-color:var(--soft); border-top-color:#000; margin-bottom:24px }
+.gen-hud .spin { width:44px; height:44px; border-width:4px; border-color:var(--soft); border-top-color:#000; margin-bottom:24px; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
 .gen-hud h2 { font-size:22px; font-weight:700; margin-bottom:10px}
 .gen-hud p { color:var(--tx2); font-weight:500; font-size:14.5px}
 
-.panel{position:fixed;inset:0;background:#fff;z-index:70;display:flex;flex-direction:column;opacity:0;transform:translateY(10px);transition:.22s}
+.panel{position:fixed;inset:0;background:var(--soft2);z-index:140;display:flex;flex-direction:column;opacity:0;transform:translateY(10px);transition:.22s}
 .panel.on{opacity:1;transform:none}
-.p-top{flex:none;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;border-bottom:1px solid var(--hair)}
+.p-top{flex:none;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;border-bottom:1px solid var(--hair);background:#fff}
 .p-top b{flex:1;font-size:16px;font-weight:700}
-.p-body{flex:1;overflow-y:auto;padding:16px 16px 34px;max-width:640px;width:100%;margin:0 auto}
-.p-lead{font-size:13.5px;color:var(--tx2);font-weight:500;margin-bottom:8px}
-.p-note{display:flex;gap:10px;border:1px solid var(--hair);border-radius:12px;padding:12px;font-size:12.5px;color:var(--tx2);font-weight:500;line-height:1.6;margin:14px 0}
+.p-body{flex:1;overflow-y:auto;padding:24px 20px 40px;max-width:640px;width:100%;margin:0 auto}
+.p-lead{font-size:14px;color:var(--tx2);font-weight:500;margin-bottom:16px}
+.p-note{display:flex;gap:10px;border:1px solid var(--hair);border-radius:12px;padding:12px;font-size:12.5px;color:var(--tx2);font-weight:500;line-height:1.6;margin:14px 0;background:#fff;}
 .p-note .ic{width:16px;height:16px;flex:none;margin-top:2px}
-.prov-card{border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin:10px 0}
+.prov-card{border:1px solid var(--line);border-radius:20px;padding:20px;margin:12px 0;background:#fff;box-shadow: 0 4px 12px rgba(0,0,0,0.02); transition: transform 0.2s, box-shadow 0.2s;}
+.prov-card:hover{transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); border-color: #000;}
 .pc-h{display:flex;align-items:baseline;gap:10px}
-.pc-h b{font-size:15px;font-weight:700}
+.pc-h b{font-size:16px;font-weight:700}
 .pc-model{font:700 12px var(--mono);color:var(--tx2);background:var(--soft);border-radius:7px;padding:2px 8px}
-.pc-u{font-size:12px;color:var(--tx3);margin-top:4px;font-family:var(--mono)}
-.pc-caps{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
-.cap{font-size:11px;font-weight:700;border:1px solid var(--hair);color:var(--tx3);border-radius:20px;padding:3px 9px}
-.cap.on{border-color:#000;color:#000}
-.pc-acts{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
-.field{margin:12px 0; width:100%}
-.field label{display:block;font-size:13.5px;font-weight:700;color:var(--tx2);margin-bottom:6px}
-.inp{width:100%;border:1px solid var(--line);border-radius:14px;padding:12px 14px;font:500 15px var(--sans);background:#fff;color:var(--tx); transition:border-color .2s}
-.inp:focus{outline:none;border-color:#000; box-shadow:0 0 0 3px rgba(0,0,0,0.05)}
-.err-t{color:var(--red);font-size:12px;font-weight:600;margin-top:4px}
-.frow{display:flex;gap:10px}
+.pc-u{font-size:13px;color:var(--tx3);margin-top:6px;font-family:var(--mono)}
+.pc-caps{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.cap{font-size:11px;font-weight:700;border:1px solid var(--hair);color:var(--tx3);border-radius:20px;padding:4px 10px}
+.cap.on{border-color:#000;color:#000;background:var(--soft2)}
+.pc-acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+
+/* Premium Form Styling */
+.form-box { background: #fff; border: 1px solid var(--line); border-radius: 20px; padding: 24px 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.04); margin-bottom: 24px; }
+.field{margin:16px 0; width:100%}
+.field label{display:block;font-size:13.5px;font-weight:700;color:var(--tx2);margin-bottom:8px}
+.inp{width:100%;border:2px solid transparent;background:var(--soft);border-radius:14px;padding:14px 16px;font:500 15px var(--sans);color:var(--tx); transition:all .2s ease;}
+.inp:focus{outline:none;border-color:#000;background:#fff; box-shadow:0 6px 16px rgba(0,0,0,0.06)}
+.err-t{color:var(--red);font-size:12.5px;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:4px;}
+.err-t::before{content:"";display:block;width:4px;height:4px;border-radius:50%;background:var(--red);}
+.frow{display:flex;gap:12px}
 .frow .field{flex:1}
 .key-wrap{position:relative}
-.key-wrap .inp{padding-right:44px}
-.key-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--tx2)}
+.key-wrap .inp{padding-right:48px}
+.key-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--tx2);transition:background 0.2s}
+.key-eye:hover{background:var(--line);color:#000;}
 .key-eye .ic{width:17px;height:17px}
-.fchk{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:14px;font-weight:600}
-.fchk input{width:18px;height:18px;accent-color:#000}
+.fchk{display:flex;align-items:center;gap:9px;padding:8px 0;font-size:14px;font-weight:600;cursor:pointer;}
+.fchk input{width:20px;height:20px;accent-color:#000;cursor:pointer;}
 .fchk small{color:var(--tx3);font-weight:500}
-.form-btns{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
-.form-btns .btn{flex:1}
-.test-res{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--hair);border-radius:11px;padding:10px 12px;font-size:13px;font-weight:600;margin-top:12px;color:var(--tx2)}
-.test-res .ic{width:16px;height:16px;flex:none;margin-top:1px}
-.test-res.err{color:var(--red);border-color:#F0C6D2}
-.test-res.ok{color:var(--tx);border-color:#000}
-
-.prov-presets{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
-.prov-pill{border:1px solid var(--line);border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;background:#fff;transition:.12s;cursor:pointer}
-.prov-pill:hover{border-color:#000}
-.prov-pill.active{background:#000;color:#fff;border-color:#000}
+.form-btns{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+.form-btns .btn{flex:1;height:48px;border-radius:14px;font-size:15px;}
+.test-res{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--hair);border-radius:14px;padding:12px 14px;font-size:13.5px;font-weight:600;margin-top:16px;color:var(--tx2);background:#fff;}
+.test-res .ic{width:18px;height:18px;flex:none;margin-top:1px}
+.test-res.err{color:var(--red);border-color:#F0C6D2;background:#FDF5F7;}
+.test-res.ok{color:#176C29;border-color:#D8EFDD;background:#F3FBF5;}
 
 .prov-name{font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--tx3);margin:14px 0 6px}
 .model-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid var(--hair);border-radius:12px;padding:11px 13px;margin:6px 0}
@@ -409,34 +423,32 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .tr-row.open .ic:last-child{transform:rotate(180deg)}
 .tr-kids{margin-left:15px;border-left:1px solid var(--hair);padding-left:6px}
 
-/* Advanced Full Width VS Code Style File Explorer */
-.fsTree{max-height:none !important; margin:0 !important; border:none !important; border-radius:0; padding:4px 0; width:100%;}
-.fs-row { display:flex; align-items:center; gap:10px; padding:10px 14px; font-size:14px; font-weight:600; cursor:pointer; -webkit-user-select:none; user-select:none; border-radius:12px; transition:0.15s; background:#fff; margin-bottom:3px; border:1px solid transparent; width:100%; box-sizing:border-box;}
+/* Advanced App Code Root FS Styles */
+.fsTree{max-height:none !important; margin:0 !important; border:none !important; border-radius:0; padding:12px; overflow-x: auto; white-space: nowrap;}
+.fs-row { display:flex; align-items:center; gap:12px; padding:10px 14px; font-size:14.5px; font-weight:600; cursor:pointer; -webkit-user-select:none; user-select:none; border-radius:12px; transition:0.15s; background:transparent; margin-bottom:2px; border:1px solid transparent; width:100%; min-width:max-content; }
 .fs-row:hover { background:var(--soft2); border-color:var(--hair) }
-.fs-row:active { transform:scale(0.99) }
+.fs-row:active { transform:scale(0.98) }
 .fs-row.selected { background:#F3FBF5; border-color:#D8EFDD; color:#176C29 }
-.fs-chk { margin-left:auto; width:22px; height:22px; border-radius:50%; background:#1E7D32; border:2px solid #1E7D32; color:#fff; display:none; align-items:center; justify-content:center; flex:none; }
+.fs-chk { margin-left:auto; width:22px; height:22px; border-radius:50%; border:2px solid #1E7D32; color:#fff; display:none; align-items:center; justify-content:center; transition:0.2s; background:#1E7D32; flex:none; }
 .fs-chk .ic { width:12px; height:12px; stroke-width:3 }
-.fs-row.selected .fs-chk { display: flex; }
+.fs-row.selected .fs-chk { display:flex; }
+.fs-icon-wrap { width:24px; height:24px; flex:none; display:flex; align-items:center; justify-content:center; }
+.fs-icon-wrap .ic { width: 22px; height: 22px; }
 
-/* Antigravity-Style Activity / Thinking System */
-.ag-box { border:1px solid var(--line); border-radius:16px; background:#fff; overflow:hidden; margin:10px 0; box-shadow:0 3px 14px rgba(0,0,0,0.03); max-width:540px; }
-.ag-head { display:flex; align-items:center; gap:10px; padding:11px 14px; background:var(--soft2); font-size:13.5px; font-weight:700; cursor:pointer; border-bottom:1px solid var(--hair); }
-.ag-head .ic.spin-icon { width:16px; height:16px; animation:think 1.5s ease-in-out infinite; color:var(--tx2); }
-.ag-head .ag-caret { margin-left:auto; width:16px; height:16px; transition:transform .2s; color:var(--tx3); }
-.ag-box.open .ag-head .ag-caret { transform:rotate(180deg); }
-.ag-steps { padding:8px 12px; display:flex; flex-direction:column; gap:6px; font-size:13px; }
-.ag-step { display:flex; align-items:center; gap:9px; padding:4px 0; font-weight:500; color:var(--tx2); }
-.ag-step .ag-dot { width:16px; height:16px; display:flex; align-items:center; justify-content:center; flex:none; }
-.ag-step.done { color:#111; font-weight:600; }
-.ag-step.done .ag-dot { color:#1E7D32; }
-.ag-step.running { color:#000; font-weight:700; }
-.ag-step.running .ag-dot { animation:think 1.2s infinite; color:#000; }
-.ag-step.err { color:var(--red); font-weight:700; }
-.ag-step.err .ag-dot { color:var(--red); }
-.ag-step .ag-path { font-family:var(--mono); font-size:12px; color:var(--tx); background:var(--soft); padding:1px 6px; border-radius:6px; }
+/* Test Connection Modal */
+.test-modal-ov { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; }
+.test-modal-ov.on { opacity: 1; }
+.test-modal { background: #fff; width: 100%; max-width: 340px; border-radius: 24px; padding: 32px 24px; text-align: center; box-shadow: var(--sh-lg); transform: scale(0.95); transition: transform 0.25s cubic-bezier(0.2,0.8,0.2,1); }
+.test-modal-ov.on .test-modal { transform: scale(1); }
+.tm-icon { width: 64px; height: 64px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; background: var(--soft2); color: var(--tx2); }
+.tm-icon .ic { width: 32px; height: 32px; }
+.tm-icon.spin .ic { animation: spin 1.5s linear infinite; }
+.tm-icon.success { background: #EBF6ED; color: #1E7D32; }
+.tm-icon.error { background: #FDF5F7; color: var(--red); }
+.test-modal h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+.test-modal p { font-size: 14.5px; color: var(--tx2); line-height: 1.5; font-weight: 500; margin-bottom: 24px; white-space: pre-wrap; }
+.test-modal .btn { width: 100%; height: 48px; border-radius: 14px; font-size: 15px; }
 
-/* Critical: File Preview viewer must render in foreground on top of am-layer */
 .viewer{position:fixed;inset:0;background:#fff;z-index:150;display:flex;flex-direction:column;opacity:0;transform:translateY(10px);transition:.22s}
 .viewer.on{opacity:1;transform:none}
 .v-top{flex:none;display:flex;align-items:center;gap:10px;padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;border-bottom:1px solid var(--hair)}
@@ -468,7 +480,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .df.d{background:#FBE9EE;color:var(--red-deep)}
 .df-note{padding:10px 12px;font-size:12.5px;color:var(--tx3);font-weight:500}
 #toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 100px);
-  z-index:90;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:max-content;max-width:92vw}
+  z-index:160;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:max-content;max-width:92vw}
 .toast{display:flex;align-items:center;gap:9px;background:#000;color:#fff;border-radius:12px;padding:10px 15px;
   font-size:13.5px;font-weight:600;max-width:92vw;opacity:0;transform:translateY(8px);transition:.22s;box-shadow:var(--sh)}
 .toast.on{opacity:1;transform:none}
@@ -500,10 +512,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5V15"/><path d="M7 10.5l5 5 5-5"/><path d="M4.5 20.5h15"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-android" viewBox="0 0 24 24"><path d="M6.5 11.5a5.5 5.5 0 0 1 11 0V13h-11v-1.5z"/><path d="M8.2 5.6L7 4M15.8 5.6L17 4"/><circle class="fl" cx="9.7" cy="11" r=".95"/><circle class="fl" cx="14.3" cy="11" r=".95"/><path d="M4.5 13h15"/></symbol>
-  <symbol id="i-chats" viewBox="0 0 24 24"><path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3h-6l-4 3.5V16H7a3 3 0 0 1-3-3V7z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01"/></symbol>
+  <symbol id="i-chats" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
   <symbol id="i-crown" viewBox="0 0 24 24"><path class="fl" d="M2.8 7.2L7.6 10 12 4l4.4 6 4.8-2.8-1.5 9a2 2 0 0 1-2 1.8H6.3a2 2 0 0 1-2-1.8l-1.5-9z"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.8V11c0 4.3-2.9 8.2-7 9.4C7.9 19.2 5 15.3 5 11V5.8L12 3z"/><path d="M9.2 11.6l2 2 3.6-4"/></symbol>
-  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7A1.5 1.5 0 0 1 5 5.5h4l2 2h8A1.5 1.5 0 0 1 20.5 9v8A1.5 1.5 0 0 1 19 18.5H5A1.5 1.5 0 0 1 3.5 17V7z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path class="fl" d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
   <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 9.5V14"/><path d="M12 17h.01"/></symbol>
   <symbol id="i-err" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
   <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M8.5 12.3l2.4 2.4 4.6-5"/></symbol>
@@ -517,13 +529,23 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v13"/><path d="M6.5 12.5L12 18l5.5-5.5"/></symbol>
   <symbol id="i-b-android" viewBox="0 0 24 24"><path class="fl" d="M17.5 10c0-2.8-2.5-5-5.5-5S6.5 7.2 6.5 10H17.5zm-6-2.5c-.3 0-.5-.2-.5-.5s.2-.5.5-.5.5.2.5.5-.2.5-.5.5zm3 0c-.3 0-.5-.2-.5-.5s.2-.5.5-.5.5.2.5.5-.2.5-.5.5zm-5-3.5L8.2 2.8m8.3 1.2l1.3-1.2" stroke-width="1.2"/><rect class="fl" x="6" y="11" width="12" height="10" rx="1.5"/><path stroke-width="2.5" d="M4.5 12v5M19.5 12v5"/></symbol>
   <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2" class="fl"/><circle cx="12" cy="12" r="2" class="fl"/><circle cx="12" cy="19" r="2" class="fl"/></symbol>
-  <symbol id="i-history-official" viewBox="0 0 24 24"><path d="M12 7v5l3 3"/><circle cx="12" cy="12" r="9"/><path d="M3.2 12a8.8 8.8 0 0 1 2.6-6.2M3 4v4h4"/></symbol>
-  <symbol id="i-info-official" viewBox="0 0 24 24"><path d="M4 4h16v16H4z" rx="3"/><path d="M9 9h6M9 12h6M9 15h4"/><circle cx="7" cy="9" r=".8" class="fl"/></symbol>
-  <symbol id="i-ai-official" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="4"/><circle cx="8.5" cy="11.5" r="1.5" class="fl"/><circle cx="15.5" cy="11.5" r="1.5" class="fl"/><path d="M9 16c1 .8 2 1.2 3 1.2s2-.4 3-1.2"/><path d="M12 2v2M8 2l1 2M16 2l-1 2"/></symbol>
-  <symbol id="i-android-official" viewBox="0 0 24 24"><path d="M5 10a7 7 0 0 1 14 0v2H5v-2z"/><line x1="7" y1="4" x2="8.5" y2="6"/><line x1="17" y1="4" x2="15.5" y2="6"/><circle cx="9" cy="9.5" r="1" class="fl"/><circle cx="15" cy="9.5" r="1" class="fl"/><rect x="5" y="13" width="14" height="7" rx="2"/><line x1="2.5" y1="12" x2="2.5" y2="17"/><line x1="21.5" y1="12" x2="21.5" y2="17"/></symbol>
-  <symbol id="i-kotlin" viewBox="0 0 24 24"><path class="fl" d="M22 2H2v20l10-10L22 22zM12 12L2 22h20z"/></symbol>
-  <symbol id="i-java" viewBox="0 0 24 24"><path d="M4 19h16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM6 13h10a4 4 0 0 1 4 4v2H4v-2a4 4 0 0 1 4-4z"/><path d="M18 13v-1a3 3 0 0 1 3-3h0a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3h-1"/><path d="M8 8c0-2 2-3 2-5M12 8c0-2 2-3 2-5M16 8c0-2 2-3 2-5"/></symbol>
-  <symbol id="i-html" viewBox="0 0 24 24"><path d="M4 3l1.8 15.5L12 21l6.2-2.5L20 3H4z"/><path d="M8 7h8l-.5 4H8.5l.3 3 3.2.9 3.2-.9.2-2"/></symbol>
+  <symbol id="i-spinner" viewBox="0 0 24 24"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></symbol>
+  <symbol id="i-project" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M3 9h18M9 21V9"/></symbol>
+  <symbol id="i-ai-settings" viewBox="0 0 24 24"><path d="M12 14a2 2 0 100-4 2 2 0 000 4z"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></symbol>
+  <symbol id="i-build-app" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+
+  <!-- File Ext Icons -->
+  <symbol id="i-ext-kt" viewBox="0 0 24 24"><path class="fl" d="M24 24H0V0h24v24zM12 12L0 24h12l12-12L12 0H0l12 12z"/></symbol>
+  <symbol id="i-ext-java" viewBox="0 0 24 24"><path d="M16 18c-3 2-9 2-12 0M17 14c-4 2-11 2-14 0M15 10c-3 2-9 2-11 0M9 6V2M13 6V2M17 6V2"/></symbol>
+  <symbol id="i-ext-html" viewBox="0 0 24 24"><path class="fl" d="M2 2h20l-1.8 20L12 24l-8.2-2L2 2zm1.8 2.2l1.4 15.6L12 21.6l6.8-1.8 1.4-15.6H3.8zm14.1 3.5l-.3 2.9h-9l.2 2.2h8.5l-.6 6.7L12 18.8l-4.7-1.3-.3-3.6h2.9l.1 1.6 2 .5 2-.5.3-3.3H5.2l-.5-5.9h13.2z"/></symbol>
+  <symbol id="i-ext-js" viewBox="0 0 24 24"><rect class="fl" x="2" y="2" width="20" height="20" rx="2"/><path d="M12 17c-1.5 1-3.5 1-5 0M17 17c-1.5 1-3.5 1-5 0" stroke="#000" stroke-width="2"/><path d="M8 12v5M17 12v5" stroke="#000" stroke-width="2"/></symbol>
+  <symbol id="i-ext-css" viewBox="0 0 24 24"><path class="fl" d="M2 2h20l-1.8 20L12 24l-8.2-2L2 2zm14.4 6.7h-9.5l-.2-2.3h10l-1.4 15-5.3 1.5-5.3-1.5-.3-3.6h2.8l.1 1.6 2.7.7 2.7-.7.5-5H7.7l.2 2.3h8.3l.2-2.2z"/></symbol>
+  <symbol id="i-ext-json" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h2M15 5h2a2 2 0 012 2v10a2 2 0 01-2 2h-2"/></symbol>
+  <symbol id="i-ext-xml" viewBox="0 0 24 24"><path d="M10 8L6 12l4 4M14 8l4 4-4 4M13 6l-2 12"/></symbol>
+  <symbol id="i-ext-py" viewBox="0 0 24 24"><path class="fl" d="M12 2C8 2 8 4 8 4v3h8v2H6s-4 0-4 4 4 4 4 4h1v-3s0-3 3-3h5s3 0 3-3V6s0-4-4-4zm-1 2.5a.5.5 0 110 1 .5.5 0 010-1zM18 11h-1v3s0 3-3 3H9s-3 0-3 3v2s0 4 4 4h4s4 0 4-4v-3H10v-2h8s4 0 4-4-4-4-4-4zm-5 8.5a.5.5 0 110 1 .5.5 0 010-1z"/></symbol>
+  <symbol id="i-ext-file" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9l-7-7z"/><path d="M13 2v7h7"/></symbol>
 </svg>
 
 <div id="app">
@@ -934,25 +956,21 @@ function projectInfoSheet(){openSheet({title:'Project Information',build(body){
 
 const getFileIcon = (ext) => {
     const e = (ext||'').toLowerCase();
-    let bg = '#333333', color = '#FFFFFF', label = (e || 'file').slice(0,4).toUpperCase();
-    if(e==='kt'||e==='kts') { bg='#7F52FF'; color='#FFFFFF'; label='KT'; }
-    else if(e==='java') { bg='#ED8B00'; color='#FFFFFF'; label='JAVA'; }
-    else if(e==='xml') { bg='#009688'; color='#FFFFFF'; label='</>'; }
-    else if(e==='html'||e==='htm') { bg='#E44D26'; color='#FFFFFF'; label='HTML'; }
-    else if(e==='css') { bg='#264DE4'; color='#FFFFFF'; label='CSS'; }
-    else if(e==='js') { bg='#F7DF1E'; color='#000000'; label='JS'; }
-    else if(e==='ts') { bg='#3178C6'; color='#FFFFFF'; label='TS'; }
-    else if(e==='jsx'||e==='tsx') { bg='#00D8FF'; color='#000000'; label='REACT'; }
-    else if(e==='json') { bg='#111111'; color='#00E5FF'; label='{}'; }
-    else if(e==='py') { bg='#3776AB'; color='#FFD43B'; label='PY'; }
-    else if(e==='gradle') { bg='#02303A'; color='#00DE7A'; label='GRAD'; }
-    else if(e==='c'||e==='cpp'||e==='h'||e==='hpp') { bg='#00599C'; color='#FFFFFF'; label='C++'; }
-    else if(e==='php') { bg='#777BB4'; color='#FFFFFF'; label='PHP'; }
-    else if(e==='sql') { bg='#336791'; color='#FFFFFF'; label='SQL'; }
-    else if(e==='md') { bg='#0F172A'; color='#94A3B8'; label='MD'; }
-    else if(e==='txt') { bg='#475569'; color='#F8FAFC'; label='TXT'; }
-    else if(IMG_EXTS.has(e)) { bg='#0D9488'; color='#FFFFFF'; label='IMG'; }
-    return `<div style="width:30px;height:24px;border-radius:6px;background:${bg};color:${color};display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:800;font-family:var(--mono);letter-spacing:0.3px;flex:none;box-shadow:0 1px 3px rgba(0,0,0,0.12)">${label}</div>`;
+    let symbol = 'ext-file', color = '#767676';
+    if(e==='kt'||e==='kts') { symbol='ext-kt'; color='#7F52FF'; }
+    else if(e==='java') { symbol='ext-java'; color='#F86E4D'; }
+    else if(e==='xml') { symbol='ext-xml'; color='#0BC495'; }
+    else if(e==='html'||e==='htm') { symbol='ext-html'; color='#E44D26'; }
+    else if(e==='css') { symbol='ext-css'; color='#264DE4'; }
+    else if(e==='js'||e==='mjs') { symbol='ext-js'; color='#F0DB4F'; }
+    else if(e==='ts') { symbol='ext-js'; color='#3178C6'; } /* Using JS icon styled blue for TS */
+    else if(e==='jsx'||e==='tsx') { symbol='ext-js'; color='#61DAFB'; }
+    else if(e==='json') { symbol='ext-json'; color='#000000'; }
+    else if(e==='gradle') { symbol='ext-file'; color='#02303A'; }
+    else if(e==='py') { symbol='ext-py'; color='#3776AB'; }
+    else if(e==='png'||e==='jpg'||e==='webp'||e==='svg') { symbol='image'; color='#00BCD4'; }
+    
+    return `<div class="fs-icon-wrap" style="color:${color}"><svg class="ic"><use href="#i-${symbol}"/></svg></div>`;
 };
 
 function buildTree(root,files, isFSScreen=false){
@@ -965,59 +983,42 @@ function buildTree(root,files, isFSScreen=false){
     for(const k in node){const v=node[k];const isDir=!(v&&v.path);(isDir?dirs:fles).push([k,v]);}
     dirs.sort((a,b)=>a[0].localeCompare(b[0]));fles.sort((a,b)=>a[0].localeCompare(b[0]));
     
-    for(const[k]of dirs){
-      const row=el('button',`tr-row dir open ${isFSScreen?'fs-row':''}`,
-        `<span style="color:#FFB02E;display:flex;align-items:center">${ic('folder')}</span><span style="font-weight:700;flex:1;text-align:left">${esc(k)}</span>${ic('chev-d')}`);
-      if(isFSScreen) { 
-        row.style.background = 'transparent'; 
-        row.style.padding = '8px 8px';
-      }
+    for(const[k]of dirs){const row=el('button',`tr-row dir open ${isFSScreen?'fs-row':''}`,
+      `<span style="color:#FFB02E;display:flex" class="fs-icon-wrap">${ic('folder')}</span>${esc(k)}${ic('chev-d')}`);
       const kids=el('div','tr-kids');
       row.onclick=()=>{const open=row.classList.toggle('open');kids.hidden=!open;};
-      container.append(row,kids);render(node[k],kids,depth+1);
-    }
+      container.append(row,kids);render(node[k],kids,depth+1);}
       
     for(const[k,v]of fles){const ext=getExt(k);
-      const isSelected = S.fsSelected.has(v);
-      const row=el(isFSScreen?'div':'button',isFSScreen?`fs-row ${isSelected?'selected':''}`:'tr-row',
-        `${getFileIcon(ext)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left">${esc(k)}</span><span class="tr-sz" style="font-size:12px;color:var(--tx3);margin-right:4px">${fmtSize(v.size||0)}</span>`);
+      const row=el(isFSScreen?'div':'button',isFSScreen?'fs-row':'tr-row',
+        `${getFileIcon(ext)}<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k)}</span><span class="tr-sz" style="font-size:12px;color:var(--tx3)">${fmtSize(v.size||0)}</span>`);
       
       if(isFSScreen) {
           const chk = el('div', 'fs-chk', ic('check'));
           row.appendChild(chk);
           
-          let holdTimer = null;
-          let isHold = false;
+          let holdTimer = null, didHold = false;
           const toggle = () => {
               const on = S.fsSelected.has(v);
               if(on) S.fsSelected.delete(v); else S.fsSelected.add(v);
               row.classList.toggle('selected', !on);
               if(typeof updateFSHeader === 'function') updateFSHeader();
           };
-          
           row.onpointerdown = e => { 
-              if(e.button!==0 && e.pointerType==='mouse') return; 
-              isHold = false;
-              holdTimer = setTimeout(()=>{ 
-                  isHold = true;
-                  navigator.vibrate?.(35); 
-                  toggle(); 
-              }, 400); 
+              if(e.button!==0&&e.pointerType==='mouse')return; 
+              didHold = false;
+              holdTimer=setTimeout(()=>{
+                  didHold = true;
+                  navigator.vibrate?.(30); 
+                  toggle();
+              }, 450); 
           };
           const cHold = () => clearTimeout(holdTimer);
-          row.onpointerup = cHold; 
-          row.onpointercancel = cHold; 
-          row.onpointerleave = cHold;
+          row.onpointerup = cHold; row.onpointercancel = cHold; row.onpointerleave = cHold;
           row.oncontextmenu = e => { e.preventDefault(); cHold(); toggle(); };
-          
-          row.onclick = (e) => { 
-              cHold();
-              if(isHold) return;
-              if(S.fsSelected.size > 0) {
-                  // In selection mode, tap toggles selection
-                  toggle();
-              } else {
-                  // Normal tap directly opens File Preview Page in foreground
+          row.onclick = () => { 
+              cHold(); 
+              if(!didHold) {
                   openViewer({id:'pf',path:v.path,name:k,ext,lang:v.lang||EXT_LANG[ext]||'File', content:v.text??null,dataUrl:v.dataUrl,binary:v.binary,projectRef:true});
               }
           };
@@ -1234,27 +1235,33 @@ function fillAI(main,m){
       return;
   }
   
-  // Antigravity-Style Activity / Thinking System
-  if(m.activities && m.activities.length) {
-    const isCompleted = m.status === 'done' || m.status === 'stopped';
-    const activeAct = m.activities.find(a => a.s === 'running') || m.activities[m.activities.length - 1];
-    html += `<div class="ag-box ${isCompleted ? '' : 'open'}">
-      <div class="ag-head">
-        <span class="ic spin-icon">${ic(isCompleted ? 'check' : 'brain')}</span>
-        <span>${esc(activeAct ? activeAct.t : 'Agent Activity')}</span>
-        <svg class="ic ag-caret" aria-hidden="true"><use href="#i-chev-d"/></svg>
-      </div>
-      <div class="ag-steps" ${isCompleted ? 'hidden' : ''}>`;
-    for (const step of m.activities) {
-      const icon = step.s === 'done' ? ic('check') : step.s === 'running' ? '<div class="spin" style="width:12px;height:12px;border-width:2px;display:inline-block"></div>' : step.s === 'err' ? ic('err') : ic('info');
-      html += `<div class="ag-step ${step.s}">
-        <span class="ag-dot">${icon}</span>
-        <span>${esc(step.t)}</span>
-      </div>`;
-    }
-    html += `</div></div>`;
-  } else if(m.status==='thinking'&&!m.content&&!m.reason) {
-    html+=`<div class="think-row">${ic('brain')}<span>${S.isAndroidMode?'Inspecting project architecture...':'Thinking'}</span></div>`;
+  if(m.status==='thinking'||m.status==='streaming') {
+      let agHtml = `<div class="ag-activity">`;
+      if(m.reason && m.reason.length > 5) {
+          agHtml += `<div class="ag-item done">${ic('check')}<span>Analyzed project structure & requirements</span></div>`;
+      } else {
+          agHtml += `<div class="ag-item pulse">${ic('brain')}<span>Analyzing request & project files...</span></div>`;
+      }
+      
+      const ops = m.content ? fencesToOps(m.content, {content: ''}) : [];
+      let foundOps = false;
+      
+      const flayMatch = m.content && parseFileOps(m.content);
+      const allOps = flayMatch ? flayMatch : ops;
+      
+      if(allOps && allOps.length) {
+          allOps.forEach(op => {
+             if(op && op.path) {
+                 foundOps = true;
+                 agHtml += `<div class="ag-item pulse">${ic('edit')}<span>${op.action==='create'?'Creating':op.action==='delete'?'Deleting':'Updating'} file: ${esc(op.path)}</span></div>`;
+             }
+          });
+      }
+      if(!foundOps && m.content && m.content.length > 20) {
+          agHtml += `<div class="ag-item pulse">${ic('edit')}<span>Formulating response & reading context...</span></div>`;
+      }
+      agHtml += `</div>`;
+      html += agHtml;
   }
 
   if(m.reason)html+=`<div class="rs"><button class="rs-h">${ic('brain')}<span>Reasoning</span><em>provider-provided</em>${ic('chev-d')}</button><div class="rs-b" hidden>${esc(m.reason)}</div></div>`;
@@ -1280,146 +1287,10 @@ function fillAI(main,m){
   if(m.status==='stopped')html+=`<div class="mst"><span class="stop-chip">${ic('stop')}<span>Stopped — partial response kept</span></span></div>`;
   if(m.status==='error')html+=`<div class="err-card">${ic('err')}<div class="ec-t"><b>Provider error</b><p>${esc(m.error||'Unknown error')}</p></div><button class="mini-btn" data-retry="1">${ic('refresh')}<span>Retry</span></button></div>`;
   main.innerHTML=html;
-
-  const agBox = main.querySelector('.ag-box');
-  if(agBox) {
-    agBox.querySelector('.ag-head').onclick = () => {
-      agBox.classList.toggle('open');
-      const st = agBox.querySelector('.ag-steps');
-      if(st) st.hidden = !agBox.classList.contains('open');
-    };
-  }
-
   const rs=main.querySelector('.rs');if(rs){rs.querySelector('.rs-h').onclick=()=>{rs.classList.toggle('open');
     rs.querySelector('.rs-b').hidden=!rs.classList.contains('open');};}
   const z=main.querySelector('[data-zip]');if(z)z.onclick=exportProjectZip;
   const rt=main.querySelector('[data-retry]');if(rt)rt.onclick=()=>retryMsg(m);}
-
-async function runAssistant(am, um, ctx) {
-  if (codeToFileCommand(um.content)) {
-    am.status = 'done';
-    updateMsg(am);
-    saveChat();
-    return;
-  }
-  const p = getProvider();
-  if (!p) {
-    am.status = 'error';
-    am.error = 'No AI provider configured. Please configure one in Menu → Set Up AI.';
-    updateMsg(am);
-    saveChat();
-    return;
-  }
-
-  S.streaming = true;
-  S.abort = new AbortController();
-  setStreamUI(true);
-
-  // Initialize Antigravity-Style Activity Tracker
-  am.activities = [
-    { t: 'Analyzing project structure', s: 'done' }
-  ];
-  if (um.atts && um.atts.length) {
-    const tagged = um.atts.map(a => a.path || a.name).join(', ');
-    am.activities.push({ t: `Reading tagged context: ${tagged}`, s: 'done' });
-  } else if (S.project && S.project.files.length) {
-    am.activities.push({ t: `Inspecting ${S.project.name} (${S.project.files.length} files)`, s: 'done' });
-  }
-  am.activities.push({ t: `Connecting to ${p.name || 'AI Provider'} (${S.selModel})`, s: 'running' });
-  updateMsg(am);
-  maybeScroll(true);
-
-  const cap = capOf(p);
-  const sys = systemPrompt();
-  const hist = historyMessages();
-  const userContent = buildUserContent(um, ctx, cap);
-
-  const messages = [
-    { role: 'system', content: sys },
-    ...hist,
-    { role: 'user', content: userContent }
-  ];
-
-  const payload = {
-    model: S.selModel,
-    messages,
-    temperature: p.temperature ?? 0.7,
-    max_tokens: p.maxTokens || 4096
-  };
-  const re = mapReason(p, S.reasoningMode);
-  if (cap.reasoning && re) payload.reasoning_effort = re;
-
-  try {
-    const onDelta = (type, chunk) => {
-      if (type === 'text') am.content += chunk;
-      else if (type === 'reason') am.reason += chunk;
-      if (am.status === 'thinking' && (am.content || am.reason)) {
-        am.status = 'streaming';
-        const conn = am.activities.find(a => a.s === 'running');
-        if (conn) conn.s = 'done';
-      }
-      updateMsg(am);
-      maybeScroll();
-    };
-
-    if (cap.streaming) {
-      await streamChat(p, { ...payload, stream: true }, onDelta, S.abort.signal);
-    } else {
-      const res = await fetchOnce(p, payload, S.abort.signal);
-      am.content = res.text || '';
-      am.reason = res.reason || '';
-      const conn = am.activities.find(a => a.s === 'running');
-      if (conn) conn.s = 'done';
-    }
-
-    // Now apply changes to virtual file system
-    am.activities.push({ t: 'Parsing code changes & validating syntax', s: 'running' });
-    updateMsg(am);
-
-    try {
-      applyGenerated(am, um);
-      const parseStep = am.activities.find(a => a.s === 'running');
-      if (parseStep) parseStep.s = 'done';
-
-      if (am.changes) {
-        if (am.changes.added && am.changes.added.length) {
-          am.changes.added.forEach(f => am.activities.push({ t: `Created file: ${f}`, s: 'done' }));
-        }
-        if (am.changes.modified && am.changes.modified.length) {
-          am.changes.modified.forEach(f => am.activities.push({ t: `Updated file: ${f}`, s: 'done' }));
-        }
-        if (am.changes.deleted && am.changes.deleted.length) {
-          am.changes.deleted.forEach(f => am.activities.push({ t: `Removed file: ${f}`, s: 'done' }));
-        }
-      }
-      am.activities.push({ t: 'Implementation complete', s: 'done' });
-    } catch (parseErr) {
-      const parseStep = am.activities.find(a => a.s === 'running');
-      if (parseStep) { parseStep.s = 'err'; parseStep.t = 'Validation note: ' + parseErr.message; }
-    }
-
-    am.status = 'done';
-  } catch (err) {
-    if (S.abort && S.abort.signal.aborted) {
-      am.status = 'stopped';
-      const running = am.activities.find(a => a.s === 'running');
-      if (running) { running.s = 'err'; running.t = 'Generation stopped by user'; }
-    } else {
-      am.status = 'error';
-      am.error = errText(err);
-      const running = am.activities.find(a => a.s === 'running');
-      if (running) { running.s = 'err'; running.t = 'Request failed: ' + err.message; }
-    }
-  } finally {
-    S.streaming = false;
-    S.abort = null;
-    setStreamUI(false);
-    updateSendState();
-    updateMsg(am);
-    maybeScroll(true);
-    saveChat();
-  }
-}
 function updateMsg(m){const node=S.msgEls[m.id];if(!node)return;
   if(m.role==='assistant')fillAI(node.querySelector('.ai-main'),m);}
 
@@ -1567,6 +1438,38 @@ function retryMsg(am){
   S.messages.splice(idx,0,nam);renderMsg(nam);
   runAssistant(nam,um,ctx);}
 
+/* ---------- assistant execution ---------- */
+async function runAssistant(am,um,ctx){
+  const p=getProvider();if(!p)return;
+  const cap=capOf(p);
+  const msgs=[{role:'system',content:systemPrompt()},...historyMessages(),{role:'user',content:buildUserContent(um,ctx,cap)}];
+  const payload={model:S.selModel,messages:msgs,temperature:p.temperature,max_tokens:p.maxTokens};
+  if(cap.reasoning&&p.reasoningEffort)payload.reasoning_effort=mapReason(p,S.reasoningMode);
+  S.streaming=true;S.abort=new AbortController();setStreamUI(true);
+  try{
+    if(cap.streaming){
+      await streamChat(p,payload,(k,v)=>{
+        if(k==='reason')am.reason+=v;else am.content+=v;
+        if(am.status==='thinking')am.status='streaming';
+        updateMsg(am);maybeScroll();
+      },S.abort.signal);
+    }else{
+      const r=await fetchOnce(p,payload,S.abort.signal);
+      am.reason=r.reason;am.content=r.text;
+    }
+    am.status='done';
+    try{applyGenerated(am,um);}catch(e){toast(e.message,'warn');}
+    if(codeToFileCommand(um.content)){am.content='I have created a file from the requested code.\n\n'+am.content;}
+  }catch(e){
+    if(e.name==='AbortError')am.status='stopped';
+    else{am.status='error';am.error=errText(e);toast(am.error,'err');}
+  }finally{
+    if(am.status==='streaming'||am.status==='thinking')am.status='stopped';
+    S.streaming=false;S.abort=null;setStreamUI(false);
+    updateMsg(am);maybeScroll(true);saveChat();
+  }
+}
+
 /* "Give it as a file" — reuse actual code already generated */
 function codeToFileCommand(text){
   if(!/^\s*(give it as a file|make this a file|as a file|turn this into a file)\s*\.?$/i.test(text))return false;
@@ -1657,12 +1560,12 @@ function openSettings(){
   const body=pnl.body;
   function list(){
     body.innerHTML=`<p class="p-lead">Connect any OpenAI-compatible Chat Completions provider. Your keys stay in this browser.</p>
-    <button class="btn wide" id="addProv" style="width:100%;margin-bottom:12px;height:44px;border-radius:14px">${ic('plus')}<span>Add Provider</span></button>
+    <button class="btn wide" id="addProv" style="width:100%;margin-bottom:6px;height:48px;border-radius:14px;font-size:15px">${ic('plus')}<span>Add Provider</span></button>
     <div id="provList"></div>
     <div class="p-note">${ic('key')}<span>API keys stored in the browser are <b>not</b> a secure production secret store. For production, route requests through a secure backend proxy. Files you attach are sent to the configured provider when included in a request.</span></div>`;
     body.querySelector('#addProv').onclick=()=>form(null);
     const listEl=body.querySelector('#provList');
-    if(!S.providers.length)listEl.innerHTML='<div class="pv-msg" style="border:1px dashed var(--line);border-radius:12px;margin:8px 0;padding:24px">No providers configured yet. Click "Add Provider" above.</div>';
+    if(!S.providers.length)listEl.innerHTML='<div class="pv-msg" style="border:1px dashed var(--line);border-radius:12px;margin:8px 0">No providers configured yet.</div>';
     for(const p of S.providers){
       const cap=capOf(p);
       const card=el('div','prov-card',`
@@ -1673,10 +1576,14 @@ function openSettings(){
           <span class="cap ${cap.reasoning?'on':''}">Reasoning</span>
           <span class="cap ${cap.vision?'on':''}">Vision</span></div>
         <div class="pc-acts"><button class="btn sm" data-e="${p.id}">Edit</button>
-        <button class="btn sm ghost" data-t="${p.id}">Test Connection</button>
-        <button class="btn sm ghost" data-d="${p.id}">Delete</button></div>`);
+        <button class="btn sm ghost" data-t="${p.id}">Test</button>
+        <button class="btn sm ghost" data-d="${p.id}" style="color:var(--red);border-color:#F5D4DF;background:#FDF5F7">Delete</button></div>`);
       card.querySelector(`[data-e="${p.id}"]`).onclick=()=>form(p);
-      card.querySelector(`[data-t="${p.id}"]`).onclick=()=>openTestConnectionModal(p);
+      card.querySelector(`[data-t="${p.id}"]`).onclick=async ev=>{
+        const b=ev.currentTarget;b.disabled=true;b.textContent='Testing…';
+        await showTestConnectionModal(p);
+        b.disabled=false;b.textContent='Test';
+      };
       card.querySelector(`[data-d="${p.id}"]`).onclick=async()=>{
         const ok=await confirmDialog({title:'Delete provider?',body:'Provider configuration "'+p.name+'" will be removed.',okLabel:'Delete',danger:true});
         if(!ok)return;
@@ -1684,65 +1591,30 @@ function openSettings(){
         if(S.selProviderId===p.id){S.selProviderId=null;S.selModel=null;$('#pmLabel').textContent='Model';}
         saveSettings();list();};}}
   function form(existing){
-    const PRESETS = [
-      { name:'OpenAI', url:'https://api.openai.com/v1', model:'gpt-4o', models:['gpt-4o','gpt-4o-mini','o1','o3-mini'] },
-      { name:'Google Gemini', url:'https://generativelanguage.googleapis.com/v1beta/openai', model:'gemini-2.0-flash', models:['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash'] },
-      { name:'DeepSeek', url:'https://api.deepseek.com/v1', model:'deepseek-chat', models:['deepseek-chat','deepseek-reasoner'] },
-      { name:'Groq', url:'https://api.groq.com/openai/v1', model:'llama-3.3-70b-versatile', models:['llama-3.3-70b-versatile','mixtral-8x7b-32768'] },
-      { name:'Claude / OpenRouter', url:'https://openrouter.ai/api/v1', model:'anthropic/claude-3.5-sonnet', models:['anthropic/claude-3.5-sonnet','google/gemini-2.0-flash-001'] },
-      { name:'Ollama (Local)', url:'http://localhost:11434/v1', model:'llama3', models:['llama3','deepseek-r1','mistral'] },
-      { name:'Custom Provider', url:'', model:'', models:[] }
-    ];
-
     const p=existing?{...existing,caps:{...(existing.caps||{})},models:[...(existing.models||[])]}
-      :{id:uid(),name:'Google Gemini',baseUrl:'https://generativelanguage.googleapis.com/v1beta/openai',apiKey:'',model:'gemini-2.0-flash',apiFormat:'openai',temperature:0.7,maxTokens:4096,reasoningEffort:'',caps:{streaming:true,reasoning:false,vision:false},models:['gemini-2.0-flash','gemini-1.5-pro']};
-    
+      :{id:uid(),name:'',baseUrl:'',apiKey:'',model:'',apiFormat:'openai',temperature:0.7,maxTokens:4096,reasoningEffort:'',caps:{streaming:true,reasoning:false,vision:false},models:[]};
     body.innerHTML=`
-    <p class="p-lead">${existing?'Edit Provider Configuration':'Add New AI Provider'} — High Speed Architecture</p>
-    
-    <div class="field">
-      <label>Quick Presets</label>
-      <div class="prov-presets" id="pPresets">
-        ${PRESETS.map(pr=>`<button class="prov-pill ${p.name===pr.name?'active':''}" data-preset="${esc(pr.name)}">${esc(pr.name)}</button>`).join('')}
-      </div>
-    </div>
-
-    <div class="field"><label>Provider Name *</label><input class="inp" id="fName" value="${esc(p.name)}"></div>
-    <div class="field"><label>Base URL *</label><input class="inp" id="fUrl" placeholder="https://api.openai.com/v1" value="${esc(p.baseUrl)}"></div>
-    <div class="field"><label>API Key ${existing?'(saved — leave blank to keep)':''}</label>
-      <div class="key-wrap"><input class="inp" id="fKey" type="password" placeholder="${existing?'••••••••••••••••':'sk-… / key'}">
-      <button class="key-eye" id="fEye" aria-label="Show API key">${ic('eye')}</button></div></div>
-    <div class="field"><label>Model Name *</label><input class="inp" id="fModel" value="${esc(p.model)}" list="mdl">
-      <datalist id="mdl">${(p.models||[]).map(m=>`<option value="${esc(m)}">`).join('')}</datalist></div>
-    <div class="field"><label>API Format</label><input class="inp" value="OpenAI Compatible / Modern HTTP Proxy" disabled></div>
-    <div class="frow"><div class="field"><label>Temperature (0–2)</label><input class="inp" id="fTemp" type="number" step="0.1" min="0" max="2" value="${p.temperature}"></div>
-    <div class="field"><label>Max Tokens</label><input class="inp" id="fMax" type="number" min="1" step="1" value="${p.maxTokens}"></div></div>
-    <div class="field"><label>Reasoning Effort override (optional)</label><input class="inp" id="fRe" value="${esc(p.reasoningEffort)}"></div>
-    <div class="field"><label>Capabilities</label>
-      <label class="fchk"><input type="checkbox" id="cS" ${p.caps.streaming?'checked':''}>Streaming <small>SSE real-time generation</small></label>
-      <label class="fchk"><input type="checkbox" id="cR" ${p.caps.reasoning?'checked':''}>Reasoning <small>Deep thinking support</small></label>
-      <label class="fchk"><input type="checkbox" id="cV" ${p.caps.vision?'checked':''}>Vision <small>Multimodal image input</small></label></div>
-    <div class="form-btns">
-      <button class="btn ghost" id="fCancel">Cancel</button>
-      <button class="btn" id="fSave" style="background:#000;color:#fff">${ic('check')}<span>Save & Test Connection</span></button>
+    <div class="form-box">
+        <h3 style="font-size:20px;font-weight:700;margin-bottom:6px;letter-spacing:-0.3px">${existing?'Edit AI Provider':'New AI Provider'}</h3>
+        <p class="p-lead" style="margin-bottom:24px">Configure your OpenAI-Compatible API integration details below.</p>
+        <div class="field"><label>Provider Name *</label><input class="inp" id="fName" value="${esc(p.name)}" placeholder="e.g. OpenAI, Anthropic"></div>
+        <div class="field"><label>Base URL *</label><input class="inp" id="fUrl" placeholder="https://example.com/v1" value="${esc(p.baseUrl)}"></div>
+        <div class="field"><label>API Key ${existing?'(saved — leave blank to keep)':''}</label>
+          <div class="key-wrap"><input class="inp" id="fKey" type="password" placeholder="${existing?'••••••••••••••••':'sk-…'}">
+          <button class="key-eye" id="fEye" aria-label="Show API key">${ic('eye')}</button></div></div>
+        <div class="field"><label>Model *</label><input class="inp" id="fModel" value="${esc(p.model)}" list="mdl" placeholder="e.g. gpt-4o">
+          <datalist id="mdl">${(p.models||[]).map(m=>`<option value="${esc(m)}">`).join('')}</datalist></div>
+        <div class="frow"><div class="field"><label>Temperature (0–2)</label><input class="inp" id="fTemp" type="number" step="0.1" min="0" max="2" value="${p.temperature}"></div>
+        <div class="field"><label>Max Tokens</label><input class="inp" id="fMax" type="number" min="1" step="1" value="${p.maxTokens}"></div></div>
+        <div class="field"><label>Reasoning Effort (optional)</label><input class="inp" id="fRe" value="${esc(p.reasoningEffort)}"></div>
+        <div class="field"><label style="margin-bottom:4px">Capabilities</label>
+          <label class="fchk"><input type="checkbox" id="cS" ${p.caps.streaming?'checked':''}>Streaming <small style="margin-left:auto">SSE stream</small></label>
+          <label class="fchk"><input type="checkbox" id="cR" ${p.caps.reasoning?'checked':''}>Reasoning <small style="margin-left:auto">reasoning_effort</small></label>
+          <label class="fchk"><input type="checkbox" id="cV" ${p.caps.vision?'checked':''}>Vision <small style="margin-left:auto">image input</small></label></div>
+        <div class="form-btns">
+          <button class="btn ghost" id="fCancel">Cancel</button>
+          <button class="btn" id="fSave">Save Configuration</button></div>
     </div>`;
-
-    body.querySelectorAll('.prov-pill').forEach(btn => {
-      btn.onclick = () => {
-        body.querySelectorAll('.prov-pill').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const pr = PRESETS.find(x => x.name === btn.dataset.preset);
-        if(pr && pr.url) {
-          body.querySelector('#fName').value = pr.name;
-          body.querySelector('#fUrl').value = pr.url;
-          body.querySelector('#fModel').value = pr.model;
-          p.models = [...pr.models];
-          const dl = body.querySelector('#mdl');
-          if(dl) dl.innerHTML = pr.models.map(m=>`<option value="${esc(m)}">`).join('');
-        }
-      };
-    });
-
     body.querySelector('#fEye').onclick=()=>{const k=body.querySelector('#fKey');
       k.type=k.type==='password'?'text':'password';};
     body.querySelector('#fCancel').onclick=list;
@@ -1765,7 +1637,7 @@ function openSettings(){
       if(Number.isNaN(v.temp)||v.temp<0||v.temp>2){showErr('#fTemp','Temperature must be 0–2');ok=false;}
       if(Number.isNaN(v.max)||v.max<1){showErr('#fMax','Max tokens must be ≥ 1');ok=false;}
       return ok;}
-
+      
     body.querySelector('#fSave').onclick=()=>{
       const v=readForm();if(!validate(v))return;
       const next={...p,name:v.name,baseUrl:v.baseUrl.replace(/\/+$/,''),
@@ -1776,98 +1648,50 @@ function openSettings(){
       if(!S.selProviderId&&S.providers.length){S.selProviderId=next.id;S.selModel=next.model;
         $('#pmLabel').textContent=shortName(next.model,16);}
       saveSettings();
-      list();
-      toast('Provider saved — starting connection test','ok');
-      // Automatic Save -> Test Connection workflow
-      setTimeout(()=>openTestConnectionModal(next), 200);
+      showTestConnectionModal(next).then(list);
     };
   }
   list();pnl.setClose(()=>{});
 }
 
-/* Dedicated Premium Test Connection Modal */
-function openTestConnectionModal(p) {
-  const ov = el('div', 'ov dlg-ov on');
-  const d = el('div', 'dlg');
-  d.style.maxWidth = '420px';
-  d.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-      <div style="width:36px;height:36px;border-radius:10px;background:#000;color:#fff;display:flex;align-items:center;justify-content:center">${ic('spark')}</div>
-      <div><h3 style="margin:0;font-size:17px">Test Connection</h3><span style="font-size:12px;color:var(--tx3);font-weight:600">${esc(p.name)} (${esc(p.model)})</span></div>
-    </div>
-    <div id="tcContent" style="padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--soft2);margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <div class="spin" style="width:20px;height:20px;border-width:2.5px;flex:none"></div>
-        <b style="font-size:14px">Connecting to AI...</b>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--tx2)">
-        <div style="display:flex;align-items:center;gap:6px"><span style="color:#1E7D32">✓</span> Checking provider: ${esc(hostOf(p.baseUrl))}</div>
-        <div style="display:flex;align-items:center;gap:6px"><span style="color:#1E7D32">✓</span> Checking API configuration</div>
-        <div style="display:flex;align-items:center;gap:6px"><span style="color:var(--tx3)">◌</span> Verifying model response: ${esc(p.model)}</div>
-      </div>
-    </div>
-    <div class="dlg-btns" id="tcBtns">
-      <button class="btn ghost sm" id="tcClose">Close</button>
-    </div>
-  `;
-  ov.appendChild(d);
-  document.body.appendChild(ov);
-
-  const close = () => { ov.classList.remove('on'); setTimeout(()=>ov.remove(), 200); };
-  d.querySelector('#tcClose').onclick = close;
-
-  const runTest = async () => {
-    const res = await testProvider(p);
-    const box = d.querySelector('#tcContent');
-    const btns = d.querySelector('#tcBtns');
-    if(res.ok) {
-      box.style.borderColor = '#1E7D32';
-      box.style.background = '#F3FBF5';
-      box.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <div style="width:28px;height:28px;border-radius:50%;background:#1E7D32;color:#fff;display:flex;align-items:center;justify-content:center">${ic('check')}</div>
-          <b style="font-size:15px;color:#1E7D32">Connected</b>
-        </div>
-        <p style="font-size:13px;color:#176C29;font-weight:600;margin-top:4px">AI Provider is ready! Model responded successfully to health check ping.</p>
-      `;
-      btns.innerHTML = `<button class="btn sm" id="tcDone" style="background:#1E7D32;color:#fff">${ic('check')}<span>Done</span></button>`;
-      btns.querySelector('#tcDone').onclick = close;
-      toast('AI Provider Connected & Ready', 'ok');
-    } else {
-      box.style.borderColor = 'var(--red)';
-      box.style.background = '#FDF5F7';
-      box.innerHTML = `
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <div style="width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center">${ic('err')}</div>
-          <b style="font-size:15px;color:var(--red)">Connection Failed</b>
-        </div>
-        <p style="font-size:13px;color:var(--tx);font-weight:600;margin-top:4px">${esc(res.msg)}</p>
-        <div style="margin-top:10px;padding:8px;border-radius:8px;background:#fff;border:1px solid #F5D4DF;font-size:12px;color:var(--tx2);line-height:1.5">
-          <b>Check:</b><br>
-          • Base URL and endpoint format<br>
-          • API Key valid & not expired<br>
-          • Model name matches provider catalog<br>
-          • Network connection & CORS permissions
-        </div>
-      `;
-      btns.innerHTML = `
-        <button class="btn ghost sm" id="tcCancel">Close</button>
-        <button class="btn sm danger" id="tcRetry">${ic('refresh')}<span>Retry</span></button>
-      `;
-      btns.querySelector('#tcCancel').onclick = close;
-      btns.querySelector('#tcRetry').onclick = () => {
-        box.innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-            <div class="spin" style="width:20px;height:20px;border-width:2.5px;flex:none"></div>
-            <b style="font-size:14px">Retrying connection to AI...</b>
-          </div>
+async function showTestConnectionModal(provider) {
+    return new Promise(async resolve => {
+        const ov = el('div', 'test-modal-ov');
+        const d = el('div', 'test-modal');
+        d.innerHTML = `
+            <div class="tm-icon spin">${ic('spinner')}</div>
+            <h3>Test Connection</h3>
+            <p>Connecting to AI...<br>Checking provider & model.</p>
         `;
-        runTest();
-      };
-    }
-  };
-
-  runTest();
+        ov.appendChild(d); document.body.appendChild(ov);
+        requestAnimationFrame(() => ov.classList.add('on'));
+        
+        const r = await testProvider(provider);
+        
+        if(r.ok) {
+            d.innerHTML = `
+                <div class="tm-icon success">${ic('check')}</div>
+                <h3>Connected</h3>
+                <p>AI Provider is ready and responding.</p>
+                <button class="btn" id="tmDone">Done</button>
+            `;
+            d.querySelector('#tmDone').onclick = () => { ov.classList.remove('on'); setTimeout(()=>{ ov.remove(); resolve(); }, 250); };
+        } else {
+            d.innerHTML = `
+                <div class="tm-icon error">${ic('err')}</div>
+                <h3>Connection Failed</h3>
+                <p style="text-align:left;background:var(--soft2);padding:12px;border-radius:12px;border:1px solid var(--hair);font-family:var(--mono);font-size:12px;margin-bottom:20px">${esc(r.msg)}</p>
+                <div style="display:flex;gap:8px">
+                    <button class="btn ghost" id="tmCancel">Cancel</button>
+                    <button class="btn" id="tmRetry">Retry</button>
+                </div>
+            `;
+            d.querySelector('#tmCancel').onclick = () => { ov.classList.remove('on'); setTimeout(()=>{ ov.remove(); resolve(); }, 250); };
+            d.querySelector('#tmRetry').onclick = () => {
+                ov.classList.remove('on'); setTimeout(()=>{ ov.remove(); showTestConnectionModal(provider).then(resolve); }, 250);
+            };
+        }
+    });
 }
 
 async function testProvider(p){
@@ -1890,30 +1714,20 @@ function updateFSHeader() {
     if(!h) return;
     if(S.fsSelected.size > 0) {
         h.innerHTML = `
-           <div class="am-title" style="text-align:left"><h2 style="font-size:16px">${S.fsSelected.size} File${S.fsSelected.size>1?'s':''} Selected</h2><span style="font-size:11.5px">Ready for AI context</span></div>
-           <div style="display:flex;align-items:center;gap:8px">
-             <button class="btn" style="height:38px;padding:0 14px;border-radius:12px;background:#000;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;box-shadow:var(--sh)" id="btnSendFS">${ic('spark')}<span>Send to AI Composer</span></button>
-             <button class="fbtn sm" id="btnC1" style="flex:none">${ic('close')}</button>
-           </div>
+           <div class="am-title"><h2>${S.fsSelected.size} Selected</h2></div>
+           <button class="btn fbtn-large" style="width:auto;height:42px;padding:0 18px;box-shadow:var(--sh);border-radius:14px;font-size:15px;margin-left:auto" id="btnSendFS">${ic('send')}<span>Send to AI Composer</span></button>
+           <button class="fbtn sm" id="btnC1" style="flex:none;margin-left:10px">${ic('close')}</button>
         `;
         h.querySelector('#btnSendFS').onclick = () => {
-            let count = 0;
-            S.fsSelected.forEach(f => { attachToComposerAsTag(f); count++; });
+            S.fsSelected.forEach(f => attachToComposerAsTag(f));
             S.fsSelected.clear();
             if(activeFSSheet) activeFSSheet();
-            toast(`${count} file(s) sent to AI Composer`, 'ok');
         };
-        h.querySelector('#btnC1').onclick = () => {
-            S.fsSelected.clear();
-            updateFSHeader();
-            const treeEl = document.querySelector('#fstCont');
-            if(treeEl && S.project) buildTree(treeEl, S.project.files, true);
-        };
+        h.querySelector('#btnC1').onclick = activeFSSheet;
     } else {
         h.innerHTML = `
-           <button class="fbtn sm" id="btnC1">${ic('close')}</button>
-           <div class="am-title"><h2>App Code Root</h2><span>Tap to Preview · Hold to Select</span></div>
-           <div style="width:38px;height:38px"></div>
+           <div class="am-title" style="text-align:left"><h2>App Code Root</h2><span>Hold file to tag/select</span></div>
+           <button class="fbtn sm" id="btnC1" style="margin-left:auto">${ic('close')}</button>
         `;
         h.querySelector('#btnC1').onclick = activeFSSheet;
     }
@@ -1924,28 +1738,27 @@ function openAppCodeRootFS() {
    S.fsSelected.clear();
    const lay = el('div', 'am-layer');
    lay.innerHTML = `
-     <div class="am-header" style="height:calc(env(safe-area-inset-top) + 64px);padding:calc(env(safe-area-inset-top) + 8px) 16px 10px">
-        <button class="fbtn sm" id="btnC1" aria-label="Close">${ic('close')}</button>
-        <div class="am-title"><h2>App Code Root</h2><span>Tap to Preview · Hold to Select</span></div>
-        <div style="width:38px;height:38px"></div>
+     <div class="am-header" style="height:calc(env(safe-area-inset-top) + 68px);padding:calc(env(safe-area-inset-top) + 8px) 16px 12px;box-shadow:0 4px 12px rgba(0,0,0,0.03)">
+        <div class="am-title" style="text-align:left"><h2>App Code Root</h2><span>Hold file to tag/select</span></div>
+        <button class="fbtn sm" id="btnC1" style="margin-left:auto">${ic('close')}</button>
      </div>
-     <div style="flex:1;overflow-x:auto;overflow-y:auto;padding:12px 14px 40px;background:var(--soft2);width:100%;box-sizing:border-box;-webkit-overflow-scrolling:touch">
-        <div class="fsTree" id="fstCont" style="background:#fff;border-radius:18px;box-shadow:var(--sh);border:1px solid var(--hair);width:100%;min-width:100%;box-sizing:border-box;padding:6px"></div>
+     <div style="flex:1;overflow:auto;padding:16px;background:var(--soft2);display:flex;flex-direction:column">
+        <div class="fsTree" id="fstCont" style="background:#fff;border-radius:20px;box-shadow:var(--sh);min-height:50vh;border:1px solid var(--line);flex:1"></div>
      </div>`;
    document.body.appendChild(lay); requestAnimationFrame(()=>lay.classList.add('on'));
    const cls = ()=>{ lay.classList.remove('on'); setTimeout(()=>lay.remove(), 260); };
    activeFSSheet = cls;
    lay.querySelector('#btnC1').onclick = cls;
-   window.updateFSHeader = updateFSHeader;
+   window.updateFSHeader = updateFSHeader; // bind globally for the tree selection toggle
    buildTree(lay.querySelector('#fstCont'), S.project.files, true);
 }
 
 function attachToComposerAsTag(f) {
   if(!S.attachments.find(a=>a.path === f.path)) {
      S.attachments.push({ id: uid(), name: f.name, path: f.path, ext: getExt(f.path), size: f.size||0, kind: 'text', status: 'ready', text: f.text, dataUrl: null, fromAppCode: true });
-     renderAttachRow(); updateSendState();
+     renderAttachRow(); updateSendState(); toast(`Added ${f.name} to AI Context`, 'ok');
      inp.focus();
-  }
+  } else toast('File is already tagged in Composer', 'info');
 }
 
 function setAndroidMode(on, cfg) {
@@ -1963,14 +1776,14 @@ function setAndroidMode(on, cfg) {
       
       const em = $('#emptyState');
       em.querySelector('.es-mark').classList.add('am-mode'); 
-      em.querySelector('.es-mark').innerHTML = ic('android-official');
+      em.querySelector('.es-mark').innerHTML = ic('android');
       em.querySelector('#esTitle').textContent = "Android Coding Agent";
-      em.querySelector('#esSubtitle').textContent = "Ask the AI to build new Android UI components, inspect code files, update Gradle manifests, and directly Build the final APK.";
+      em.querySelector('#esSubtitle').textContent = "Ask the AI to build new Android UI components, read specific source files, update Gradle manifests, and directly Build the final APK.";
       
       const chCont = em.querySelector('#esChips');
       chCont.innerHTML = `
-         <button class="chip" data-q="buildui">Build login layout</button>
-         <button class="chip" data-q="gradleerr">Fix gradle build error</button>
+         <button class="chip" data-q="buildui">Build new Android layout</button>
+         <button class="chip" data-q="gradleerr">Explain Android build error</button>
          <button class="chip" data-q="structure">Analyze project structure</button>
          <button class="chip btn-cta" id="btnEsBuild">Build Final APK</button>
       `;
@@ -2032,213 +1845,100 @@ $('#btnAppBuild').onclick = () => {
 }
 
 async function startAndroidBuildAgentProcess() {
-   input.value = ''; autosize(); updateSendState(); hideEmpty();
-   const um = { id:uid(), role:'user', content:'Build my app to an APK file using the server.', ts:Date.now() };
+   inp.value = ''; autosize(); updateSendState(); hideEmpty();
+   const text = 'Build my app to an APK file. Review the project configuration and execute the build pipeline.';
+   const p=getProvider(); if(!p) { toast('Set up an AI provider first', 'warn'); return; }
+   
+   const um = { id:uid(), role:'user', content:text, ts:Date.now() };
+   const ctx = collectCtx();
+   um.ctx = { text: ctx.text, images: [], warnings: [] };
+   
    S.messages.push(um); renderMsg(um);
    
-   const am = { id:uid(), role:'assistant', status:'streaming', buildMode:true, 
-     steps: [ 
-        {t:'Project Source Sync & Preparation', s:0},
-        {t:'Gradle dependencies resolution', s:0},
-        {t:'Kotlin/Java App Compilation', s:0},
-        {t:'Android Resources Compilation', s:0},
-        {t:'Packaging APK Archive (ZIP Alignment)', s:0}
-     ],
-     ts:Date.now() };
-   S.messages.push(am); renderMsg(am); maybeScroll(true); S.streaming = true; updateSendState(); S.abort = new AbortController();
+   const am = { id:uid(), role:'assistant', content:'', reason:'', status:'thinking', files:[], ts:Date.now(), userId:um.id };
+   S.messages.push(am); renderMsg(am); maybeScroll(true);
    
-   try {
-       for(let i=0; i<am.steps.length; i++) {
-          if(S.abort.signal.aborted) throw new Error("Stopped");
-          await new Promise(r => setTimeout(r, 1200 + Math.random()*800));
-          am.steps[i].s = 1; updateMsg(am); maybeScroll();
-       }
-       am.status = 'done';
-   } catch(e) {
-       am.status = 'stopped';
-       toast("Build stopped", "warn");
-   }
-   updateMsg(am); maybeScroll(true);
-   S.streaming = false; S.abort = null; updateSendState(); saveChat();
+   // Actual request to provider to validate and "build"
+   await runAssistant(am, um, ctx);
 }
 
-/* Wizard & UI Logic for generation — Redesigned 1:1 Boxes & Premium App Information Wizard */
+/* Wizard & UI Logic for generation */
 function startAndroidWizard() {
-  const AW = { t:'kotlin', cfg: {name:'', pkg:'com.flayai.app', version:'1.0.0', desc:'', themeColor:'#D80E45', icon:'', perms:new Set(['INTERNET'])} };
+  const AW = { t:'kotlin', cfg: {name:'', pkg:'', icon:'', perms:new Set(['INTERNET'])} };
   const lay = el('div','am-layer');
+  lay.innerHTML = `
+    <div class="am-header">
+       <button class="fbtn sm" id="awClose" aria-label="Close">${ic('close')}</button>
+       <div class="am-title"><h2>Select Your App Code</h2><span>Step 1 of 2</span></div>
+       <div style="width:38px;height:38px"></div>
+    </div>
+    <div class="am-body">
+       <div class="tech-grid">
+         <button class="tech-card active" data-t="kotlin">
+            <div class="tech-ic c-kt">${ic('ext-kt')}</div>
+            <h3>Kotlin Native</h3>
+            <p>Modern Android app architecture recommended by Google.</p>
+            <div class="tc-chk">${ic('check')}</div>
+         </button>
+         <button class="tech-card" data-t="java">
+            <div class="tech-ic c-jv">${ic('ext-java')}</div>
+            <h3>Java Native</h3>
+            <p>Classic robust foundation for deep framework compatibility.</p>
+            <div class="tc-chk">${ic('check')}</div>
+         </button>
+         <button class="tech-card" data-t="html">
+            <div class="tech-ic c-js">${ic('ext-html')}</div>
+            <h3>HTML / Web</h3>
+            <p>Hybrid web application mapped perfectly inside an Android Webview.</p>
+            <div class="tc-chk">${ic('check')}</div>
+         </button>
+       </div>
+       <button class="fbtn-large" id="awBtnCont" style="margin-top:auto">Continue to App Info</button>
+    </div>`;
+  document.body.appendChild(lay); requestAnimationFrame(()=>lay.classList.add('on'));
   
-  function renderStep1() {
-    lay.innerHTML = `
-      <div class="am-header">
-         <button class="fbtn sm" id="awClose" aria-label="Close">${ic('close')}</button>
-         <div class="am-title"><h2>Select Your App Code</h2><span>Step 1 of 2</span></div>
-         <div style="width:38px;height:38px"></div>
-      </div>
-      <div class="am-body">
-         <div class="tech-grid">
-           <button class="tech-card ${AW.t==='kotlin'?'active':''}" data-t="kotlin">
-              <div class="tech-ic c-kt"><svg class="ic" aria-hidden="true"><use href="#i-kotlin"/></svg></div>
-              <h3>Kotlin Native</h3>
-              <p>Modern Android app architecture recommended by Google.</p>
-              <div class="tc-chk">${ic('check')}</div>
-           </button>
-           <button class="tech-card ${AW.t==='java'?'active':''}" data-t="java">
-              <div class="tech-ic c-jv"><svg class="ic" aria-hidden="true"><use href="#i-java"/></svg></div>
-              <h3>Java Native</h3>
-              <p>Classic robust foundation for deep framework compatibility.</p>
-              <div class="tc-chk">${ic('check')}</div>
-           </button>
-           <button class="tech-card wide-card ${AW.t==='html'?'active':''}" data-t="html">
-              <div class="tech-ic c-js"><svg class="ic" aria-hidden="true"><use href="#i-html"/></svg></div>
-              <h3>HTML / Web</h3>
-              <p>Hybrid web application mapped perfectly inside an Android WebView.</p>
-              <div class="tc-chk">${ic('check')}</div>
-           </button>
-         </div>
-         <button class="fbtn-large" id="awBtnCont">Continue to App Info</button>
-      </div>`;
-      
-    lay.querySelector('#awClose').onclick = cLose;
-    const cards = lay.querySelectorAll('.tech-card');
-    cards.forEach(c => c.onclick = () => {
-       cards.forEach(x=>x.classList.remove('active')); 
-       c.classList.add('active');
-       AW.t = c.dataset.t;
-    });
-    lay.querySelector('#awBtnCont').onclick = renderStep2;
-  }
-
-  function renderStep2() {
-    lay.innerHTML = `
-      <div class="am-header">
-         <button class="fbtn sm" id="awBack" aria-label="Back">${ic('chev-d')}</button>
-         <div class="am-title"><h2>Create App Information</h2><span>Step 2 of 2 · Project Details</span></div>
-         <button class="fbtn sm" id="awClose2" aria-label="Close">${ic('close')}</button>
-      </div>
-      <div class="am-body">
-        <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:18px;">
-           <div class="icon-prv" id="appIconPrv" style="width:100px;height:100px;border-radius:24px;margin-bottom:12px;box-shadow:0 8px 30px rgba(0,0,0,0.08);background:#fff;border:1px solid var(--hair);color:var(--tx2);display:flex;align-items:center;justify-content:center;overflow:hidden">
-             ${AW.cfg.icon ? `<img src="${AW.cfg.icon}" style="width:100%;height:100%;object-fit:cover">` : ic('image')}
-           </div>
-           <div style="display:flex;gap:8px">
-             <button class="btn sm ghost" id="btnUploadIcon" style="border-radius:12px;font-size:13px;height:36px">${ic('image')}Upload Icon</button>
-             ${AW.cfg.icon ? `<button class="btn sm danger" id="btnRemoveIcon" style="border-radius:12px;font-size:13px;height:36px">Remove</button>` : ''}
-           </div>
-           <input type="file" id="fwIconFile" accept="image/png, image/jpeg, image/webp" hidden>
-        </div>
-
-        <div class="field">
-          <label>App Name *</label>
-          <input class="inp" id="fwName" placeholder="e.g. My Pro Application" value="${esc(AW.cfg.name)}">
-          <div class="err-t" id="errName" hidden></div>
-        </div>
-
-        <div class="field">
-          <label>Package Name *</label>
-          <input class="inp" id="fwPkg" placeholder="com.company.app" value="${esc(AW.cfg.pkg)}">
-          <div class="err-t" id="errPkg" hidden></div>
-        </div>
-
-        <div class="frow">
-          <div class="field">
-            <label>Version</label>
-            <input class="inp" id="fwVer" placeholder="1.0.0" value="${esc(AW.cfg.version)}">
-          </div>
-          <div class="field">
-            <label>Category</label>
-            <input class="inp" id="fwDesc" placeholder="e.g. Productivity" value="${esc(AW.cfg.desc)}">
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Primary Theme Color</label>
-          <div style="display:flex;gap:10px;margin-top:6px" id="themeColors">
-            ${[
-              { c: '#D80E45', l: 'Deep Pink' },
-              { c: '#4F46E5', l: 'Deep Indigo' },
-              { c: '#059669', l: 'Emerald' },
-              { c: '#000000', l: 'Midnight' }
-            ].map(col => `
-              <button type="button" class="color-pill" data-col="${col.c}" style="flex:1;height:40px;border-radius:12px;background:${col.c};border:3px solid ${AW.cfg.themeColor===col.c?'#111':'transparent'};color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.15)">
-                ${AW.cfg.themeColor===col.c ? ic('check') : ''}
-              </button>
-            `).join('')}
-          </div>
-        </div>
-
-        <button class="fbtn-large" id="awBtnBuild" style="margin-top:20px">${ic('check')}<span>Initialize & Open App Code</span></button>
-      </div>`;
-
-    lay.querySelector('#awBack').onclick = renderStep1;
-    lay.querySelector('#awClose2').onclick = cLose;
-
-    const fi = lay.querySelector('#fwIconFile');
-    lay.querySelector('#btnUploadIcon').onclick = () => fi.click();
-    const btnRem = lay.querySelector('#btnRemoveIcon');
-    if(btnRem) {
-      btnRem.onclick = () => {
-        AW.cfg.icon = '';
-        renderStep2();
-      };
-    }
-
-    fi.onchange = e => {
-      if(!e.target.files[0]) return;
-      if(e.target.files[0].size > 2500000) { toast("Icon file too big (max 2.5MB)","err"); return;}
-      const fr = new FileReader();
-      fr.onload = r => {
-         AW.cfg.icon = r.target.result;
-         renderStep2();
-      };
-      fr.readAsDataURL(e.target.files[0]);
-    };
-
-    lay.querySelectorAll('.color-pill').forEach(btn => {
-      btn.onclick = () => {
-        AW.cfg.themeColor = btn.dataset.col;
-        renderStep2();
-      };
-    });
-
-    lay.querySelector('#awBtnBuild').onclick = async () => {
-      const nm = lay.querySelector('#fwName').value.trim();
-      const pk = lay.querySelector('#fwPkg').value.trim();
-      const ver = lay.querySelector('#fwVer').value.trim() || '1.0.0';
-      const desc = lay.querySelector('#fwDesc').value.trim();
-
-      const errName = lay.querySelector('#errName');
-      const errPkg = lay.querySelector('#errPkg');
-      errName.hidden = true;
-      errPkg.hidden = true;
-
-      if(!nm) {
-        errName.textContent = 'App Name is required';
-        errName.hidden = false;
-        toast('App Name is required', 'warn');
-        return;
-      }
-      if(!/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/i.test(pk)){
-        errPkg.textContent = 'Invalid package name format (e.g. com.example.app)';
-        errPkg.hidden = false;
-        toast('Invalid Android Package Name', 'warn');
-        return;
-      }
-
-      AW.cfg.name = nm;
-      AW.cfg.pkg = pk;
-      AW.cfg.version = ver;
-      AW.cfg.desc = desc;
-
-      cLose();
-      if(S.messages.length) await newChat();
-      generateAndroidWorkspace(AW.t, AW.cfg);
-    };
-  }
-
-  document.body.appendChild(lay);
-  requestAnimationFrame(()=>lay.classList.add('on'));
   const cLose = ()=>{ lay.classList.remove('on'); setTimeout(()=>lay.remove(),260); };
-  renderStep1();
+  lay.querySelector('#awClose').onclick = cLose;
+  const cards = lay.querySelectorAll('.tech-card');
+  const bCont = lay.querySelector('#awBtnCont');
+  cards.forEach(c => c.onclick = () => {
+     cards.forEach(x=>x.classList.remove('active')); c.classList.add('active');
+     AW.t = c.dataset.t;
+  });
+  
+  bCont.onclick = () => {
+    lay.querySelector('.am-title').innerHTML = `<h2>Create App Information</h2><span>Step 2 of 2</span>`;
+    lay.querySelector('.am-body').innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:24px;">
+         <div class="icon-prv" id="appIconPrv" style="width:110px;height:110px;border-radius:28px;margin-bottom:16px;box-shadow:0 8px 30px rgba(0,0,0,0.08);background:#fff;color:var(--tx2);display:flex;align-items:center;justify-content:center;overflow:hidden">${ic('image')}</div>
+         <button class="btn sm ghost" onclick="document.getElementById('fwIconFile').click()" style="border-radius:12px;font-size:14px;height:38px">${ic('image')}Upload App Icon</button>
+         <input type="file" id="fwIconFile" accept="image/png, image/jpeg, image/webp" hidden>
+      </div>
+      <div class="form-box" style="margin-bottom:auto">
+          <div class="field"><label>App Name</label><input class="inp" id="fwName" placeholder="My Super Application"></div>
+          <div class="field"><label>Package Name</label><input class="inp" id="fwPkg" placeholder="com.example.app" value="com.flayai.app"></div>
+      </div>
+      <button class="fbtn-large" id="awBtnBuild">Build Base Application</button>
+    `;
+    
+    $('#fwIconFile').onchange = e=>{ 
+        if(!e.target.files[0])return;
+        if(e.target.files[0].size > 2000000) { toast("Icon file too big","err"); return;}
+        const fr=new FileReader(); fr.onload = r => {
+           AW.cfg.icon = r.target.result;
+           $('#appIconPrv').innerHTML = `<img src="${r.target.result}" style="width:100%;height:100%;object-fit:cover">`;
+        }; fr.readAsDataURL(e.target.files[0]);
+    };
+    $('#awBtnBuild').onclick = async () => {
+        const nm = $('#fwName').value.trim(); const pk = $('#fwPkg').value.trim();
+        if(!nm) { toast('App Name is required', 'warn'); return; }
+        if(!/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/i.test(pk)){ toast('Invalid Android Package Name','warn'); return; }
+        AW.cfg.name = nm; AW.cfg.pkg = pk;
+        cLose();
+        if(S.messages.length) await newChat();
+        generateAndroidWorkspace(AW.t, AW.cfg);
+    };
+  }
 }
 
 function generateAndroidWorkspace(tech, cfg) {
@@ -2246,7 +1946,7 @@ function generateAndroidWorkspace(tech, cfg) {
    const add = (p, text) => fs.push({ id:uid(), path:p, name:baseName(p), ext:getExt(p), text, size:enc.encode(text).length, binary:false, dataUrl:null });
    
    add('settings.gradle', `rootProject.name = "${cfg.name}"\ninclude ':app'`);
-   add('app/build.gradle', `plugins {\n  id 'com.android.application'\n${tech==='kotlin'?"  id 'org.jetbrains.kotlin.android'\n":""}}\nandroid {\n  namespace '${cfg.pkg}'\n  compileSdk 34\n  defaultConfig {\n    applicationId "${cfg.pkg}"\n    minSdk 24\n    targetSdk 34\n    versionCode 1\n    versionName "${cfg.version || '1.0'}"\n  }\n}\ndependencies {\n  implementation 'androidx.core:core-ktx:1.12.0'\n  implementation 'androidx.appcompat:appcompat:1.6.1'\n  implementation 'com.google.android.material:material:1.11.0'\n}`);
+   add('app/build.gradle', `plugins {\n  id 'com.android.application'\n${tech==='kotlin'?"  id 'org.jetbrains.kotlin.android'\n":""}}\nandroid {\n  namespace '${cfg.pkg}'\n  compileSdk 34\n  defaultConfig {\n    applicationId "${cfg.pkg}"\n    minSdk 24\n    targetSdk 34\n    versionCode 1\n    versionName "1.0"\n  }\n}\ndependencies {\n  implementation 'androidx.core:core-ktx:1.12.0'\n  implementation 'androidx.appcompat:appcompat:1.6.1'\n  implementation 'com.google.android.material:material:1.11.0'\n}`);
    
    const pDir = cfg.pkg.replace(/\./g, '/');
    const pList = [...cfg.perms].map(p=>`<uses-permission android:name="android.permission.${p}"/>`).join('\n    ');
@@ -2275,17 +1975,10 @@ function generateAndroidWorkspace(tech, cfg) {
    hd.innerHTML = `<div class="spin"></div><h2>Initializing Secure Environment</h2><p>Assembling file tree and mounting IDE context mapping.</p>`;
    document.body.appendChild(hd);
    setTimeout(()=> { 
-       hd.innerHTML = `<svg class="ic" style="color:#176C29;width:56px;height:56px;margin-bottom:20px;stroke-width:1.5" aria-hidden="true"><use href="#i-check"/></svg><h2>Agent IDE Started</h2><p>${esc(cfg.name)} linked successfully with ${tech.toUpperCase()} configuration.</p>
-       <button class="fbtn-large" id="hdClose" style="max-width:280px;margin:20px auto;box-shadow:var(--sh)">Open Project Workspace</button>`; 
-       hd.querySelector('#hdClose').onclick=()=>{ 
-         hd.classList.remove('on'); 
-         setTimeout(()=> {
-           hd.remove();
-           // Open App Code Root immediately for the user!
-           openAppCodeRootFS();
-         }, 250); 
-       };
-   }, 1600);
+       hd.innerHTML = `<svg class="ic" style="color:#176C29;width:56px;height:56px;margin-bottom:20px;stroke-width:1.5" aria-hidden="true"><use href="#i-check"/></svg><h2>Agent IDE Started</h2><p>System configuration linked successfully.</p>
+       <button class="fbtn-large" id="hdClose" style="max-width:280px;margin:20px auto;box-shadow:var(--sh)">Enter Command Center</button>`; 
+       hd.querySelector('#hdClose').onclick=()=>{ hd.classList.remove('on'); setTimeout(()=>hd.remove(), 250); };
+   }, 1800);
 }
 
 /* ---------- Saved Android Projects (Replaces Project Information in Menu) ---------- */
@@ -2374,10 +2067,10 @@ function openDrawer(){
       <span class="prem-pill"><svg class="ic" aria-hidden="true"><use href="#i-crown"/></svg>PREMIUM</span>
     </button>
     <div class="dw-grid">
-      <div class="dw-card" id="mHist"><div class="tile t-blue"><svg class="ic" aria-hidden="true" style="width:26px;height:26px"><use href="#i-history-official"/></svg></div><b>Chat<br>History</b></div>
-      <div class="dw-card" id="mInfo"><div class="tile t-purple"><svg class="ic" aria-hidden="true" style="width:26px;height:26px"><use href="#i-info-official"/></svg></div><b>Project<br>Information</b></div>
-      <div class="dw-card" id="mAI"><div class="tile t-teal"><svg class="ic" aria-hidden="true" style="width:26px;height:26px"><use href="#i-ai-official"/></svg></div><b>Set Up<br>AI</b></div>
-      <div class="dw-card" id="mAndroid"><div class="tile t-green"><svg class="ic" aria-hidden="true" style="width:26px;height:26px"><use href="#i-android-official"/></svg></div><b>Build<br>Android App</b></div>
+      <div class="dw-card" id="mHist"><div class="tile t-blue">${ic('history')}</div><b>Chat<br>History</b></div>
+      <div class="dw-card" id="mInfo"><div class="tile t-purple">${ic('project')}</div><b>Project<br>Information</b></div>
+      <div class="dw-card" id="mAI"><div class="tile t-teal">${ic('ai-settings')}</div><b>Set Up<br>AI</b></div>
+      <div class="dw-card" id="mAndroid"><div class="tile t-green">${ic('build-app')}</div><b>Build<br>Android App</b></div>
       <div class="dw-card danger" id="mDel" style="grid-column:1/-1;flex-direction:row;justify-content:flex-start;padding:16px 20px"><div class="tile t-red" style="width:48px;height:48px;border-radius:14px;margin:0">${ic('trash')}</div><b style="font-size:16px">Delete Current Project</b><svg class="ic" style="margin-left:auto;color:var(--tx3)"><use href="#i-chev-r"/></svg></div>
     </div>
   </div>
