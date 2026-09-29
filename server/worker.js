@@ -61,7 +61,7 @@ export default {
       },200,request,env);
     }
 
-    if(u.pathname==='/api/build'){
+    if(u.pathname==='/api/build' || u.pathname==='/build'){
       if(request.method!=='POST')return json({error:'Method not allowed. Use POST.'},405,request,env,{'Allow':'POST, OPTIONS'});
       if(!env.GITHUB_TOKEN){
         return json({ok:false,error:'GITHUB_TOKEN is not configured on the Cloudflare Worker.'},503,request,env);
@@ -121,6 +121,27 @@ export default {
         created_at:x.created_at,
         updated_at:x.updated_at
       }))},200,request,env);
+    }
+
+    if(u.pathname==='/api/build/artifacts/download' || u.pathname==='/build/artifacts/download'){
+      if(request.method!=='GET')return json({error:'Method not allowed. Use GET.'},405,request,env,{'Allow':'GET, OPTIONS'});
+      if(!env.GITHUB_TOKEN)return json({ok:false,error:'GITHUB_TOKEN is not configured on the Cloudflare Worker.'},503,request,env);
+      const artifactId=u.searchParams.get('artifact_id');
+      if(!artifactId||!/^[0-9]+$/.test(artifactId))return json({ok:false,error:'A valid artifact_id is required.'},400,request,env);
+      const r=await fetch(`https://api.github.com/repos/flaynity/Flay-AI/actions/artifacts/${artifactId}/zip`,{
+        headers:{
+          'Accept':'application/vnd.github+json',
+          'Authorization':`Bearer ${env.GITHUB_TOKEN}`,
+          'X-GitHub-Api-Version':'2026-03-10',
+          'User-Agent':'Flay-AI-Cloudflare-Worker'
+        },
+        redirect:'follow'
+      });
+      if(!r.ok)return json({ok:false,error:'Could not download the build artifact.',status:r.status,detail:await r.text()},502,request,env);
+      const h=new Headers(cors(request,env));
+      h.set('Content-Type','application/zip');
+      h.set('Content-Disposition','attachment; filename="flay-ai-apk.zip"');
+      return new Response(r.body,{status:200,headers:h});
     }
 
     if(u.pathname==='/api/build/artifacts'){
