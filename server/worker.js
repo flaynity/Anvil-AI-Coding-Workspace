@@ -61,44 +61,90 @@ export default {
 
     if(u.pathname==='/api/build'){
       if(request.method!=='POST')return json({error:'Method not allowed. Use POST.'},405,request,env,{'Allow':'POST, OPTIONS'});
-      if(!env.BUILD_SERVER_URL){
-        return json({
-          ok:false,
-          error:'BUILD_SERVER_URL is not configured. The Cloudflare Worker gateway is ready, but an Android build server must be connected.'
-        },503,request,env);
+      if(!env.GITHUB_TOKEN){
+        return json({ok:false,error:'GITHUB_TOKEN is not configured on the Cloudflare Worker.'},503,request,env);
       }
-      let base;
-      try{base=new URL(env.BUILD_SERVER_URL)}catch{
-        return json({ok:false,error:'BUILD_SERVER_URL is invalid.'},500,request,env);
+      let body;
+      try{body=await request.json();}catch{
+        return json({ok:false,error:'Request body must be valid JSON.'},400,request,env);
       }
-      if(base.protocol!=='https:')return json({ok:false,error:'BUILD_SERVER_URL must use HTTPS.'},500,request,env);
-      try{
-        const body=await request.text();
-        const h=new Headers({
-          'Content-Type':'application/json',
-          'Accept':'application/vnd.android.package-archive,application/json'
-        });
-        const auth=request.headers.get('Authorization');
-        if(auth)h.set('Authorization',auth);
-        const r=await fetch(new URL('/build',base).toString(),{
-          method:'POST',
-          headers:h,
-          body
-        });
-        const headers={
-          ...cors(request,env),
-          'Content-Type':r.headers.get('Content-Type')||'application/json'
-        };
-        const disposition=r.headers.get('Content-Disposition');
-        if(disposition)headers['Content-Disposition']=disposition;
-        return new Response(r.body,{status:r.status,statusText:r.statusText,headers});
-      }catch(e){
-        return json({
-          ok:false,
-          error:'Android build server could not be reached.',
-          detail:e?.message||'Upstream build request failed.'
-        },502,request,env);
+      const projectPath=typeof body.projectPath==='string'&&body.projectPath.trim()?body.projectPath.trim():'.';
+      const buildType=body.buildType==='release'?'release':'debug';
+      const dispatch=await fetch('https://api.github.com/repos/flaynity/Flay-AI/actions/workflows/android-build.yml/dispatches',{
+        method:'POST',
+        headers:{
+          'Accept':'application/vnd.github+json',
+          'Authorization':`Bearer ${env.GITHUB_TOKEN}`,
+          'X-GitHub-Api-Version':'2026-03-10',
+          'User-Agent':'Flay-AI-Cloudflare-Worker',
+          'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+          ref:'main',
+          inputs:{project_path:projectPath,build_type:buildType}
+        })
+      });
+      if(!dispatch.ok){
+        const detail=await dispatch.text();
+        return json({ok:false,error:'GitHub Actions build could not be started.',status:dispatch.status,detail},502,request,env);
       }
+      return json({
+        ok:true,
+        status:'queued',
+        workflow:'android-build.yml',
+        projectPath,
+        buildType,
+        message:'Android build workflow dispatched. Use /api/build/runs to check the latest build.'
+      },202,request,env);
+    }
+
+    if(u.pathname==='/api/build/runs'){
+      if(request.method!=='GET')return json({error:'Method not allowed. Use GET.'},405,request,env,{'Allow':'GET, OPTIONS'});
+      if(!env.GITHUB_TOKEN)return json({ok:false,error:'GITHUB_TOKEN is not configured on the Cloudflare Worker.'},503,request,env);
+      const r=await fetch('https://api.github.com/repos/flaynity/Flay-AI/actions/workflows/android-build.yml/runs?branch=main&per_page=5',{
+        headers:{
+          'Accept':'application/vnd.github+json',
+          'Authorization':`Bearer ${env.GITHUB_TOKEN}`,
+          'X-GitHub-Api-Version':'2026-03-10',
+          'User-Agent':'Flay-AI-Cloudflare-Worker'
+        }
+      });
+      const data=await r.json();
+      if(!r.ok)return json({ok:false,error:'Could not read GitHub Actions build status.',detail:data},502,request,env);
+      return json({ok:true,runs:(data.workflow_runs||[]).map(x=>({
+        id:x.id,
+        status:x.status,
+        conclusion:x.conclusion,
+        html_url:x.html_url,
+        created_at:x.created_at,
+        updated_at:x.updated_at
+      }))},200,request,env);
+    }
+
+    if(u.pathname==='/api/build/artifacts'){
+      if(request.method!=='GET')return json({error:'Method not allowed. Use GET.'},405,request,env,{'Allow':'GET, OPTIONS'});
+      if(!env.GITHUB_TOKEN)return json({ok:false,error:'GITHUB_TOKEN is not configured on the Cloudflare Worker.'},503,request,env);
+      const runId=u.searchParams.get('run_id');
+      if(!runId||!/^\d+$/.test(runId))return json({ok:false,error:'A valid run_id is required.'},400,request,env);
+      const r=await fetch(`https://api.github.com/repos/flaynity/Flay-AI/actions/runs/${runId}/artifacts`,{
+        headers:{
+          'Accept':'application/vnd.github+json',
+          'Authorization':`Bearer ${env.GITHUB_TOKEN}`,
+          'X-GitHub-Api-Version':'2026-03-10',
+          'User-Agent':'Flay-AI-Cloudflare-Worker'
+        }
+      });
+      const data=await r.json();
+      if(!r.ok)return json({ok:false,error:'Could not read build artifacts.',detail:data},502,request,env);
+      return json({ok:true,artifacts:(data.artifacts||[]).map(x=>({
+        id:x.id,
+        name:x.name,
+        size_in_bytes:x.size_in_bytes,
+        expired:x.expired,
+        created_at:x.created_at,
+        expires_at:x.expires_at,
+        archive_download_url:x.archive_download_url
+      }))},200,request,env);
     }
 
     if(u.pathname!=='/api/proxy'){
