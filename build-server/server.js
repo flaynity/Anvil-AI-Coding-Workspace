@@ -12,7 +12,9 @@ const PORT = Number(process.env.PORT || 8080);
 const BUILD_TIMEOUT_MS = Number(process.env.BUILD_TIMEOUT_MS || 20 * 60 * 1000);
 const BUILD_TOKEN = process.env.BUILD_TOKEN || "";
 const MAX_BODY = process.env.MAX_BODY || "300mb";
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = fs.existsSync(path.join(__dirname, "..", "index.html"))
+  ? path.resolve(__dirname, "..")
+  : path.resolve(__dirname);
 
 app.use(express.json({ limit: MAX_BODY }));
 
