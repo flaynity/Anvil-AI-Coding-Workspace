@@ -713,12 +713,12 @@ function thinkLines(m){
  if(start>0)rows.push(`<div class="tline muted">… ${start} earlier lines</div>`);
  for(let i=start;i<parts.length;i++){const t=parts[i].trim();if(!t)continue;
   rows.push(`<div class="tline">${icon(pickThinkIcon(t),'xs')}<span>${esc(t.length>240?t.slice(0,240)+'…':t)}</span></div>`);}
- if(!m.reasoning&&m.status==='streaming'&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Processing...</span></div>`);
+ if(!m.reasoning&&(m.status==='streaming'||m._keepThinking)&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Processing...</span></div>`);
  if(m._genCurrent)rows.push(`<div class="tline genline"><span class="spin"></span><span>Generating <b>${esc(m._genCurrent)}</b>…</span></div>`);
  return rows.join('');}
 function thinkCard(m){
- if(m._showingAnswer)return '';
- if(m.status!=='streaming'&&!m.reasoning&&!m._genCurrent)return '';
+ if(m._showingAnswer&&!m._keepThinking)return '';
+ if(m.status!=='streaming'&&!m.reasoning&&!m._genCurrent&&!m._keepThinking)return '';
  const secs=m.thinkMs?`<span class="muted small">${(m.thinkMs/1000).toFixed(1)}s</span>`:'';
  return `<div class="card think open" aria-live="polite" aria-label="AI thinking"><div class="card-head">${icon('brain','sm')}<b>Thinking</b>${secs}${icon('chev-d','sm')}</div><div class="tbody">${thinkLines(m)}</div></div>`;}
 /* ---------- generated-file watcher (real stream parsing) ---------- */
@@ -1481,7 +1481,7 @@ async function sendAgent(){if(S.agentStreaming)return;
  p.agent.push({id:uid(),role:'user',content:text||'(selected files)',attachments:atts.map(a=>({name:a.path||a.name,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
  S.agentAttachments=[];inp.value='';if(agentDraftKey())localStorage.removeItem(agentDraftKey);autoGrow(inp);
  renderThread('#agentMsgs',p.agent);S.pinned=true;pinScroll(true);
- const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[]};
+ const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[],_keepThinking:true};
  p.agent.push(am);renderThread('#agentMsgs',p.agent);pinScroll(true);
  S.agentStreaming=true;S.agentAbort=new AbortController();updateSendBtn();
  try{
