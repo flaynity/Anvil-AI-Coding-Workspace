@@ -53,8 +53,10 @@ export default {
       return json({
         ok:true,
         service:'flay-ai-gateway',
-        buildConfigured:Boolean(env.BUILD_SERVER_URL),
+        githubBuildConfigured:Boolean(env.GITHUB_TOKEN),
         buildEndpoint:'/api/build',
+        buildRunsEndpoint:'/api/build/runs',
+        buildArtifactsEndpoint:'/api/build/artifacts',
         proxyEndpoint:'/api/proxy'
       },200,request,env);
     }
@@ -151,7 +153,7 @@ export default {
       return json({
         ok:true,
         service:'flay-ai-gateway',
-        endpoints:{health:'/health',build:'/api/build',proxy:'/api/proxy'}
+        endpoints:{health:'/health',build:'/api/build',buildRuns:'/api/build/runs',buildArtifacts:'/api/build/artifacts',proxy:'/api/proxy'}
       },200,request,env);
     }
 
