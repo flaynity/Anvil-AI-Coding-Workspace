@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/emulator:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl unzip git ca-certificates nodejs npm gradle \
+    && apt-get install -y --no-install-recommends curl unzip git ca-certificates nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /opt/android-sdk/cmdline-tools \
@@ -18,6 +18,13 @@ RUN mkdir -p /opt/android-sdk/cmdline-tools \
     && yes | sdkmanager --licenses >/dev/null || true \
     && sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" \
     && chmod -R a+rX /opt/android-sdk
+
+RUN curl -fsSL https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -o /tmp/gradle.zip \
+    && unzip -q /tmp/gradle.zip -d /opt \
+    && ln -s /opt/gradle-8.10.2 /opt/gradle \
+    && rm /tmp/gradle.zip
+
+ENV PATH=/opt/gradle/bin:/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/android-sdk/emulator:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 WORKDIR /app
 COPY build-server/package.json ./package.json
