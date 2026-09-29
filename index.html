@@ -76,10 +76,7 @@ input,textarea,select{font:inherit;color:inherit}
 .ai-st{margin-bottom:8px}
 .status-pill{font-size:11px;font-weight:700;border-radius:7px;padding:2px 7px;background:var(--surface);color:var(--text2)}
 .status-pill.error{color:var(--err)}.status-pill.stopped{color:var(--warn)}
-.msg-body{line-height:1.7;word-break:break-word;overflow-wrap:anywhere;font-size:15px;animation:aiMessageReveal .22s ease-out}
-.msg-body.ai-typing{animation:aiMessageReveal .22s ease-out}
-@keyframes aiMessageReveal{from{opacity:.15;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
-
+.msg-body{line-height:1.7;word-break:break-word;overflow-wrap:anywhere;font-size:15px}
 .msg-body h3{margin:.7em 0 .3em;font-size:1.05em}
 .msg-body ul{margin:.3em 0 .6em;padding-left:1.3em}
 .msg-body a{color:var(--accent)}
@@ -98,10 +95,8 @@ input,textarea,select{font:inherit;color:inherit}
 .card-head{display:flex;align-items:center;gap:9px;padding:11px 12px;font-size:13px;cursor:pointer;user-select:none}
 .card-head b{flex:1}
 .card.collapsed>:not(.card-head){display:none}
-.card.think .tbody{display:block;height:26px;max-height:132px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-behavior:auto;padding:4px 12px 12px;font-size:13px;contain:layout paint;transition:height .24s ease;will-change:height}
+.card.think .tbody{display:block;height:132px;max-height:132px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding:4px 12px 12px;font-size:13px;contain:layout paint}
 .card.think.open .tbody{display:block}
-#agentMsgs .card.think .tbody,#agentMsgs .card.think.collapsed .tbody{display:block!important}
-#agentMsgs .card.think{display:block!important}
 .card.think.open>.card-head .ic:last-child{transform:rotate(180deg)}
 .card-head .ic:last-child{transition:transform .18s ease}
 .tline{display:flex;gap:8px;align-items:flex-start;min-height:24px;padding:3.5px 0;color:var(--text2)}.tline.processing{color:var(--text2)}
@@ -715,12 +710,10 @@ function thinkLines(m){
  if(start>0)rows.push(`<div class="tline muted">… ${start} earlier lines</div>`);
  for(let i=start;i<parts.length;i++){const t=parts[i].trim();if(!t)continue;
   rows.push(`<div class="tline">${icon(pickThinkIcon(t),'xs')}<span>${esc(t.length>240?t.slice(0,240)+'…':t)}</span></div>`);}
- if(!m.reasoning&&(m.status==='streaming'||m._keepThinking)&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Processing...</span></div>`);
+ if(!m.reasoning&&m.status==='streaming'&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Processing...</span></div>`);
  if(m._genCurrent)rows.push(`<div class="tline genline"><span class="spin"></span><span>Generating <b>${esc(m._genCurrent)}</b>…</span></div>`);
  return rows.join('');}
 function thinkCard(m){
- if(m._keepThinking||m._agentThinking)return `<div class="card think open" aria-live="polite" aria-label="AI thinking"><div class="card-head">${icon('brain','sm')}<b>Thinking</b>${m.thinkMs?`<span class="muted small">${(m.thinkMs/1000).toFixed(1)}s</span>`:''}${icon('chev-d','sm')}</div><div class="tbody">${thinkLines(m)}</div></div>`;
- if(m._showingAnswer)return '';
  if(m.status!=='streaming'&&!m.reasoning&&!m._genCurrent)return '';
  const secs=m.thinkMs?`<span class="muted small">${(m.thinkMs/1000).toFixed(1)}s</span>`:'';
  return `<div class="card think open" aria-live="polite" aria-label="AI thinking"><div class="card-head">${icon('brain','sm')}<b>Thinking</b>${secs}${icon('chev-d','sm')}</div><div class="tbody">${thinkLines(m)}</div></div>`;}
@@ -783,53 +776,27 @@ function msgHtml(m){
   <div class="msg-body">${m.content?md(m.content):''}${m.status==='streaming'?'<span class="caret"></span>':''}</div>
   ${m.activity&&m.activity.length?activityCard(m):''}
   ${m.ops?changesCard(m):''}</div>`;}
-function syncThinkHeight(tb){
- if(!tb)return;
- const max=132,min=26;
- const current=tb.getBoundingClientRect().height;
- const target=Math.min(max,Math.max(min,tb.scrollHeight));
- if(Math.abs(current-target)>0.5)tb.style.height=target+'px';
- if(tb.scrollHeight>tb.clientHeight)tb.scrollTop=tb.scrollHeight;
-}
-function syncThinkHeights(host){
- if(!host)return;
- host.querySelectorAll('.card.think .tbody').forEach(syncThinkHeight);
-}
-function renderThread(sel,msgs){
- // Agent Thinking is persistent by design. Re-assert the flags before every
- // Agent render so persistence is not lost by storage/re-render cycles.
- if(sel==='#agentMsgs'){
-  msgs.forEach(m=>{if(m&&m.role==='assistant'){m._keepThinking=true;m._agentThinking=true;}});
- }
- const host=$(sel);
- host.innerHTML=msgs.length?msgs.map(msgHtml).join(''):'';
- if(host)requestAnimationFrame(()=>syncThinkHeights(host));
-}
+function renderThread(sel,msgs){const host=$(sel);host.innerHTML=msgs.length?msgs.map(msgHtml).join(''):'';}
 let rafP=false;
 function updateLive(m,hostSel){
  if(rafP)return;rafP=true;
  requestAnimationFrame(()=>{
   rafP=false;const host=$(hostSel);if(!host)return;
   let mel=host.querySelector(`[data-mid="${m.id}"]`);if(!mel)return;
-  if((m.status==='streaming'||m.reasoning||m._genCurrent||m._keepThinking||m._agentThinking)&&!mel.querySelector('.card.think')){
+  if((m.status==='streaming'||m.reasoning||m._genCurrent)&&!mel.querySelector('.card.think')){
    const w=document.createElement('div');w.innerHTML=msgHtml(m);mel.replaceWith(w.firstElementChild);mel=host.querySelector(`[data-mid="${m.id}"]`);if(!mel)return;
   }
-  // Keep the initial Thinking/Processing card visible until the provider
-  // actually sends answer content. Once the first answer token arrives,
-  // switch immediately to the real AI message.
+  const body=mel.querySelector('.msg-body');
+  if(body)body.innerHTML=(m.content?md(m.content):'')+(m.status==='streaming'?'<span class="caret"></span>':'');
   const tk=mel.querySelector('.card.think');
-  if(m._showingAnswer){
-   const body=mel.querySelector('.msg-body');
-   if(body){
-    const full=m._pendingContent||m.content||'';
-    body.innerHTML=full?md(full)+'<span class="caret"></span>':'';
-   }
-  }
   if(tk){const tb=tk.querySelector('.tbody');const next=thinkLines(m);
-   if(tb.dataset.thinkHtml!==next){tb.dataset.thinkHtml=next;syncThinkHeight(tb);}
-   else if(tb.scrollHeight>tb.clientHeight)tb.scrollTop=tb.scrollHeight;}
+   if(tb.dataset.thinkHtml!==next){tb.dataset.thinkHtml=next;tb.innerHTML=next;}
+   const now=Date.now();if(!m._thinkScrollAt||now-m._thinkScrollAt>=140){
+    m._thinkScrollAt=now;
+    if(tb.scrollHeight>tb.clientHeight)tb.scrollTo({top:tb.scrollHeight,behavior:'smooth'});
+   }}
   if(m.generatedFiles&&m.generatedFiles.length&&!m.ops){const sig=m.generatedFiles.map(g=>g.status).join('|');let gc=mel.querySelector('.card.gen');
-   if(!gc){const body=mel.querySelector('.msg-body');const w=document.createElement('div');w.innerHTML=genCard(m);body&&body.before(w.firstElementChild);}
+   if(!gc){const w=document.createElement('div');w.innerHTML=genCard(m);body&&body.before(w.firstElementChild);}
    else if(gc.dataset.gsig!==sig){const w=document.createElement('div');w.innerHTML=genCard(m);gc.replaceWith(w.firstElementChild);}}
   if(m._actDirty){m._actDirty=false;const old=mel.querySelector('.card.act');if(old){const w=document.createElement('div');w.innerHTML=activityCard(m);old.replaceWith(w.firstElementChild);}}
   schedulePinScroll(hostSel==='#agentMsgs');
@@ -838,35 +805,9 @@ const _pinTimers={chat:0,agent:0};
 function schedulePinScroll(agent){
  const key=agent?'agent':'chat',sc=agent?$('#agentScroll'):$('#chatScroll');
  if(!sc||!S.pinned||_pinTimers[key])return;
- _pinTimers[key]=setTimeout(()=>{_pinTimers[key]=0;if(S.pinned)sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'});},55);
+ _pinTimers[key]=setTimeout(()=>{_pinTimers[key]=0;if(S.pinned)sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'});},100);
 }
-function pinScroll(agent,smooth=false){
- const sc=agent?$('#agentScroll'):$('#chatScroll');if(!sc)return;
- if(S.pinned)sc.scrollTo({top:sc.scrollHeight,behavior:smooth?'smooth':'auto'});
-}
-function startAssistantTyping(m,hostSel='#msgs'){
- const host=$(hostSel);if(!host)return;
- const mel=host.querySelector(`[data-mid="${m.id}"]`);if(!mel)return;
- const body=mel.querySelector('.msg-body');if(!body)return;
- const full=m.content||'';if(!full){body.innerHTML='';return;}
- let pos=0,lastScroll=0;
- body.classList.add('ai-typing');
- const step=()=>{
-  const now=performance.now();
-  const remaining=full.length-pos;
-  const chunk=remaining>140?4:remaining>60?3:2;
-  pos=Math.min(full.length,pos+chunk);
-  body.innerHTML=md(full.slice(0,pos))+(pos<full.length?'<span class="caret"></span>':'');
-  if(S.pinned && (now-lastScroll>55||pos>=full.length)){
-   lastScroll=now;
-   const sc=$('#chatScroll');
-   if(sc)sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'});
-  }
-  if(pos<full.length){m._typing=true;requestAnimationFrame(step);}
-  else{m._typing=false;body.classList.remove('ai-typing');body.innerHTML=md(full);}
- };
- requestAnimationFrame(step);
-}
+function pinScroll(agent){const sc=agent?$('#agentScroll'):$('#chatScroll');if(!sc)return;if(S.pinned)sc.scrollTop=sc.scrollHeight;}
 /* ---------- navigation ---------- */
 function openScreen(id,opts={}){const cur=$('.screen.active');
  if(opts.reset)S.navStack=[];else if(cur&&cur.id!==id&&cur.id!=='screen-chat')S.navStack.push(cur.id);
@@ -962,36 +903,18 @@ async function sendChat(){if(S.streaming)return;
  S.chat.messages.push({id:uid(),role:'user',content:text||'(attachments)',rawAtts:atts,attachments:atts.map(a=>({name:a.name||a.path,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
  S.pendingAttachments=[];inp.value='';if(draftKey())localStorage.removeItem(draftKey());autoGrow(inp);
  S.chat.updatedAt=Date.now();renderChat();persistChat();S.pinned=true;pinScroll(false);
- const am={id:uid(),role:'assistant',content:'',_pendingContent:'',createdAt:Date.now(),status:'streaming'};
+ const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming'};
  S.chat.messages.push(am);renderThread('#msgs',S.chat.messages);pinScroll(false);
  S.streaming=true;S.abort=new AbortController();updateSendBtn();
- // Let the Thinking / Processing card paint before the provider response can complete.
- await new Promise(resolve=>requestAnimationFrame(()=>resolve()));
  try{await providerChat({provider:activeProvider(),messages:buildChatMessages(S.chat),signal:S.abort.signal,
-  onDelta:d=>{const chunk=d||'';if(chunk){
-    am._pendingContent+=chunk;
-    am.content=am._pendingContent;
-    am._showingAnswer=true;
-    am.reasoning='';
-   }
-   updateLive(am,'#msgs');},
+  onDelta:d=>{am.content+=d;syncGenFiles(am);updateLive(am,'#msgs');},
   onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#msgs');}});
-  am.content=am._pendingContent||am.content||'';
-  am._pendingContent='';
-  am._showingAnswer=false;
   am.status='done';}
- catch(e){if(e.name==='AbortError'){am.content=am._pendingContent||am.content||'';am._pendingContent='';am._showingAnswer=false;am.status='stopped';}
-  else{am.content=am._pendingContent||am.content||'';am._pendingContent='';am._showingAnswer=false;am.status='error';console.error('Flay AI chat request failed:',e);am.content+=(am.content?'\n\n':'')+'**Unable to get a response.**\nPlease try again.';}}
+ catch(e){if(e.name==='AbortError'){am.status='stopped';}
+  else{am.status='error';console.error('Flay AI chat request failed:',e);am.content+=(am.content?'\n\n':'')+'**Unable to get a response.**\nPlease try again.';}}
  finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;finishGen(am);
-  // Thinking must finish and disappear before the final answer is revealed.
-  am.reasoning='';
-  am._genCurrent=null;
   S.streaming=false;S.abort=null;S.chat.updatedAt=Date.now();persistChat();
-  renderThread('#msgs',S.chat.messages);
-  pinScroll(false);
-  updateSendBtn();
-  }
-}
+  renderThread('#msgs',S.chat.messages);pinScroll(false);updateSendBtn();}}
 /* chat events */
  $('#chatInput').addEventListener('input',e=>{autoGrow(e.target);clearTimeout(draftT);draftT=setTimeout(()=>{if(draftKey())localStorage.setItem(draftKey(),e.target.value);},300);});
  $('#chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!("ontouchstart"in window)){e.preventDefault();sendChat();}});
@@ -1489,7 +1412,7 @@ async function sendAgent(){if(S.agentStreaming)return;
  p.agent.push({id:uid(),role:'user',content:text||'(selected files)',attachments:atts.map(a=>({name:a.path||a.name,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
  S.agentAttachments=[];inp.value='';if(agentDraftKey())localStorage.removeItem(agentDraftKey);autoGrow(inp);
  renderThread('#agentMsgs',p.agent);S.pinned=true;pinScroll(true);
- const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[],_keepThinking:true,_agentThinking:true};
+ const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[]};
  p.agent.push(am);renderThread('#agentMsgs',p.agent);pinScroll(true);
  S.agentStreaming=true;S.agentAbort=new AbortController();updateSendBtn();
  try{
@@ -1526,9 +1449,9 @@ async function sendAgent(){if(S.agentStreaming)return;
     const fails=results.filter(r=>!r.ok).length;
     am.activity.push({icon:fails?'warn':'ok',label:'Applied '+applied.length+' change(s) to the project'+(fails?', '+fails+' operation(s) failed':''),status:fails?'warn':'done'});}}
   else{am.activity.push({icon:'info',label:'No structured file changes were requested — answered directly.',status:'done'});}
-  am.status='done';am._keepThinking=true;am._agentThinking=true;}
- catch(e){if(e.name==='AbortError'){am.status='stopped';am._keepThinking=true;am._agentThinking=true;am.activity.push({icon:'stop',label:'Stopped by user — partial response preserved.',status:'warn'});}
-  else{am.status='error';am._keepThinking=true;am._agentThinking=true;console.error('Flay AI agent request failed:',e);am.activity.push({icon:'alert',label:'Unable to get a response. Please try again.',status:'fail'});}}
+  am.status='done';}
+ catch(e){if(e.name==='AbortError'){am.status='stopped';am.activity.push({icon:'stop',label:'Stopped by user — partial response preserved.',status:'warn'});}
+  else{am.status='error';console.error('Flay AI agent request failed:',e);am.activity.push({icon:'alert',label:'Unable to get a response. Please try again.',status:'fail'});}}
  finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;finishGen(am);
   if(am._genErr)am.activity.push({icon:'warn',label:am._genErr,status:'fail'});
   S.agentStreaming=false;S.agentAbort=null;p.updatedAt=Date.now();p.expanded=[...S.expanded];persistProject(p);
