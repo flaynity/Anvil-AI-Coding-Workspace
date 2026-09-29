@@ -966,7 +966,6 @@ async function sendChat(){if(S.streaming)return;
   renderThread('#msgs',S.chat.messages);
   pinScroll(false);
   updateSendBtn();
-  requestAnimationFrame(()=>startAssistantTyping(am,'#msgs'));
   }
 }
 /* chat events */
