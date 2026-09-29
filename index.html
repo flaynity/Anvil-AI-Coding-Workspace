@@ -1528,8 +1528,8 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
  if(!S.settings.buildServer){renderBuildPane();return;}
  out.innerHTML='<div class="vrow"><span class="spin"></span><div class="lb">Starting Android APK build...</div></div>';
  try{
-  const base=S.settings.buildServer.replace(/\\/+$/,'');
-  const buildUrl=/\\/api\\/build$/.test(base)?base:base+'/api/build';
+  const base=S.settings.buildServer.replace(/\/+$/,'');
+  const buildUrl=/\/api\/build$/.test(base)?base:base+'/api/build';
   const res=await fetch(buildUrl,{method:'POST',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({projectPath:'.',buildType:'debug',name:p.name,package:p.package,technology:p.tech}),signal:withTimeout(60000)});
   const textBody=await res.text();let j=null;try{j=JSON.parse(textBody)}catch(_){}
