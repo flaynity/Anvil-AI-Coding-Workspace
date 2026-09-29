@@ -198,7 +198,7 @@ EOF
         run: |
           gradle wrapper --gradle-version 8.10.2 --distribution-type bin
           chmod +x ./gradlew
-          if [ "\${{ inputs.build_type }}" = "release" ]; then
+          if [ "${{ inputs.build_type }}" = "release" ]; then
             ./gradlew assembleRelease --no-daemon --stacktrace
           else
             ./gradlew assembleDebug --no-daemon --stacktrace
