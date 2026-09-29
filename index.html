@@ -948,6 +948,8 @@ async function sendChat(){if(S.streaming)return;
  const am={id:uid(),role:'assistant',content:'',_pendingContent:'',createdAt:Date.now(),status:'streaming'};
  S.chat.messages.push(am);renderThread('#msgs',S.chat.messages);pinScroll(false);
  S.streaming=true;S.abort=new AbortController();updateSendBtn();
+ // Let the Thinking / Processing card paint before the provider response can complete.
+ await new Promise(resolve=>requestAnimationFrame(()=>resolve()));
  try{await providerChat({provider:activeProvider(),messages:buildChatMessages(S.chat),signal:S.abort.signal,
   onDelta:d=>{am._pendingContent+=(d||'');updateLive(am,'#msgs');},
   onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#msgs');}});
