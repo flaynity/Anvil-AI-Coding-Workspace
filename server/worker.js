@@ -30,7 +30,7 @@ function target(raw){
   let u; try{u=new URL(raw)}catch{throw new Error('Target URL is not valid.')}
   if(u.protocol!=='https:')throw new Error('Target URL must use HTTPS.');
   if(u.username||u.password)throw new Error('Credentials in target URL are not allowed.');
-  const h=u.hostname.toLowerCase().replace(/^\[|\]$/g,'');
+  const h=u.hostname.toLowerCase().replace(/^\\[|\\]$/g,'');
   if(PRIVATE_HOSTNAMES.has(h)||h.endsWith('.local')||h.endsWith('.internal')||privateIPv4(h)||privateIPv6(h))throw new Error('Private or local target hosts are not allowed.');
   return u;
 }
@@ -48,7 +48,67 @@ export default {
   async fetch(request,env){
     const u=new URL(request.url);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors(request,env)});
-    if(u.pathname!=='/api/proxy')return json({ok:true,service:'Anvil AI Provider Proxy',endpoint:'/api/proxy'},200,request,env);
+
+    if(u.pathname==='/health'){
+      return json({
+        ok:true,
+        service:'flay-ai-gateway',
+        buildConfigured:Boolean(env.BUILD_SERVER_URL),
+        buildEndpoint:'/api/build',
+        proxyEndpoint:'/api/proxy'
+      },200,request,env);
+    }
+
+    if(u.pathname==='/api/build'){
+      if(request.method!=='POST')return json({error:'Method not allowed. Use POST.'},405,request,env,{'Allow':'POST, OPTIONS'});
+      if(!env.BUILD_SERVER_URL){
+        return json({
+          ok:false,
+          error:'BUILD_SERVER_URL is not configured. The Cloudflare Worker gateway is ready, but an Android build server must be connected.'
+        },503,request,env);
+      }
+      let base;
+      try{base=new URL(env.BUILD_SERVER_URL)}catch{
+        return json({ok:false,error:'BUILD_SERVER_URL is invalid.'},500,request,env);
+      }
+      if(base.protocol!=='https:')return json({ok:false,error:'BUILD_SERVER_URL must use HTTPS.'},500,request,env);
+      try{
+        const body=await request.text();
+        const h=new Headers({
+          'Content-Type':'application/json',
+          'Accept':'application/vnd.android.package-archive,application/json'
+        });
+        const auth=request.headers.get('Authorization');
+        if(auth)h.set('Authorization',auth);
+        const r=await fetch(new URL('/build',base).toString(),{
+          method:'POST',
+          headers:h,
+          body
+        });
+        const headers={
+          ...cors(request,env),
+          'Content-Type':r.headers.get('Content-Type')||'application/json'
+        };
+        const disposition=r.headers.get('Content-Disposition');
+        if(disposition)headers['Content-Disposition']=disposition;
+        return new Response(r.body,{status:r.status,statusText:r.statusText,headers});
+      }catch(e){
+        return json({
+          ok:false,
+          error:'Android build server could not be reached.',
+          detail:e?.message||'Upstream build request failed.'
+        },502,request,env);
+      }
+    }
+
+    if(u.pathname!=='/api/proxy'){
+      return json({
+        ok:true,
+        service:'flay-ai-gateway',
+        endpoints:{health:'/health',build:'/api/build',proxy:'/api/proxy'}
+      },200,request,env);
+    }
+
     if(request.method!=='POST')return json({error:'Method not allowed. Use POST.'},405,request,env,{'Allow':'POST, OPTIONS'});
     let t;
     try{t=target(request.headers.get('X-Target-URL'))}catch(e){return json({error:e.message},400,request,env);}
