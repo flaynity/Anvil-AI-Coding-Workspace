@@ -1,21 +1,6 @@
 name: Android APK Build
 
-on:
-  workflow_dispatch:
-    inputs:
-      project_path:
-        description: "Android project directory inside the repository"
-        required: false
-        default: "."
-        type: string
-      build_type:
-        description: "APK build type"
-        required: false
-        default: "debug"
-        type: choice
-        options:
-          - debug
-          - release
+on: [workflow_dispatch]
 
 permissions:
   contents: read
@@ -198,7 +183,7 @@ EOF
         run: |
           gradle wrapper --gradle-version 8.10.2 --distribution-type bin
           chmod +x ./gradlew
-          if [ "${{ inputs.build_type }}" = "release" ]; then
+          if [ "${{ github.event.inputs.build_type || 'debug' }}" = "release" ]; then
             ./gradlew assembleRelease --no-daemon --stacktrace
           else
             ./gradlew assembleDebug --no-daemon --stacktrace
