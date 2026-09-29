@@ -717,6 +717,7 @@ function thinkLines(m){
  if(m._genCurrent)rows.push(`<div class="tline genline"><span class="spin"></span><span>Generating <b>${esc(m._genCurrent)}</b>…</span></div>`);
  return rows.join('');}
 function thinkCard(m){
+ if(m._showingAnswer)return '';
  if(m.status!=='streaming'&&!m.reasoning&&!m._genCurrent)return '';
  const secs=m.thinkMs?`<span class="muted small">${(m.thinkMs/1000).toFixed(1)}s</span>`:'';
  return `<div class="card think open" aria-live="polite" aria-label="AI thinking"><div class="card-head">${icon('brain','sm')}<b>Thinking</b>${secs}${icon('chev-d','sm')}</div><div class="tbody">${thinkLines(m)}</div></div>`;}
@@ -805,9 +806,17 @@ function updateLive(m,hostSel){
   if((m.status==='streaming'||m.reasoning||m._genCurrent)&&!mel.querySelector('.card.think')){
    const w=document.createElement('div');w.innerHTML=msgHtml(m);mel.replaceWith(w.firstElementChild);mel=host.querySelector(`[data-mid="${m.id}"]`);if(!mel)return;
   }
-  // While streaming, the answer stays hidden in _pendingContent.
-  // Only reasoning/thinking UI is updated here.
+  // Keep the initial Thinking/Processing card visible until the provider
+  // actually sends answer content. Once the first answer token arrives,
+  // switch immediately to the real AI message.
   const tk=mel.querySelector('.card.think');
+  if(m._showingAnswer){
+   const body=mel.querySelector('.msg-body');
+   if(body){
+    const full=m._pendingContent||m.content||'';
+    body.innerHTML=full?md(full)+'<span class="caret"></span>':'';
+   }
+  }
   if(tk){const tb=tk.querySelector('.tbody');const next=thinkLines(m);
    if(tb.dataset.thinkHtml!==next){tb.dataset.thinkHtml=next;syncThinkHeight(tb);}
    else if(tb.scrollHeight>tb.clientHeight)tb.scrollTop=tb.scrollHeight;}
@@ -951,13 +960,20 @@ async function sendChat(){if(S.streaming)return;
  // Let the Thinking / Processing card paint before the provider response can complete.
  await new Promise(resolve=>requestAnimationFrame(()=>resolve()));
  try{await providerChat({provider:activeProvider(),messages:buildChatMessages(S.chat),signal:S.abort.signal,
-  onDelta:d=>{am._pendingContent+=(d||'');updateLive(am,'#msgs');},
+  onDelta:d=>{const chunk=d||'';if(chunk){
+    am._pendingContent+=chunk;
+    am.content=am._pendingContent;
+    am._showingAnswer=true;
+    am.reasoning='';
+   }
+   updateLive(am,'#msgs');},
   onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#msgs');}});
-  am.content=am._pendingContent||'';
+  am.content=am._pendingContent||am.content||'';
   am._pendingContent='';
+  am._showingAnswer=false;
   am.status='done';}
- catch(e){if(e.name==='AbortError'){am.content=am._pendingContent||'';am._pendingContent='';am.status='stopped';}
-  else{am.content=am._pendingContent||'';am._pendingContent='';am.status='error';console.error('Flay AI chat request failed:',e);am.content+=(am.content?'\n\n':'')+'**Unable to get a response.**\nPlease try again.';}}
+ catch(e){if(e.name==='AbortError'){am.content=am._pendingContent||am.content||'';am._pendingContent='';am._showingAnswer=false;am.status='stopped';}
+  else{am.content=am._pendingContent||am.content||'';am._pendingContent='';am._showingAnswer=false;am.status='error';console.error('Flay AI chat request failed:',e);am.content+=(am.content?'\n\n':'')+'**Unable to get a response.**\nPlease try again.';}}
  finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;finishGen(am);
   // Thinking must finish and disappear before the final answer is revealed.
   am.reasoning='';
