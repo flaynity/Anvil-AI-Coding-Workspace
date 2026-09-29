@@ -76,7 +76,10 @@ input,textarea,select{font:inherit;color:inherit}
 .ai-st{margin-bottom:8px}
 .status-pill{font-size:11px;font-weight:700;border-radius:7px;padding:2px 7px;background:var(--surface);color:var(--text2)}
 .status-pill.error{color:var(--err)}.status-pill.stopped{color:var(--warn)}
-.msg-body{line-height:1.7;word-break:break-word;overflow-wrap:anywhere;font-size:15px}
+.msg-body{line-height:1.7;word-break:break-word;overflow-wrap:anywhere;font-size:15px;animation:aiMessageReveal .22s ease-out}
+.msg-body.ai-typing{animation:aiMessageReveal .22s ease-out}
+@keyframes aiMessageReveal{from{opacity:.15;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+
 .msg-body h3{margin:.7em 0 .3em;font-size:1.05em}
 .msg-body ul{margin:.3em 0 .6em;padding-left:1.3em}
 .msg-body a{color:var(--accent)}
@@ -802,14 +805,14 @@ function updateLive(m,hostSel){
   if((m.status==='streaming'||m.reasoning||m._genCurrent)&&!mel.querySelector('.card.think')){
    const w=document.createElement('div');w.innerHTML=msgHtml(m);mel.replaceWith(w.firstElementChild);mel=host.querySelector(`[data-mid="${m.id}"]`);if(!mel)return;
   }
-  const body=mel.querySelector('.msg-body');
-  if(body)body.innerHTML=(m.content?md(m.content):'')+(m.status==='streaming'?'<span class="caret"></span>':'');
+  // While streaming, the answer stays hidden in _pendingContent.
+  // Only reasoning/thinking UI is updated here.
   const tk=mel.querySelector('.card.think');
   if(tk){const tb=tk.querySelector('.tbody');const next=thinkLines(m);
    if(tb.dataset.thinkHtml!==next){tb.dataset.thinkHtml=next;syncThinkHeight(tb);}
    else if(tb.scrollHeight>tb.clientHeight)tb.scrollTop=tb.scrollHeight;}
   if(m.generatedFiles&&m.generatedFiles.length&&!m.ops){const sig=m.generatedFiles.map(g=>g.status).join('|');let gc=mel.querySelector('.card.gen');
-   if(!gc){const w=document.createElement('div');w.innerHTML=genCard(m);body&&body.before(w.firstElementChild);}
+   if(!gc){const body=mel.querySelector('.msg-body');const w=document.createElement('div');w.innerHTML=genCard(m);body&&body.before(w.firstElementChild);}
    else if(gc.dataset.gsig!==sig){const w=document.createElement('div');w.innerHTML=genCard(m);gc.replaceWith(w.firstElementChild);}}
   if(m._actDirty){m._actDirty=false;const old=mel.querySelector('.card.act');if(old){const w=document.createElement('div');w.innerHTML=activityCard(m);old.replaceWith(w.firstElementChild);}}
   schedulePinScroll(hostSel==='#agentMsgs');
@@ -818,9 +821,35 @@ const _pinTimers={chat:0,agent:0};
 function schedulePinScroll(agent){
  const key=agent?'agent':'chat',sc=agent?$('#agentScroll'):$('#chatScroll');
  if(!sc||!S.pinned||_pinTimers[key])return;
- _pinTimers[key]=setTimeout(()=>{_pinTimers[key]=0;if(S.pinned)sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'});},100);
+ _pinTimers[key]=setTimeout(()=>{_pinTimers[key]=0;if(S.pinned)sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'});},55);
 }
-function pinScroll(agent){const sc=agent?$('#agentScroll'):$('#chatScroll');if(!sc)return;if(S.pinned)sc.scrollTop=sc.scrollHeight;}
+function pinScroll(agent,smooth=false){
+ const sc=agent?$('#agentScroll'):$('#chatScroll');if(!sc)return;
+ if(S.pinned)sc.scrollTo({top:sc.scrollHeight,behavior:smooth?'smooth':'auto'});
+}
+function startAssistantTyping(m,hostSel='#msgs'){
+ const host=$(hostSel);if(!host)return;
+ const mel=host.querySelector(`[data-mid="${m.id}"]`);if(!mel)return;
+ const body=mel.querySelector('.msg-body');if(!body)return;
+ const full=m.content||'';if(!full){body.innerHTML='';return;}
+ let pos=0,lastScroll=0;
+ body.classList.add('ai-typing');
+ const step=()=>{
+  const now=performance.now();
+  const remaining=full.length-pos;
+  const chunk=remaining>140?4:remaining>60?3:2;
+  pos=Math.min(full.length,pos+chunk);
+  body.innerHTML=md(full.slice(0,pos))+(pos<full.length?'<span class="caret"></span>':'');
+  if(S.pinned && (now-lastScroll>55||pos>=full.length)){
+   lastScroll=now;
+   const sc=$('#chatScroll');
+   if(sc)sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'});
+  }
+  if(pos<full.length){m._typing=true;requestAnimationFrame(step);}
+  else{m._typing=false;body.classList.remove('ai-typing');body.innerHTML=md(full);}
+ };
+ requestAnimationFrame(step);
+}
 /* ---------- navigation ---------- */
 function openScreen(id,opts={}){const cur=$('.screen.active');
  if(opts.reset)S.navStack=[];else if(cur&&cur.id!==id&&cur.id!=='screen-chat')S.navStack.push(cur.id);
@@ -928,8 +957,15 @@ async function sendChat(){if(S.streaming)return;
  catch(e){if(e.name==='AbortError'){am.content=am._pendingContent||'';am._pendingContent='';am.status='stopped';}
   else{am.content=am._pendingContent||'';am._pendingContent='';am.status='error';console.error('Flay AI chat request failed:',e);am.content+=(am.content?'\n\n':'')+'**Unable to get a response.**\nPlease try again.';}}
  finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;finishGen(am);
+  // Thinking must finish and disappear before the final answer is revealed.
+  am.reasoning='';
+  am._genCurrent=null;
   S.streaming=false;S.abort=null;S.chat.updatedAt=Date.now();persistChat();
-  renderThread('#msgs',S.chat.messages);pinScroll(false);updateSendBtn();}}
+  renderThread('#msgs',S.chat.messages);
+  pinScroll(false);
+  updateSendBtn();
+  requestAnimationFrame(()=>startAssistantTyping(am,'#msgs'));
+}
 /* chat events */
  $('#chatInput').addEventListener('input',e=>{autoGrow(e.target);clearTimeout(draftT);draftT=setTimeout(()=>{if(draftKey())localStorage.setItem(draftKey(),e.target.value);},300);});
  $('#chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!("ontouchstart"in window)){e.preventDefault();sendChat();}});
