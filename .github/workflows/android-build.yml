@@ -58,50 +58,160 @@ jobs:
         run: |
           /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Validate Android project
-        working-directory: ${{ inputs.project_path }}
+      - name: Create WebView Android project from index.html
         shell: bash
         run: |
-          if [ ! -f "./gradlew" ] && [ ! -f "./settings.gradle" ] && [ ! -f "./settings.gradle.kts" ]; then
-            echo "No Android Gradle project found in: ${{ inputs.project_path }}"
+          rm -rf android-build
+          mkdir -p android-build/app/src/main/assets
+          mkdir -p android-build/app/src/main/java/com/flaynity/flayai
+          mkdir -p android-build/app/src/main/res/values
+
+          cp -R ./. android-build/app/src/main/assets/
+          rm -rf android-build/app/src/main/assets/android-build
+          rm -rf android-build/app/src/main/assets/.git
+          rm -rf android-build/app/src/main/assets/.github
+
+          if [ ! -f "index.html" ]; then
+            echo "index.html was not found in the repository root."
             exit 1
           fi
 
-      - name: Make Gradle wrapper executable
-        working-directory: ${{ inputs.project_path }}
-        if: ${{ hashFiles(format('{0}/gradlew', inputs.project_path)) != '' }}
-        run: chmod +x ./gradlew
+          cat > android-build/settings.gradle <<'EOF'
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "FlayAI"
+include(":app")
+EOF
 
-      - name: Build debug APK
-        if: ${{ inputs.build_type == 'debug' }}
-        working-directory: ${{ inputs.project_path }}
+          cat > android-build/build.gradle <<'EOF'
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+}
+EOF
+
+          cat > android-build/app/build.gradle <<'EOF'
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.flaynity.flayai'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.flaynity.flayai'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+}
+EOF
+
+          cat > android-build/app/src/main/AndroidManifest.xml <<'EOF'
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <application
+        android:theme="@style/AppTheme"
+        android:label="Flay AI"
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+EOF
+
+          cat > android-build/app/src/main/res/values/styles.xml <<'EOF'
+<resources>
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
+EOF
+
+          cat > android-build/app/src/main/java/com/flaynity/flayai/MainActivity.java <<'EOF'
+package com.flaynity.flayai;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+
+public class MainActivity extends Activity {
+    private WebView webView;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        webView = new WebView(this);
+        setContentView(webView);
+
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+
+        webView.setWebViewClient(new WebViewClient());
+        webView.setWebChromeClient(new WebChromeClient());
+        webView.loadUrl("file:///android_asset/index.html");
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (webView.canGoBack()) webView.goBack();
+        else super.onBackPressed();
+    }
+}
+EOF
+
+      - name: Build WebView APK
+        working-directory: android-build
         shell: bash
         run: |
-          if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug --no-daemon --stacktrace
-          else
-            gradle assembleDebug --no-daemon --stacktrace
-          fi
-
-      - name: Build release APK
-        if: ${{ inputs.build_type == 'release' }}
-        working-directory: ${{ inputs.project_path }}
-        shell: bash
-        run: |
-          if [ -f "./gradlew" ]; then
+          gradle wrapper --gradle-version 8.10.2 --distribution-type bin
+          chmod +x ./gradlew
+          if [ "\${{ inputs.build_type }}" = "release" ]; then
             ./gradlew assembleRelease --no-daemon --stacktrace
           else
-            gradle assembleRelease --no-daemon --stacktrace
+            ./gradlew assembleDebug --no-daemon --stacktrace
           fi
 
       - name: Collect APK
         shell: bash
         run: |
           mkdir -p build-output
-          find "${{ inputs.project_path }}" -type f -name "*.apk" -print
-          apk="$(find "${{ inputs.project_path }}" -type f -name "*.apk" | grep -E '/(debug|release)/' | head -n 1)"
+          find "android-build" -type f -name "*.apk" -print
+          apk="$(find "android-build" -type f -name "*.apk" | grep -E '/(debug|release)/' | head -n 1)"
           if [ -z "$apk" ]; then
-            apk="$(find "${{ inputs.project_path }}" -type f -name "*.apk" | head -n 1)"
+            apk="$(find "android-build" -type f -name "*.apk" | head -n 1)"
           fi
           if [ -z "$apk" ]; then
             echo "APK was not produced."
