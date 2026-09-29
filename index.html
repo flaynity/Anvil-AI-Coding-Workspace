@@ -95,7 +95,7 @@ input,textarea,select{font:inherit;color:inherit}
 .card-head{display:flex;align-items:center;gap:9px;padding:11px 12px;font-size:13px;cursor:pointer;user-select:none}
 .card-head b{flex:1}
 .card.collapsed>:not(.card-head){display:none}
-.card.think .tbody{display:block;height:132px;max-height:132px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding:4px 12px 12px;font-size:13px;contain:layout paint}
+.card.think .tbody{display:block;height:40px;max-height:132px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding:4px 12px 12px;font-size:13px;contain:layout paint;transition:height .22s ease;will-change:height}
 .card.think.open .tbody{display:block}
 .card.think.open>.card-head .ic:last-child{transform:rotate(180deg)}
 .card-head .ic:last-child{transition:transform .18s ease}
@@ -714,9 +714,24 @@ function thinkLines(m){
  if(m._genCurrent)rows.push(`<div class="tline genline"><span class="spin"></span><span>Generating <b>${esc(m._genCurrent)}</b>…</span></div>`);
  return rows.join('');}
 function thinkCard(m){
- if(m.status!=='streaming'&&!m.reasoning&&!m._genCurrent)return '';
- const secs=m.thinkMs?`<span class="muted small">${(m.thinkMs/1000).toFixed(1)}s</span>`:'';
- return `<div class="card think open" aria-live="polite" aria-label="AI thinking"><div class="card-head">${icon('brain','sm')}<b>Thinking</b>${secs}${icon('chev-d','sm')}</div><div class="tbody">${thinkLines(m)}</div></div>`;}
+ const hasThink=m.status==='streaming'||!!m.reasoning||!!m._genCurrent||!!m._hadThink||!!m.thinkMs;
+ if(!hasThink)return '';
+ m._hadThink=true;
+ const secs=m.thinkMs?'<span class="muted small">'+(m.thinkMs/1000).toFixed(1)+'s</span>':'';
+ return '<div class="card think open" aria-live="polite" aria-label="AI thinking"><div class="card-head">'+icon('brain','sm')+'<b>Thinking</b>'+secs+icon('chev-d','sm')+'</div><div class="tbody">'+thinkLines(m)+'</div></div>';
+}
+function syncThinkHeight(tb){
+ if(!tb)return;
+ const target=Math.min(132,Math.max(40,tb.scrollHeight));
+ const current=parseFloat(getComputedStyle(tb).height)||40;
+ if(Math.abs(current-target)<1){tb.style.height=target+'px';return;}
+ tb.style.height=current+'px';
+ requestAnimationFrame(()=>{tb.style.height=target+'px';});
+}
+function syncThinkHeights(host){
+ if(!host)return;
+ requestAnimationFrame(()=>host.querySelectorAll('.card.think .tbody').forEach(syncThinkHeight));
+}
 /* ---------- generated-file watcher (real stream parsing) ---------- */
 function syncGenFiles(m){
  const c=m.content||'';const fm=c.match(/```flayfiles\n?([\s\S]*?)(```|$)/);
@@ -776,7 +791,7 @@ function msgHtml(m){
   <div class="msg-body">${m.content?md(m.content):''}${m.status==='streaming'?'<span class="caret"></span>':''}</div>
   ${m.activity&&m.activity.length?activityCard(m):''}
   ${m.ops?changesCard(m):''}</div>`;}
-function renderThread(sel,msgs){const host=$(sel);host.innerHTML=msgs.length?msgs.map(msgHtml).join(''):'';}
+function renderThread(sel,msgs){const host=$(sel);host.innerHTML=msgs.length?msgs.map(msgHtml).join(''):'';syncThinkHeights(host);}
 let rafP=false;
 function updateLive(m,hostSel){
  if(rafP)return;rafP=true;
@@ -790,8 +805,8 @@ function updateLive(m,hostSel){
   if(body)body.innerHTML=(m.content?md(m.content):'')+(m.status==='streaming'?'<span class="caret"></span>':'');
   const tk=mel.querySelector('.card.think');
   if(tk){const tb=tk.querySelector('.tbody');const next=thinkLines(m);
-   if(tb.dataset.thinkHtml!==next){tb.dataset.thinkHtml=next;tb.innerHTML=next;}
-   const now=Date.now();if(!m._thinkScrollAt||now-m._thinkScrollAt>=140){
+   if(tb.dataset.thinkHtml!==next){tb.dataset.thinkHtml=next;tb.innerHTML=next;syncThinkHeight(tb);}
+   const now=Date.now();if(!m._thinkScrollAt||now-m._thinkScrollAt>=180){
     m._thinkScrollAt=now;
     if(tb.scrollHeight>tb.clientHeight)tb.scrollTo({top:tb.scrollHeight,behavior:'smooth'});
    }}
@@ -807,7 +822,7 @@ function schedulePinScroll(agent){
  if(!sc||!S.pinned||_pinTimers[key])return;
  _pinTimers[key]=setTimeout(()=>{_pinTimers[key]=0;if(S.pinned)sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'});},100);
 }
-function pinScroll(agent){const sc=agent?$('#agentScroll'):$('#chatScroll');if(!sc)return;if(S.pinned)sc.scrollTop=sc.scrollHeight;}
+function pinScroll(agent){const sc=agent?$('#agentScroll'):$('#chatScroll');if(!sc)return;if(S.pinned)sc.scrollTo({top:sc.scrollHeight,behavior:'smooth'});}
 /* ---------- navigation ---------- */
 function openScreen(id,opts={}){const cur=$('.screen.active');
  if(opts.reset)S.navStack=[];else if(cur&&cur.id!==id&&cur.id!=='screen-chat')S.navStack.push(cur.id);
@@ -903,7 +918,7 @@ async function sendChat(){if(S.streaming)return;
  S.chat.messages.push({id:uid(),role:'user',content:text||'(attachments)',rawAtts:atts,attachments:atts.map(a=>({name:a.name||a.path,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
  S.pendingAttachments=[];inp.value='';if(draftKey())localStorage.removeItem(draftKey());autoGrow(inp);
  S.chat.updatedAt=Date.now();renderChat();persistChat();S.pinned=true;pinScroll(false);
- const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming'};
+ const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',_hadThink:true};
  S.chat.messages.push(am);renderThread('#msgs',S.chat.messages);pinScroll(false);
  S.streaming=true;S.abort=new AbortController();updateSendBtn();
  try{await providerChat({provider:activeProvider(),messages:buildChatMessages(S.chat),signal:S.abort.signal,
