@@ -100,6 +100,8 @@ input,textarea,select{font:inherit;color:inherit}
 .card.collapsed>:not(.card-head){display:none}
 .card.think .tbody{display:block;height:26px;max-height:132px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-behavior:auto;padding:4px 12px 12px;font-size:13px;contain:layout paint;transition:height .24s ease;will-change:height}
 .card.think.open .tbody{display:block}
+#agentMsgs .card.think .tbody,#agentMsgs .card.think.collapsed .tbody{display:block!important}
+#agentMsgs .card.think{display:block!important}
 .card.think.open>.card-head .ic:last-child{transform:rotate(180deg)}
 .card-head .ic:last-child{transition:transform .18s ease}
 .tline{display:flex;gap:8px;align-items:flex-start;min-height:24px;padding:3.5px 0;color:var(--text2)}.tline.processing{color:var(--text2)}
@@ -794,6 +796,11 @@ function syncThinkHeights(host){
  host.querySelectorAll('.card.think .tbody').forEach(syncThinkHeight);
 }
 function renderThread(sel,msgs){
+ // Agent Thinking is persistent by design. Re-assert the flags before every
+ // Agent render so persistence is not lost by storage/re-render cycles.
+ if(sel==='#agentMsgs'){
+  msgs.forEach(m=>{if(m&&m.role==='assistant'){m._keepThinking=true;m._agentThinking=true;}});
+ }
  const host=$(sel);
  host.innerHTML=msgs.length?msgs.map(msgHtml).join(''):'';
  if(host)requestAnimationFrame(()=>syncThinkHeights(host));
@@ -804,7 +811,7 @@ function updateLive(m,hostSel){
  requestAnimationFrame(()=>{
   rafP=false;const host=$(hostSel);if(!host)return;
   let mel=host.querySelector(`[data-mid="${m.id}"]`);if(!mel)return;
-  if((m.status==='streaming'||m.reasoning||m._genCurrent)&&!mel.querySelector('.card.think')){
+  if((m.status==='streaming'||m.reasoning||m._genCurrent||m._keepThinking||m._agentThinking)&&!mel.querySelector('.card.think')){
    const w=document.createElement('div');w.innerHTML=msgHtml(m);mel.replaceWith(w.firstElementChild);mel=host.querySelector(`[data-mid="${m.id}"]`);if(!mel)return;
   }
   // Keep the initial Thinking/Processing card visible until the provider
