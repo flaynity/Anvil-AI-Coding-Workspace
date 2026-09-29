@@ -154,6 +154,7 @@ async function buildProject(input) {
     return { apkPath: apks[0], log, projectName: safeName(input.name) };
   } catch (error) {
     if (!error.log) error.log = error.stack || String(error);
+    error.workDir = workDir;
     throw error;
   }
 }
@@ -170,6 +171,7 @@ app.post("/build", async (req, res) => {
   if (!authorized(req)) return res.status(401).json({ error: "Unauthorized build request." });
 
   let result;
+  let failedWorkDir = null;
   try {
     result = await buildProject(req.body || {});
     const apk = await fsp.readFile(result.apkPath);
@@ -181,6 +183,7 @@ app.post("/build", async (req, res) => {
     res.setHeader("X-Flay-Build-Status", "success");
     return res.end(apk);
   } catch (error) {
+    failedWorkDir = error && error.workDir ? error.workDir : null;
     return res.status(500).json({
       ok: false,
       error: error && error.message ? error.message : "Build failed.",
@@ -188,16 +191,19 @@ app.post("/build", async (req, res) => {
     });
   } finally {
     try {
-      if (result && result.apkPath) {
-        const marker = result.apkPath.indexOf(path.sep + "project" + path.sep);
-        if (marker > 0) await fsp.rm(result.apkPath.slice(0, marker), { recursive: true, force: true });
-      }
+      const root = result && result.apkPath
+        ? result.apkPath.slice(0, result.apkPath.indexOf(path.sep + "project" + path.sep))
+        : failedWorkDir;
+      if (root) await fsp.rm(root, { recursive: true, force: true });
     } catch (_) {}
   }
 });
 
 app.use(express.static(ROOT, { extensions: ["html"] }));
-app.get("*", (req, res) => res.sendFile(path.join(ROOT, "index.html")));
+app.use((req, res, next) => {
+  if (req.method !== "GET" || req.path.startsWith("/api/")) return next();
+  return res.sendFile(path.join(ROOT, "index.html"));
+});
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Flay AI build server listening on 0.0.0.0:" + PORT);
