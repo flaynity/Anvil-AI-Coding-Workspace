@@ -1526,26 +1526,50 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
  $('#bjDlProject').onclick=async()=>{try{const blob=await zipProject(S.project);saveBlob(blob,S.project.name+'.zip');}catch(e){toast('ZIP export failed: '+e.message,'err');}};
  $('#bjBuildBtn').onclick=async()=>{const p=S.project;const out=$('#bjBuildOut');
  if(!S.settings.buildServer){renderBuildPane();return;}
- out.innerHTML='<div class="vrow"><span class="spin"></span><div class="lb">Packaging project...</div></div>';
- try{const blob=await zipProject(p);
-  const b64=await new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).slice(String(fr.result).indexOf(',')+1));fr.onerror=j;fr.readAsDataURL(blob);});
-  out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">Project packaged ('+fmtBytes(blob.size)+')</div></div><div class="vrow"><span class="spin"></span><div class="lb">Sending to build server and waiting for the real result (this can take minutes for a Gradle build)...</div></div>';
-  const res=await fetch(S.settings.buildServer.replace(/\/+$/,'')+'/build',{method:'POST',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(1800000)});
-  if(!res.ok){let t='';try{t=await res.text()}catch(_){}throw new Error(describeHttp(res.status,t));}
-  const ct=res.headers.get('content-type')||'';
-  if(ct.includes('json')){const j=await res.json();
-   if(j.apkUrl){p.builds.unshift({at:Date.now(),ok:true,msg:'Build server reported success: '+String(j.message||'APK URL returned')});
-    out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">Build server returned an APK URL.</div></div><div class="vrow"><a class="btn primary sm" href="'+esc(j.apkUrl)+'" download>'+icon('download','sm')+'Download APK</a></div>';
-    if(j.log)out.innerHTML+='<div class="note">'+icon('doc','sm')+'<span style="white-space:pre-wrap">'+esc(String(j.log).slice(0,2000))+'</span></div>';}
-   else throw new Error('Build server reported failure: '+String(j.error||j.message||JSON.stringify(j).slice(0,300)));}
-  else{const apk=await res.blob();
-   if(S._apkUrl)URL.revokeObjectURL(S._apkUrl);S._apkUrl=URL.createObjectURL(apk);
-   p.builds.unshift({at:Date.now(),ok:true,msg:'APK received from build server ('+fmtBytes(apk.size)+')'});
-   out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">APK received from build server ('+fmtBytes(apk.size)+'). Open the downloaded file on your Android device to install it.</div></div>';}}
- catch(e){const msg=e.name==='AbortError'?'Build request timed out.':e.message;
-  p.builds.unshift({at:Date.now(),ok:false,msg:msg});
-  out.innerHTML='<div class="vrow">'+icon('alert','sm st-fail')+'<div class="lb">Build failed: '+esc(msg)+'</div></div><div class="muted small" style="padding:4px 12px 8px">No APK is claimed without a real build. You can ask the Agent to fix reported errors and rebuild.</div>';}
+ out.innerHTML='<div class="vrow"><span class="spin"></span><div class="lb">Starting Android APK build...</div></div>';
+ try{
+  const base=S.settings.buildServer.replace(/\\/+$/,'');
+  const buildUrl=/\\/api\\/build$/.test(base)?base:base+'/api/build';
+  const res=await fetch(buildUrl,{method:'POST',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({projectPath:'.',buildType:'debug',name:p.name,package:p.package,technology:p.tech}),signal:withTimeout(60000)});
+  const textBody=await res.text();let j=null;try{j=JSON.parse(textBody)}catch(_){}
+  if(!res.ok)throw new Error(describeHttp(res.status,textBody));
+  if(!j||j.ok!==true)throw new Error('Build server returned an invalid response.');
+  if(j.status!=='queued'&&j.status!=='completed')throw new Error(j.error||j.message||JSON.stringify(j));
+  out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">Build queued. Waiting for GitHub Actions...</div></div>';
+  let run=null;
+  for(let i=0;i<60;i++){
+   await new Promise(r=>setTimeout(r,5000));
+   const rr=await fetch(base+'/api/build/runs',{method:'GET',signal:withTimeout(30000)});
+   const rt=await rr.text();let rd=null;try{rd=JSON.parse(rt)}catch(_){}
+   if(!rr.ok||!rd||!Array.isArray(rd.runs))throw new Error('Could not read Android build status.');
+   run=rd.runs.find(x=>x.status==='queued'||x.status==='in_progress')||rd.runs[0];
+   if(run){
+    out.innerHTML='<div class="vrow"><span class="spin"></span><div class="lb">Android build: '+esc(run.status||'running')+'...</div></div>';
+    if(run.status==='completed')break;
+   }
+  }
+  if(!run||run.status!=='completed')throw new Error('Build is still running. Open Build again later to check the result.');
+  if(run.conclusion!=='success')throw new Error('Android build failed. Open GitHub Actions for the Gradle build log.');
+  const ar=await fetch(base+'/api/build/artifacts?run_id='+encodeURIComponent(run.id),{method:'GET',signal:withTimeout(30000)});
+  const at=await ar.text();let ad=null;try{ad=JSON.parse(at)}catch(_){}
+  if(!ar.ok||!ad||!ad.artifacts||!ad.artifacts.length)throw new Error('Build completed but no APK artifact was found.');
+  const artifact=ad.artifacts.find(x=>!x.expired)||ad.artifacts[0];
+  const dl=await fetch(base+'/api/build/artifacts/download?artifact_id='+encodeURIComponent(artifact.id),{method:'GET',signal:withTimeout(120000)});
+  if(!dl.ok)throw new Error('APK artifact download failed (HTTP '+dl.status+').');
+  const zip=await dl.blob();
+  const z=await JSZip.loadAsync(zip);
+  const apkNames=Object.keys(z.files).filter(n=>/\\.apk$/i.test(n));
+  if(!apkNames.length)throw new Error('Build artifact does not contain an APK.');
+  const apk=await z.files[apkNames[0]].async('blob');
+  if(S._apkUrl)URL.revokeObjectURL(S._apkUrl);
+  S._apkUrl=URL.createObjectURL(apk);
+  p.builds=p.builds||[];p.builds.unshift({at:Date.now(),ok:true,msg:'Real Android APK build completed ('+fmtBytes(apk.size)+')'});
+  out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">APK build completed successfully ('+fmtBytes(apk.size)+').</div></div>';
+ }catch(e){const msg=e.name==='AbortError'?'Build request timed out.':e.message;
+  p.builds=p.builds||[];p.builds.unshift({at:Date.now(),ok:false,msg:msg});
+  out.innerHTML='<div class="vrow">'+icon('alert','sm st-fail')+'<div class="lb">Build failed: '+esc(msg)+'</div></div>';
+ }
  persistProject(p);renderBuildPane();};
  $('#bjDelete').onclick=async()=>{const p=S.project;
  if(await confirmDlg({title:'Delete project?',body:'"'+p.name+'", all files, agent history and build history will be removed. Chats and provider configuration are not affected. You can undo immediately after.',ok:'Delete',danger:true})){
