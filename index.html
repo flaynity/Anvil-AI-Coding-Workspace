@@ -916,15 +916,17 @@ async function sendChat(){if(S.streaming)return;
  S.chat.messages.push({id:uid(),role:'user',content:text||'(attachments)',rawAtts:atts,attachments:atts.map(a=>({name:a.name||a.path,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
  S.pendingAttachments=[];inp.value='';if(draftKey())localStorage.removeItem(draftKey());autoGrow(inp);
  S.chat.updatedAt=Date.now();renderChat();persistChat();S.pinned=true;pinScroll(false);
- const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming'};
+ const am={id:uid(),role:'assistant',content:'',_pendingContent:'',createdAt:Date.now(),status:'streaming'};
  S.chat.messages.push(am);renderThread('#msgs',S.chat.messages);pinScroll(false);
  S.streaming=true;S.abort=new AbortController();updateSendBtn();
  try{await providerChat({provider:activeProvider(),messages:buildChatMessages(S.chat),signal:S.abort.signal,
-  onDelta:d=>{am.content+=d;syncGenFiles(am);updateLive(am,'#msgs');},
+  onDelta:d=>{am._pendingContent+=(d||'');updateLive(am,'#msgs');},
   onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#msgs');}});
+  am.content=am._pendingContent||'';
+  am._pendingContent='';
   am.status='done';}
- catch(e){if(e.name==='AbortError'){am.status='stopped';}
-  else{am.status='error';console.error('Flay AI chat request failed:',e);am.content+=(am.content?'\n\n':'')+'**Unable to get a response.**\nPlease try again.';}}
+ catch(e){if(e.name==='AbortError'){am.content=am._pendingContent||'';am._pendingContent='';am.status='stopped';}
+  else{am.content=am._pendingContent||'';am._pendingContent='';am.status='error';console.error('Flay AI chat request failed:',e);am.content+=(am.content?'\n\n':'')+'**Unable to get a response.**\nPlease try again.';}}
  finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;finishGen(am);
   S.streaming=false;S.abort=null;S.chat.updatedAt=Date.now();persistChat();
   renderThread('#msgs',S.chat.messages);pinScroll(false);updateSendBtn();}}
