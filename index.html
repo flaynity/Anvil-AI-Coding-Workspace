@@ -511,7 +511,7 @@ input,textarea,select{font:inherit;color:inherit}
       </div>
       <div class="card" style="margin:0">
         <div class="card-head"><svg class="ic sm"><use href="#i-cloud"/></svg><b>APK build environment</b></div>
-        <div style="padding:10px 12px 4px" class="small muted" id="bjEnvInfo">A browser cannot compile APKs. APK generation requires a build server with JDK 17, Android SDK and Gradle. Configure one below — Flay AI will send the real project archive and report the real result. No build is ever faked.</div>
+        <div style="padding:10px 12px 4px" class="small muted" id="bjEnvInfo">A browser cannot compile APKs. This Build Server performs a real Gradle Android build with JDK 17 and Android SDK. When Flay AI is served by the Build Server, the same-origin server is used automatically; otherwise enter your Build Server URL below. No build is ever faked.</div>
         <div style="padding:10px 12px"><div class="keybox"><input class="inp" id="bjServerUrl" placeholder="https://your-build-server.example.com"><button class="btn sm" id="bjServerSave">Save</button></div></div>
         <div id="bjBuildOut" style="padding:4px 12px 8px"></div>
         <div class="card-foot">
@@ -600,7 +600,8 @@ const DB=(()=>{let dbp;
  async function tx(store,mode,fn){const db=await open();return new Promise((res,rej)=>{const t=db.transaction(store,mode);const r=fn(t.objectStore(store));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error);});}
  return{put:(s,v)=>tx(s,'readwrite',o=>o.put(v)),del:(s,id)=>tx(s,'readwrite',o=>o.delete(id)),all:s=>tx(s,'readonly',o=>o.getAll()),get:(s,id)=>tx(s,'readonly',o=>o.get(id))};})();
 /* ---------- global state ---------- */
-const S={theme:'light',settings:{providers:[],selectedProviderId:null,reasoning:'balanced',buildServer:''},
+const DEFAULT_BUILD_SERVER=(location.protocol==='http:'||location.protocol==='https:')?location.origin:'';
+const S={theme:'light',settings:{providers:[],selectedProviderId:null,reasoning:'balanced',buildServer:DEFAULT_BUILD_SERVER},
  chats:[],chat:null,projects:[],project:null,navStack:[],
  streaming:false,abort:null,agentStreaming:false,agentAbort:null,
  pendingAttachments:[],agentAttachments:[],selection:null,expanded:new Set(),techSel:null,appDraft:null,sheetTarget:'chat',pinned:true,zipMode:'new'};
@@ -608,7 +609,10 @@ const activeProvider=()=>S.settings.providers.find(p=>p.id===S.settings.selected
 function saveSettings(){try{localStorage.setItem('flay.settings.v1',JSON.stringify({providers:S.settings.providers,selectedProviderId:S.settings.selectedProviderId,reasoning:S.settings.reasoning,buildServer:S.settings.buildServer,theme:S.theme,lastChatId:S.chat?S.chat.id:null}));}catch(e){}}
 function loadSettings(){try{const s=JSON.parse(localStorage.getItem('flay.settings.v1')||'{}');
  if(s.providers)S.settings.providers=s.providers;
- if(s.selectedProviderId)S.settings.selectedProviderId=s.selectedProviderId;if(s.reasoning)S.settings.reasoning=s.reasoning;if(s.buildServer!==undefined)S.settings.buildServer=s.buildServer;if(s.theme)S.theme=s.theme;}catch(e){}}
+ if(s.selectedProviderId)S.settings.selectedProviderId=s.selectedProviderId;if(s.reasoning)S.settings.reasoning=s.reasoning;
+ if(s.buildServer!==undefined)S.settings.buildServer=s.buildServer;
+ else S.settings.buildServer=DEFAULT_BUILD_SERVER;
+ if(s.theme)S.theme=s.theme;}catch(e){S.settings.buildServer=DEFAULT_BUILD_SERVER;}}
 function applyTheme(){document.documentElement.setAttribute('data-theme',S.theme);$('#themeIco').innerHTML=`<use href="#i-${S.theme==='dark'?'sun':'moon'}"/>`;$('#themeLbl').textContent=S.theme==='dark'?'Light theme':'Dark theme';}
 const persistChat=()=>S.chat&&DB.put('chats',S.chat);
 const persistProject=(p=S.project)=>p&&DB.put('projects',p);
