@@ -95,7 +95,7 @@ input,textarea,select{font:inherit;color:inherit}
 .card-head{display:flex;align-items:center;gap:9px;padding:11px 12px;font-size:13px;cursor:pointer;user-select:none}
 .card-head b{flex:1}
 .card.collapsed>:not(.card-head){display:none}
-.card.think .tbody{display:block;height:132px;max-height:132px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding:4px 12px 12px;font-size:13px;contain:layout paint}
+.card.think .tbody{display:block;height:26px;max-height:132px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-behavior:auto;padding:4px 12px 12px;font-size:13px;contain:layout paint;transition:height .24s ease;will-change:height}
 .card.think.open .tbody{display:block}
 .card.think.open>.card-head .ic:last-child{transform:rotate(180deg)}
 .card-head .ic:last-child{transition:transform .18s ease}
@@ -776,7 +776,23 @@ function msgHtml(m){
   <div class="msg-body">${m.content?md(m.content):''}${m.status==='streaming'?'<span class="caret"></span>':''}</div>
   ${m.activity&&m.activity.length?activityCard(m):''}
   ${m.ops?changesCard(m):''}</div>`;}
-function renderThread(sel,msgs){const host=$(sel);host.innerHTML=msgs.length?msgs.map(msgHtml).join(''):'';}
+function syncThinkHeight(tb){
+ if(!tb)return;
+ const max=132,min=26;
+ const current=tb.getBoundingClientRect().height;
+ const target=Math.min(max,Math.max(min,tb.scrollHeight));
+ if(Math.abs(current-target)>0.5)tb.style.height=target+'px';
+ if(tb.scrollHeight>tb.clientHeight)tb.scrollTop=tb.scrollHeight;
+}
+function syncThinkHeights(host){
+ if(!host)return;
+ host.querySelectorAll('.card.think .tbody').forEach(syncThinkHeight);
+}
+function renderThread(sel,msgs){
+ const host=$(sel);
+ host.innerHTML=msgs.length?msgs.map(msgHtml).join(''):'';
+ if(host)requestAnimationFrame(()=>syncThinkHeights(host));
+}
 let rafP=false;
 function updateLive(m,hostSel){
  if(rafP)return;rafP=true;
@@ -790,11 +806,8 @@ function updateLive(m,hostSel){
   if(body)body.innerHTML=(m.content?md(m.content):'')+(m.status==='streaming'?'<span class="caret"></span>':'');
   const tk=mel.querySelector('.card.think');
   if(tk){const tb=tk.querySelector('.tbody');const next=thinkLines(m);
-   if(tb.dataset.thinkHtml!==next){tb.dataset.thinkHtml=next;tb.innerHTML=next;}
-   const now=Date.now();if(!m._thinkScrollAt||now-m._thinkScrollAt>=140){
-    m._thinkScrollAt=now;
-    if(tb.scrollHeight>tb.clientHeight)tb.scrollTo({top:tb.scrollHeight,behavior:'smooth'});
-   }}
+   if(tb.dataset.thinkHtml!==next){tb.dataset.thinkHtml=next;syncThinkHeight(tb);}
+   else if(tb.scrollHeight>tb.clientHeight)tb.scrollTop=tb.scrollHeight;}
   if(m.generatedFiles&&m.generatedFiles.length&&!m.ops){const sig=m.generatedFiles.map(g=>g.status).join('|');let gc=mel.querySelector('.card.gen');
    if(!gc){const w=document.createElement('div');w.innerHTML=genCard(m);body&&body.before(w.firstElementChild);}
    else if(gc.dataset.gsig!==sig){const w=document.createElement('div');w.innerHTML=genCard(m);gc.replaceWith(w.firstElementChild);}}
