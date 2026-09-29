@@ -1,0 +1,110 @@
+name: Android APK Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_path:
+        description: "Android project directory inside the repository"
+        required: false
+        default: "."
+        type: string
+      build_type:
+        description: "APK build type"
+        required: false
+        default: "debug"
+        type: choice
+        options:
+          - debug
+          - release
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | sdkmanager --licenses >/dev/null || true
+
+      - name: Validate Android project
+        working-directory: ${{ inputs.project_path }}
+        shell: bash
+        run: |
+          if [ ! -f "./gradlew" ] && [ ! -f "./settings.gradle" ] && [ ! -f "./settings.gradle.kts" ]; then
+            echo "No Android Gradle project found in: ${{ inputs.project_path }}"
+            exit 1
+          fi
+
+      - name: Make Gradle wrapper executable
+        working-directory: ${{ inputs.project_path }}
+        if: ${{ hashFiles(format('{0}/gradlew', inputs.project_path)) != '' }}
+        run: chmod +x ./gradlew
+
+      - name: Build debug APK
+        if: ${{ inputs.build_type == 'debug' }}
+        working-directory: ${{ inputs.project_path }}
+        shell: bash
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleDebug --no-daemon --stacktrace
+          else
+            gradle assembleDebug --no-daemon --stacktrace
+          fi
+
+      - name: Build release APK
+        if: ${{ inputs.build_type == 'release' }}
+        working-directory: ${{ inputs.project_path }}
+        shell: bash
+        run: |
+          if [ -f "./gradlew" ]; then
+            ./gradlew assembleRelease --no-daemon --stacktrace
+          else
+            gradle assembleRelease --no-daemon --stacktrace
+          fi
+
+      - name: Collect APK
+        shell: bash
+        run: |
+          mkdir -p build-output
+          find "${{ inputs.project_path }}" -type f -name "*.apk" -print
+          apk="$(find "${{ inputs.project_path }}" -type f -name "*.apk" | grep -E '/(debug|release)/' | head -n 1)"
+          if [ -z "$apk" ]; then
+            apk="$(find "${{ inputs.project_path }}" -type f -name "*.apk" | head -n 1)"
+          fi
+          if [ -z "$apk" ]; then
+            echo "APK was not produced."
+            exit 1
+          fi
+          cp "$apk" build-output/Flay-AI.apk
+          ls -lh build-output/Flay-AI.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: flay-ai-apk
+          path: build-output/Flay-AI.apk
+          if-no-files-found: error
+          retention-days: 7
