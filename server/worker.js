@@ -72,7 +72,7 @@ export default {
       }
       const projectPath=typeof body.projectPath==='string'&&body.projectPath.trim()?body.projectPath.trim():'.';
       const buildType=body.buildType==='release'?'release':'debug';
-      const dispatch=await fetch('https://api.github.com/repos/flaynity/Flay-AI/actions/workflows/android-build.yml/dispatches',{
+      const dispatch=await fetch('https://api.github.com/repos/flaynity/Flay-AI/actions/workflows/android-build-v2.yml/dispatches',{
         method:'POST',
         headers:{
           'Accept':'application/vnd.github+json',
@@ -93,7 +93,7 @@ export default {
       return json({
         ok:true,
         status:'queued',
-        workflow:'android-build.yml',
+        workflow:'android-build-v2.yml',
         projectPath,
         buildType,
         message:'Android build workflow dispatched. Use /api/build/runs to check the latest build.'
@@ -103,7 +103,7 @@ export default {
     if(u.pathname==='/api/build/runs'){
       if(request.method!=='GET')return json({error:'Method not allowed. Use GET.'},405,request,env,{'Allow':'GET, OPTIONS'});
       if(!env.GITHUB_TOKEN)return json({ok:false,error:'GITHUB_TOKEN is not configured on the Cloudflare Worker.'},503,request,env);
-      const r=await fetch('https://api.github.com/repos/flaynity/Flay-AI/actions/workflows/android-build.yml/runs?branch=main&per_page=5',{
+      const r=await fetch('https://api.github.com/repos/flaynity/Flay-AI/actions/workflows/android-build-v2.yml/runs?branch=main&per_page=5',{
         headers:{
           'Accept':'application/vnd.github+json',
           'Authorization':`Bearer ${env.GITHUB_TOKEN}`,
