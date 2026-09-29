@@ -965,6 +965,7 @@ async function sendChat(){if(S.streaming)return;
   pinScroll(false);
   updateSendBtn();
   requestAnimationFrame(()=>startAssistantTyping(am,'#msgs'));
+  }
 }
 /* chat events */
  $('#chatInput').addEventListener('input',e=>{autoGrow(e.target);clearTimeout(draftT);draftT=setTimeout(()=>{if(draftKey())localStorage.setItem(draftKey(),e.target.value);},300);});
