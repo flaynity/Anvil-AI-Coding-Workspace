@@ -98,7 +98,7 @@ input,textarea,select{font:inherit;color:inherit}
 .card.think .tbody{display:block;height:40px;max-height:132px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding:4px 12px 12px;font-size:13px;contain:layout paint;transition:height .22s ease;will-change:height}
 .card.think.open .tbody{display:block}
 .card.think.open>.card-head .ic:last-child{transform:rotate(180deg)}
-.card-head .ic:last-child{transition:transform .18s ease}.deep-head{display:flex;align-items:center;gap:8px}.deep-head .deep-bot{font-size:17px;line-height:1}.deep-head .deep-speech{width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;color:var(--text2)}.deep-head b{flex:1}.deep-label{font-size:13px;font-weight:700}.deep-body{font-size:13px;color:var(--text2)}
+.card-head .ic:last-child{transition:transform .18s ease}.deep-head{display:flex;align-items:center;gap:8px}.deep-head{display:flex;align-items:center;gap:8px}.deep-head .deep-bot{font-size:17px;line-height:1}.deep-head b{flex:1}.deep-label{font-size:13px;font-weight:700}.deep-body{font-size:13px;color:var(--text2)}
 .tline{display:flex;gap:8px;align-items:flex-start;min-height:24px;padding:3.5px 0;color:var(--text2)}.tline.processing{color:var(--text2)}
 @keyframes tin{}
 .tline .ic{margin-top:2px;color:var(--text2)}
@@ -717,15 +717,21 @@ function thinkLines(m){
  if(start>0)rows.push(`<div class="tline muted">… ${start} earlier lines</div>`);
  for(let i=start;i<parts.length;i++){const t=parts[i].trim();if(!t)continue;
   rows.push(`<div class="tline">${icon(pickThinkIcon(t),'xs')}<span>${esc(t.length>240?t.slice(0,240)+'…':t)}</span></div>`);}
- if(!m.reasoning&&m.status==='streaming'&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Processing...</span></div>`);
  if(m._genCurrent)rows.push(`<div class="tline genline"><span class="spin"></span><span>Generating <b>${esc(m._genCurrent)}</b>…</span></div>`);
  return rows.join('');}
 function thinkCard(m){
- const hasThink=m.status==='streaming'||!!m.reasoning||!!m._genCurrent||!!m._hadThink||!!m.thinkMs;
+ const hasThink=m.status==='streaming'||!!m._hadThink||!!m.thinkMs;
  if(!hasThink)return '';
  m._hadThink=true;
  const secs=m.thinkMs?'<span class="muted small">'+(m.thinkMs/1000).toFixed(1)+'s</span>':'';
- return '<div class="card think open" aria-live="polite" aria-label="AI deep thinking"><div class="card-head deep-head"><span class="deep-bot" aria-hidden="true">👾</span><span class="deep-speech" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2h9A3.5 3.5 0 0 1 20 5.5v7a3.5 3.5 0 0 1-3.5 3.5H12l-4.5 4v-4.1A3.5 3.5 0 0 1 4 12.5z"/><path d="M8 8h8M8 11h5"/></svg></span><b>Deep Thinking</b>'+secs+icon('chev-d','sm')+'</div><div class="tbody">'+thinkLines(m)+'</div></div>';
+ const body=m.status==='streaming'?'<div class="tline processing">'+icon('brain','xs')+'<span>Processing...</span></div>':'';
+ return '<div class="card think open" aria-live="polite" aria-label="AI thinking"><div class="card-head"><span>'+icon('brain','sm')+'</span><b>Thinking</b>'+secs+'</div><div class="tbody">'+body+'</div></div>';
+}
+function deepThinkingCard(m){
+ const hasDeep=!!m.reasoning||!!m._genCurrent;
+ if(!hasDeep)return '';
+ const secs=m.thinkMs?'<span class="muted small">'+(m.thinkMs/1000).toFixed(1)+'s</span>':'';
+ return '<div class="card deep open" aria-live="polite" aria-label="AI deep thinking"><div class="card-head deep-head"><span class="deep-bot" aria-hidden="true">👾</span><b>Deep Thinking</b>'+secs+icon('chev-d','sm')+'</div><div class="tbody">'+thinkLines(m)+'</div></div>';
 }
 function syncThinkHeight(tb){
  if(!tb)return;
@@ -737,7 +743,7 @@ function syncThinkHeight(tb){
 }
 function syncThinkHeights(host){
  if(!host)return;
- requestAnimationFrame(()=>host.querySelectorAll('.card.think .tbody').forEach(syncThinkHeight));
+ requestAnimationFrame(()=>host.querySelectorAll('.card.think .tbody,.card.deep .tbody').forEach(syncThinkHeight));
 }
 function deepThinkingText(m){
  const parts=(m.reasoning||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
@@ -800,6 +806,7 @@ function msgHtml(m){
  const pill=m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
  return `<div class="msg ai" data-mid="${m.id}">
   ${thinkCard(m)}
+  ${deepThinkingCard(m)}
   ${genCard(m)}
   ${pill?`<div class="ai-st">${pill}</div>`:''}
   <div class="msg-body">${m.content?md(m.content):''}${m.status==='streaming'?'<span class="caret"></span>':''}</div>
