@@ -797,7 +797,7 @@ function msgHtml(m){
   const atts=(m.attachments||[]).map(a=>`<span class="att-chip">${icon(a.kind==='image'?'image':a.kind==='zip'?'zip':a.kind==='project'?'folder':fileIcon(a.name||'x'),'sm')}<span>${esc(a.name||a.path)}</span><em>${fmtBytes(a.size||0)}</em></span>`).join('');
   return `<div class="msg user" data-mid="${m.id}">${atts?`<div>${atts}</div>`:''}<div class="bubble ${long?'clamp':''}">${esc(m.content).replace(/\n/g,'<br>')}</div>${long?'<button class="more-btn" data-more>More</button>':''}</div>`;}
  const deep=deepThinkingText(m);
- const pill=deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
+ const pill=m.status==='streaming'?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>':deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
  return `<div class="msg ai" data-mid="${m.id}">
   ${thinkCard(m)}
   ${genCard(m)}
@@ -817,6 +817,17 @@ function updateLive(m,hostSel){
   }
   const body=mel.querySelector('.msg-body');
   if(body)body.innerHTML=(m.content?md(m.content):'')+(m.status==='streaming'?'<span class="caret"></span>':'');
+  const st=mel.querySelector('.ai-st');
+  if(st){
+   const deep=deepThinkingText(m);
+   if(m.status==='streaming'||deep){
+    st.innerHTML='<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>';
+   }else if(m.status==='stopped'){
+    st.innerHTML='<span class="status-pill stopped">stopped</span>';
+   }else if(m.status==='error'){
+    st.innerHTML='<span class="status-pill error">error</span>';
+   }else{st.innerHTML='';}
+  }
   const tk=mel.querySelector('.card.think');
   if(tk){const tb=tk.querySelector('.tbody');const next=thinkLines(m);
    if(tb.dataset.thinkHtml!==next){tb.dataset.thinkHtml=next;tb.innerHTML=next;syncThinkHeight(tb);}
