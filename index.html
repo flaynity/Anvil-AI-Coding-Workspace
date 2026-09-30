@@ -1584,7 +1584,7 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
     const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));
     S._apkUrl=apkUrl;
     p.builds.unshift({at:Date.now(),ok:true,msg:'Real APK build completed successfully.'});
-    out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">APK build completed successfully.</div></div><div class="vrow"><a class="btn primary sm" href="'+esc(apkUrl)+'" download>'+icon('download','sm')+'Download APK</a></div><div class="muted small" style="padding:4px 12px 8px">Job ID: '+esc(jobId)+'</div>';
+    out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">APK build completed successfully.</div></div><div class="vrow"><a class="btn primary sm" href="'+esc(apkUrl)+'" download onclick="event.preventDefault();downloadApkFromLink(this.href, ''+p.name.replace(/\s+/g,'-')+'-debug.apk');">'+icon('download','sm')+'Download APK</a></div><div class="muted small" style="padding:4px 12px 8px">Job ID: '+esc(jobId)+'</div>';
     if(s.htmlUrl)out.innerHTML+='<div class="vrow"><a class="btn sm" href="'+esc(s.htmlUrl)+'" target="_blank" rel="noopener">'+icon('external','sm')+'Open GitHub Actions</a></div>';
     return;
    }
@@ -1601,12 +1601,31 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
   p.builds.unshift({at:Date.now(),ok:false,msg:msg});
   out.innerHTML='<div class="vrow">'+icon('alert','sm st-fail')+'<div class="lb">Build failed: '+esc(msg)+'</div></div><div class="muted small" style="padding:4px 12px 8px">No APK is claimed without a real build.</div>';}
  finally{persistProject(p);if(lastStatus!=='success')renderBuildPane();}};
+async function downloadApkFromLink(url,filename){
+ try{
+  const u=String(url||'').trim();if(!u)throw new Error('APK download URL is missing.');
+  const res=await fetch(u,{method:'GET',mode:'cors',cache:'no-store'});
+  if(!res.ok)throw new Error('APK download failed (HTTP '+res.status+').');
+  const blob=await res.blob();
+  if(!blob.size)throw new Error('Downloaded APK is empty.');
+  const objectUrl=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=objectUrl;a.download=filename||'flay-app-debug.apk';a.style.display='none';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(objectUrl),15000);
+  toast('APK download started.','ok');
+ }catch(e){
+  console.error('APK download failed:',e);
+  const u=String(url||'').trim();
+  if(u){window.location.href=u;return;}
+  toast('APK download failed: '+String(e.message||e),'err');
+ }
+}
 function renderBuildPane(){const p=S.project;if(!p)return;
  $('#bjServerUrl').value=S.settings.buildServer||'';
  $('#bjBuildBtn').disabled=!S.settings.buildServer;
  $('#bjBuildOut').innerHTML=S.settings.buildServer?'':'<div class="vrow">'+icon('info','sm muted')+'<div class="lb muted">No build server configured. "Build APK" stays disabled — an APK will never be claimed without a real build.</div></div>';
  $('#bjApkDl').classList.toggle('hidden',!S._apkUrl);
- if(S._apkUrl){$('#bjApkDl').onclick=()=>{const a=document.createElement('a');a.href=S._apkUrl;a.download=p.name.replace(/\s+/g,'-')+'.apk';a.click();};}
+ if(S._apkUrl){$('#bjApkDl').onclick=()=>downloadApkFromLink(S._apkUrl,p.name.replace(/\s+/g,'-')+'-debug.apk');}
  $('#bjHistory').innerHTML=(p.builds&&p.builds.length)?p.builds.slice(0,20).map(b=>`<div class="vrow">${b.ok?icon('check','sm st-done'):icon('alert','sm st-fail')}<div class="lb">${esc(b.msg)}<br><span class="muted small">${new Date(b.at).toLocaleString()}</span></div></div>`).join(''):'<div class="muted small" style="padding:6px 12px 8px">No builds or validations recorded yet.</div>';}
 /* ---------- global keys / boot ---------- */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
