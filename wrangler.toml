@@ -1,7 +1,10 @@
-name = "flay-ai"
+name = "flayai-agent"
 main = "jina-search-worker.js"
 compatibility_date = "2026-09-25"
 workers_dev = true
 
 [vars]
 ALLOWED_ORIGINS = "*"
+
+[secrets]
+required = ["JINA_API_KEY"]
