@@ -1,0 +1,29 @@
+{
+  "name": "flay-ai-build-server",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-29",
+
+  "containers": [
+    {
+      "class_name": "FlayBuildContainer",
+      "image": "./Dockerfile",
+      "max_instances": 1
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "FLay_BUILD_SERVER",
+        "class_name": "FlayBuildContainer"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "new_sqlite_classes": ["FlayBuildContainer"],
+      "tag": "v1"
+    }
+  ]
+}
