@@ -843,8 +843,7 @@ function closeDrawer(){drawer.classList.remove('open');scrim.classList.add('hidd
  else if(n==='build'){S.techSel=null;renderTech();openScreen('screen-tech',{reset:true});}});
 /* ---------- chat ---------- */
 function newChat(){S.chat={id:uid(),title:'',createdAt:Date.now(),updatedAt:Date.now(),messages:[]};
- S.chats.unshift(S.chat);S.pendingAttachments=[];renderChat();
- startComposerPlaceholder();saveSettings();}
+ S.chats.unshift(S.chat);S.pendingAttachments=[];renderChat();saveSettings();}
 function renderChat(){updateChips();renderAtts();
  const msgs=$('#msgs');
  if(!S.chat.messages.length){msgs.innerHTML=`<div class="empty">
@@ -1571,6 +1570,7 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
  S.chat=S.chats.find(c=>c.id===last)||null;
  if(!S.chat){S.chat={id:uid(),title:'',createdAt:Date.now(),updatedAt:Date.now(),messages:[]};S.chats.unshift(S.chat);}
  renderChat();
+ startComposerPlaceholder();
  if(typeof JSZip==='undefined')toast('JSZip could not load (offline?). ZIP import/export is unavailable.','warn');})();
 </script>
 </body>
