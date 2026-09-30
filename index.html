@@ -920,7 +920,7 @@ async function sendChat(){if(S.streaming)return;
  if(!S.chat)newChat();
  if(!S.chat.title)S.chat.title=(text||atts[0].name||'New chat').slice(0,60);
  S.chat.messages.push({id:uid(),role:'user',content:text||'(attachments)',rawAtts:atts,attachments:atts.map(a=>({name:a.name||a.path,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
- if(S.webAccess){const last=S.chat.messages[S.chat.messages.length-1];last.webContext=await searchWeb(text, S.abort?.signal);}
+ if(S.webAccess){const last=S.chat.messages[S.chat.messages.length-1];try{last.webContext=await searchWeb(text);}catch(e){S.chat.messages.pop();toast(e.message||'Web search failed.','warn');return;}}
  S.pendingAttachments=[];inp.value='';if(draftKey())localStorage.removeItem(draftKey());autoGrow(inp);
  S.chat.updatedAt=Date.now();renderChat();persistChat();S.pinned=true;pinScroll(false);
  const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',_hadThink:true};
