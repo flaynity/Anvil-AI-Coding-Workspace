@@ -98,7 +98,7 @@ input,textarea,select{font:inherit;color:inherit}
 .card.think .tbody{display:block;height:40px;max-height:132px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;padding:4px 12px 12px;font-size:13px;contain:layout paint;transition:height .22s ease;will-change:height}
 .card.think.open .tbody{display:block}
 .card.think.open>.card-head .ic:last-child{transform:rotate(180deg)}
-.card-head .ic:last-child{transition:transform .18s ease}.deep-head{display:flex;align-items:center;gap:8px}.deep-head{display:flex;align-items:center;gap:8px}.deep-head .deep-bot{font-size:17px;line-height:1}.deep-head b{flex:1}.deep-label{font-size:13px;font-weight:700}.deep-body{font-size:13px;color:var(--text2)}
+.card-head .ic:last-child{transition:transform .18s ease}
 .tline{display:flex;gap:8px;align-items:flex-start;min-height:24px;padding:3.5px 0;color:var(--text2)}.tline.processing{color:var(--text2)}
 @keyframes tin{}
 .tline .ic{margin-top:2px;color:var(--text2)}
@@ -717,21 +717,15 @@ function thinkLines(m){
  if(start>0)rows.push(`<div class="tline muted">… ${start} earlier lines</div>`);
  for(let i=start;i<parts.length;i++){const t=parts[i].trim();if(!t)continue;
   rows.push(`<div class="tline">${icon(pickThinkIcon(t),'xs')}<span>${esc(t.length>240?t.slice(0,240)+'…':t)}</span></div>`);}
+ if(!m.reasoning&&m.status==='streaming'&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Processing...</span></div>`);
  if(m._genCurrent)rows.push(`<div class="tline genline"><span class="spin"></span><span>Generating <b>${esc(m._genCurrent)}</b>…</span></div>`);
  return rows.join('');}
 function thinkCard(m){
- const hasThink=m.status==='streaming'||!!m._hadThink||!!m.thinkMs;
+ const hasThink=m.status==='streaming'||!!m.reasoning||!!m._genCurrent||!!m._hadThink||!!m.thinkMs;
  if(!hasThink)return '';
  m._hadThink=true;
  const secs=m.thinkMs?'<span class="muted small">'+(m.thinkMs/1000).toFixed(1)+'s</span>':'';
- const body=m.status==='streaming'?'<div class="tline processing">'+icon('brain','xs')+'<span>Processing...</span></div>':'';
- return '<div class="card think open" aria-live="polite" aria-label="AI thinking"><div class="card-head"><span>'+icon('brain','sm')+'</span><b>Thinking</b>'+secs+'</div><div class="tbody">'+body+'</div></div>';
-}
-function deepThinkingCard(m){
- const hasDeep=!!m.reasoning||!!m._genCurrent;
- if(!hasDeep)return '';
- const secs=m.thinkMs?'<span class="muted small">'+(m.thinkMs/1000).toFixed(1)+'s</span>':'';
- return '<div class="card deep open" aria-live="polite" aria-label="AI deep thinking"><div class="card-head deep-head"><span class="deep-bot" aria-hidden="true">👾</span><b>Deep Thinking</b>'+secs+icon('chev-d','sm')+'</div><div class="tbody">'+thinkLines(m)+'</div></div>';
+ return '<div class="card think open" aria-live="polite" aria-label="AI thinking"><div class="card-head">'+icon('brain','sm')+'<b>Thinking</b>'+secs+icon('chev-d','sm')+'</div><div class="tbody">'+thinkLines(m)+'</div></div>';
 }
 function syncThinkHeight(tb){
  if(!tb)return;
@@ -743,7 +737,7 @@ function syncThinkHeight(tb){
 }
 function syncThinkHeights(host){
  if(!host)return;
- requestAnimationFrame(()=>host.querySelectorAll('.card.think .tbody,.card.deep .tbody').forEach(syncThinkHeight));
+ requestAnimationFrame(()=>host.querySelectorAll('.card.think .tbody').forEach(syncThinkHeight));
 }
 function deepThinkingText(m){
  const parts=(m.reasoning||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
@@ -803,10 +797,9 @@ function msgHtml(m){
   const atts=(m.attachments||[]).map(a=>`<span class="att-chip">${icon(a.kind==='image'?'image':a.kind==='zip'?'zip':a.kind==='project'?'folder':fileIcon(a.name||'x'),'sm')}<span>${esc(a.name||a.path)}</span><em>${fmtBytes(a.size||0)}</em></span>`).join('');
   return `<div class="msg user" data-mid="${m.id}">${atts?`<div>${atts}</div>`:''}<div class="bubble ${long?'clamp':''}">${esc(m.content).replace(/\n/g,'<br>')}</div>${long?'<button class="more-btn" data-more>More</button>':''}</div>`;}
  const deep=deepThinkingText(m);
- const pill=m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
+ const pill=m.status==='streaming'?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>':deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
  return `<div class="msg ai" data-mid="${m.id}">
   ${thinkCard(m)}
-  ${deepThinkingCard(m)}
   ${genCard(m)}
   ${pill?`<div class="ai-st">${pill}</div>`:''}
   <div class="msg-body">${m.content?md(m.content):''}${m.status==='streaming'?'<span class="caret"></span>':''}</div>
@@ -826,9 +819,14 @@ function updateLive(m,hostSel){
   if(body)body.innerHTML=(m.content?md(m.content):'')+(m.status==='streaming'?'<span class="caret"></span>':'');
   const st=mel.querySelector('.ai-st');
   if(st){
-   if(m.status==='stopped')st.innerHTML='<span class="status-pill stopped">stopped</span>';
-   else if(m.status==='error')st.innerHTML='<span class="status-pill error">error</span>';
-   else st.innerHTML='';
+   const deep=deepThinkingText(m);
+   if(m.status==='streaming'||deep){
+    st.innerHTML='<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>';
+   }else if(m.status==='stopped'){
+    st.innerHTML='<span class="status-pill stopped">stopped</span>';
+   }else if(m.status==='error'){
+    st.innerHTML='<span class="status-pill error">error</span>';
+   }else{st.innerHTML='';}
   }
   const tk=mel.querySelector('.card.think');
   if(tk){const tb=tk.querySelector('.tbody');const next=thinkLines(m);
@@ -913,7 +911,7 @@ Code delivery rules:
 - "path" is a plain file name like MainActivity.kt or a relative path; never absolute, never "..". Use action create/modify/delete.
 - When you deliver files, your visible reply must be only a brief summary of what you created.
 - If the user asks to see the full code of an already generated file inside the chat, quote it VERBATIM from the GENERATED FILES section of the conversation into a normal code block. Never regenerate or alter it in that case.
-- Never invent tool results, statuses or completions.\n- For creation, modification or coding tasks, work through these phases in order: understand the request and form a concrete implementation plan/prompt, implement the code, then check/validate the completed code before declaring it complete. The Deep Thinking UI may show only reasoning/plan text actually supplied by the connected provider; never fabricate thinking text.\n- When the user asks for a link, return only the relevant link(s). Use a descriptive link name with the actual URL as the target; do not expose the raw URL as visible text when a descriptive name is available. If the request is only “Link” and the intended link is unclear from context, ask which link they want instead of generating an unrelated list.`;
+- Never invent tool results, statuses or completions.\n- When the user asks for a link, return only the relevant link(s). Use a descriptive link name with the actual URL as the target; do not expose the raw URL as visible text when a descriptive name is available. If the request is only “Link” and the intended link is unclear from context, ask which link they want instead of generating an unrelated list.`;
 async function searchWeb(query,signal){const q=String(query||'').trim();if(!q)return '';const url='https://r.jina.ai/http://www.google.com/search?q='+encodeURIComponent(q);let res;try{res=await fetch(url,{headers:{Accept:'text/plain'},signal});}catch(e){if(e.name==='AbortError')throw e;throw new Error('Web search failed: '+(e.message||'network error'));}if(!res.ok)throw new Error('Web search failed (HTTP '+res.status+').');const raw=(await res.text()).trim();if(!raw)throw new Error('Web search returned no results.');const links=[];const seen=new Set();const re=/\[([^\]]{2,180})\]\((https?:\/\/[^)]+)\)/g;let m;while((m=re.exec(raw))&&links.length<8){const title=m[1].replace(/\s+/g,' ').trim();const link=m[2].trim();if(!seen.has(link)&&!/google\.com\/search/i.test(link)){seen.add(link);links.push({title,link});}}let text=raw.replace(/\\r/g,'').replace(/\\n{3,}/g,'\\n\\n').slice(0,12000);if(links.length)text+='\\n\\n--- Extracted result links ---\\n'+links.map((x,i)=>(i+1)+'. '+x.title+'\\n'+x.link).join('\\n');return 'LIVE WEB SEARCH RESULTS FOR: '+q+'\\nUse these results as external context. Do not claim to have browsed anything beyond the supplied results. Cite source URLs when relevant.\\n\\n'+text;}
 function setWebAccess(on){S.webAccess=!!on;['#chipWeb','#chipWeb2'].forEach(s=>{const b=$(s);if(b){b.classList.toggle('web-on',S.webAccess);b.setAttribute('aria-pressed',S.webAccess?'true':'false');b.title=S.webAccess?'Web access ON':'Web access OFF';}});}
 function buildChatMessages(chat){
@@ -1412,7 +1410,7 @@ function agentSystem(p){
 '- Operations available to you: READ (from provided files), CREATE, FOLDER, WRITE/MODIFY, DELETE, RENAME (delete old + create new with updated references), SEARCH (request needed files), VALIDATE (via summary after apply), BUILD (via the Build tab by the user).\n'+
 '- If you need a file that was not provided, output a line "NEED: <exact path>" (one per file) and stop; the file will be provided next turn.\n'+
 '- After the block, give a short factual summary of the changes.\n'+
-'- Before writing code for a creation/modification task, first formulate a detailed implementation plan/prompt covering requirements, affected files, architecture, UI/logic behavior and validation points. Then implement only the required changes. After implementation, perform a full consistency/code check of the changed result and report concrete issues if any remain. Provider-supplied reasoning may be streamed to the Deep Thinking UI; never fabricate reasoning.';}
+'- If no file changes are needed (explanations, analysis, advice), answer in plain text without any flayfiles block.';}
 function buildProjectContext(p,request,force=[]){const paths=Object.keys(p.files).sort();
  const treeRoot=buildTree(paths);
  let tree='';const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/\n';walk(sub,depth+1);}
@@ -1496,11 +1494,6 @@ async function sendAgent(){if(S.agentStreaming)return;
     const fails=results.filter(r=>!r.ok).length;
     am.activity.push({icon:fails?'warn':'ok',label:'Applied '+applied.length+' change(s) to the project'+(fails?', '+fails+' operation(s) failed':''),status:fails?'warn':'done'});}}
   else{am.activity.push({icon:'info',label:'No structured file changes were requested — answered directly.',status:'done'});}
-  if(parsed.ops){
-   const checks=validateProject(p);
-   const fails=checks.filter(x=>!x.ok);
-   am.activity.push({icon:fails.length?'warn':'check',label:fails.length?'Code check found '+fails.length+' issue(s): '+fails.slice(0,3).map(x=>x.label).join(', '):'Code check completed — '+checks.length+' validation checks passed.',status:fails.length?'warn':'done'});
-  }
   am.status='done';}
  catch(e){if(e.name==='AbortError'){am.status='stopped';am.activity.push({icon:'stop',label:'Stopped by user — partial response preserved.',status:'warn'});}
   else{am.status='error';console.error('Flay AI agent request failed:',e);am.activity.push({icon:'alert',label:'Unable to get a response. Please try again.',status:'fail'});}}
