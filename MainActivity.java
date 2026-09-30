@@ -33,6 +33,7 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.DownloadListener;
+import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
@@ -704,18 +705,90 @@ public class MainActivity extends Activity {
             @Override
             public void onDownloadStart(String url, String ua, String cd, String mt, long cl) {
                 try {
-                    DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
-                    req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                    req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,
-                        URLUtil.guessFileName(url, cd, mt));
-                    req.allowScanningByMediaScanner();
-                    DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                    if (dm != null) { 
-                        dm.enqueue(req); 
-                        Toast.makeText(MainActivity.this, "Downloading...", Toast.LENGTH_SHORT).show(); 
+                    if (url == null || url.trim().isEmpty()) {
+                        Toast.makeText(MainActivity.this, "Download link is empty", Toast.LENGTH_LONG).show();
+                        return;
                     }
-                } catch (Exception e) { 
-                    Toast.makeText(MainActivity.this, "Download failed", Toast.LENGTH_SHORT).show(); 
+
+                    Uri downloadUri = Uri.parse(url);
+                    String mimeType = (mt == null || mt.trim().isEmpty())
+                        ? "application/octet-stream" : mt;
+
+                    String fileName = URLUtil.guessFileName(url, cd, mimeType);
+                    if (fileName == null || fileName.trim().isEmpty() || !fileName.toLowerCase().endsWith(".apk")) {
+                        fileName = "flay-app-debug.apk";
+                    }
+
+                    // APK links from the Flay build server may be served by a
+                    // Cloudflare Worker. Pass the WebView session headers so
+                    // DownloadManager can follow the same request correctly.
+                    DownloadManager.Request req = new DownloadManager.Request(downloadUri);
+                    req.setMimeType(mimeType);
+                    req.setTitle(fileName);
+                    req.setDescription("Downloading APK");
+                    req.setNotificationVisibility(
+                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                    );
+                    req.setAllowedNetworkTypes(
+                        DownloadManager.Request.NETWORK_WIFI |
+                        DownloadManager.Request.NETWORK_MOBILE
+                    );
+                    req.setVisibleInDownloadsUi(true);
+                    req.setRequiresCharging(false);
+                    req.setAllowedOverMetered(true);
+                    req.setAllowedOverRoaming(true);
+                    req.setDestinationInExternalPublicDir(
+                        Environment.DIRECTORY_DOWNLOADS, fileName
+                    );
+                    req.allowScanningByMediaScanner();
+
+                    String requestUa = (ua == null || ua.trim().isEmpty())
+                        ? webview1.getSettings().getUserAgentString() : ua;
+                    if (requestUa != null && !requestUa.trim().isEmpty()) {
+                        req.addRequestHeader("User-Agent", requestUa);
+                    }
+
+                    try {
+                        String cookie = CookieManager.getInstance().getCookie(url);
+                        if (cookie != null && !cookie.trim().isEmpty()) {
+                            req.addRequestHeader("Cookie", cookie);
+                        }
+                    } catch (Exception ignored) {}
+
+                    DownloadManager dm =
+                        (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+
+                    if (dm == null) {
+                        Toast.makeText(
+                            MainActivity.this,
+                            "Download service is unavailable",
+                            Toast.LENGTH_LONG
+                        ).show();
+                        return;
+                    }
+
+                    long downloadId = dm.enqueue(req);
+                    Toast.makeText(
+                        MainActivity.this,
+                        "APK download started",
+                        Toast.LENGTH_SHORT
+                    ).show();
+
+                    android.util.Log.d(
+                        "FLAY_APK_DOWNLOAD",
+                        "DownloadManager queued id=" + downloadId + " url=" + url
+                    );
+                } catch (Exception e) {
+                    android.util.Log.e(
+                        "FLAY_APK_DOWNLOAD",
+                        "Could not queue APK download",
+                        e
+                    );
+                    Toast.makeText(
+                        MainActivity.this,
+                        "Could not start APK download",
+                        Toast.LENGTH_LONG
+                    ).show();
                 }
             }
         });
