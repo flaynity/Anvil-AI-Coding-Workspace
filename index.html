@@ -79,7 +79,7 @@ input,textarea,select{font:inherit;color:inherit}
 .msg-body{line-height:1.7;word-break:break-word;overflow-wrap:anywhere;font-size:15px}
 .msg-body h3{margin:.7em 0 .3em;font-size:1.05em}
 .msg-body ul{margin:.3em 0 .6em;padding-left:1.3em}
-.msg-body a{color:var(--accent)}
+.msg-body a{color:var(--accent)}.msg-link{display:flex;align-items:center;gap:10px;margin:7px 0}.msg-link-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.msg-link-open{width:32px;height:32px;border:1px solid var(--border);border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--text);background:var(--surface);flex:none}.msg-link-open:hover{border-color:var(--accent);color:var(--accent)}.msg-link-open svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .msg-body code{background:var(--surface);border-radius:6px;padding:1px 6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88em}
 .caret{display:inline-block;width:8px;height:15px;background:var(--accent);margin-left:2px;vertical-align:-2px;animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -624,7 +624,14 @@ function md(src){
  h=h.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
  h=h.replace(/(^|[\s(>])\*([^*\n]+)\*/g,'$1<em>$2</em>');
  h=h.replace(/`([^`\n]+)`/g,'<code>$1</code>');
- h=h.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+ const openLinkIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5"/><path d="M13 11l6-6"/><path d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>';
+ h=h.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,(m,n,u)=>'<span class="msg-link"><span class="msg-link-name">'+n+'</span><a class="msg-link-open" href="'+u+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+n.replace(/"/g,'&quot;')+'">'+openLinkIcon+'</a></span>');
+ h=h.replace(/(?:^|\n)\|\s*([^|\n]+?)\s*\|\s*([^|\n]+?)\s*\|?\s*(?=\n|$)/g,(m,n,u)=>{
+   const url=(u||'').trim().replace(/^<|>$/g,'');
+   if(!/^https?:\/\//i.test(url))return m;
+   const name=n.trim();
+   return '\n<span class="msg-link"><span class="msg-link-name">'+name+'</span><a class="msg-link-open" href="'+url+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+name.replace(/"/g,'&quot;')+'">'+openLinkIcon+'</a></span>\n';
+ });
  const lines=h.split('\n');let out='',inUl=false;
  for(const ln of lines){if(/^\s*[-*] /.test(ln)){if(!inUl){out+='<ul>';inUl=true;}out+='<li>'+ln.replace(/^\s*[-*] /,'')+'</li>';}
   else{if(inUl){out+='</ul>';inUl=false;}out+=ln+'<br>';}}
@@ -886,7 +893,7 @@ Code delivery rules:
 - "path" is a plain file name like MainActivity.kt or a relative path; never absolute, never "..". Use action create/modify/delete.
 - When you deliver files, your visible reply must be only a brief summary of what you created.
 - If the user asks to see the full code of an already generated file inside the chat, quote it VERBATIM from the GENERATED FILES section of the conversation into a normal code block. Never regenerate or alter it in that case.
-- Never invent tool results, statuses or completions.`;
+- Never invent tool results, statuses or completions.\n- When the user asks for a link, return only the relevant link(s). Use a descriptive link name with the actual URL as the target; do not expose the raw URL as visible text when a descriptive name is available. If the request is only “Link” and the intended link is unclear from context, ask which link they want instead of generating an unrelated list.`;
 async function searchWeb(query,signal){const q=String(query||'').trim();if(!q)return '';const url='https://r.jina.ai/http://www.google.com/search?q='+encodeURIComponent(q);let res;try{res=await fetch(url,{headers:{Accept:'text/plain'},signal});}catch(e){if(e.name==='AbortError')throw e;throw new Error('Web search failed: '+(e.message||'network error'));}if(!res.ok)throw new Error('Web search failed (HTTP '+res.status+').');const raw=(await res.text()).trim();if(!raw)throw new Error('Web search returned no results.');const links=[];const seen=new Set();const re=/\[([^\]]{2,180})\]\((https?:\/\/[^)]+)\)/g;let m;while((m=re.exec(raw))&&links.length<8){const title=m[1].replace(/\s+/g,' ').trim();const link=m[2].trim();if(!seen.has(link)&&!/google\.com\/search/i.test(link)){seen.add(link);links.push({title,link});}}let text=raw.replace(/\\r/g,'').replace(/\\n{3,}/g,'\\n\\n').slice(0,12000);if(links.length)text+='\\n\\n--- Extracted result links ---\\n'+links.map((x,i)=>(i+1)+'. '+x.title+'\\n'+x.link).join('\\n');return 'LIVE WEB SEARCH RESULTS FOR: '+q+'\\nUse these results as external context. Do not claim to have browsed anything beyond the supplied results. Cite source URLs when relevant.\\n\\n'+text;}
 function setWebAccess(on){S.webAccess=!!on;['#chipWeb','#chipWeb2'].forEach(s=>{const b=$(s);if(b){b.classList.toggle('web-on',S.webAccess);b.setAttribute('aria-pressed',S.webAccess?'true':'false');b.title=S.webAccess?'Web access ON':'Web access OFF';}});}
 function buildChatMessages(chat){
