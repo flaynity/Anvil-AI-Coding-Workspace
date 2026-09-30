@@ -1,0 +1,6 @@
+{
+  "name":"flay-ai-build-server","version":"1.0.0","private":true,
+  "description":"Real Android APK build server for Flay AI","main":"server.js",
+  "scripts":{"start":"node server.js"},"engines":{"node":">=20"},
+  "dependencies":{"adm-zip":"^0.5.16","express":"^5.1.0"}
+}
