@@ -79,7 +79,7 @@ input,textarea,select{font:inherit;color:inherit}
 .msg-body{line-height:1.7;word-break:break-word;overflow-wrap:anywhere;font-size:15px}
 .msg-body h3{margin:.7em 0 .3em;font-size:1.05em}
 .msg-body ul{margin:.3em 0 .6em;padding-left:1.3em}
-.msg-body a{color:var(--accent)}
+.msg-body a{color:var(--accent)}.msg-link{display:flex;align-items:center;gap:10px;margin:7px 0}.msg-link-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.msg-link-open{width:32px;height:32px;border:1px solid var(--border);border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--text);background:var(--surface);flex:none}.msg-link-open:hover{border-color:var(--accent);color:var(--accent)}.msg-link-open svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .msg-body code{background:var(--surface);border-radius:6px;padding:1px 6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88em}
 .caret{display:inline-block;width:8px;height:15px;background:var(--accent);margin-left:2px;vertical-align:-2px;animation:blink 1s steps(2) infinite}
 @keyframes blink{50%{opacity:0}}
@@ -135,7 +135,7 @@ input,textarea,select{font:inherit;color:inherit}
 .composer{flex:none;padding:6px 12px calc(10px + env(safe-area-inset-bottom));background:transparent}
 .atts{max-width:820px;margin:0 auto 8px;display:flex;flex-wrap:wrap}
 .cbox2{display:flex;flex-direction:column;gap:4px;max-width:820px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:28px;padding:12px 12px 9px;box-shadow:0 10px 34px rgba(0,0,0,.12)}
-.cbox2:focus-within{border-color:var(--accent)}.cbox2 textarea::placeholder{opacity:.72;transition:opacity .16s ease}
+.cbox2:focus-within{border-color:var(--accent)}.cbtn.web-on{color:var(--accent);border-color:var(--accent)}.cbox2 textarea::placeholder{opacity:.72;transition:opacity .16s ease}
 [data-theme=dark] .cbox2{box-shadow:0 10px 34px rgba(0,0,0,.5)}
 .cbox2 textarea{width:100%;resize:none;border:0;background:transparent;outline:none;height:31px;min-height:31px;max-height:233px;overflow-y:hidden;padding:4px 8px;line-height:1.5;font-size:15px;transition:height .18s ease;will-change:height}
 .crow{display:flex;align-items:center;gap:6px;min-width:0}
@@ -603,7 +603,7 @@ const DB=(()=>{let dbp;
 const S={theme:'light',settings:{providers:[],selectedProviderId:null,reasoning:'balanced',buildServer:''},
  chats:[],chat:null,projects:[],project:null,navStack:[],
  streaming:false,abort:null,agentStreaming:false,agentAbort:null,
- pendingAttachments:[],agentAttachments:[],selection:null,expanded:new Set(),techSel:null,appDraft:null,sheetTarget:'chat',pinned:true,zipMode:'new'};
+ pendingAttachments:[],agentAttachments:[],webAccess:false,selection:null,expanded:new Set(),techSel:null,appDraft:null,sheetTarget:'chat',pinned:true,zipMode:'new'};
 const activeProvider=()=>S.settings.providers.find(p=>p.id===S.settings.selectedProviderId)||S.settings.providers[0]||null;
 function saveSettings(){try{localStorage.setItem('flay.settings.v1',JSON.stringify({providers:S.settings.providers,selectedProviderId:S.settings.selectedProviderId,reasoning:S.settings.reasoning,buildServer:S.settings.buildServer,theme:S.theme,lastChatId:S.chat?S.chat.id:null}));}catch(e){}}
 function loadSettings(){try{const s=JSON.parse(localStorage.getItem('flay.settings.v1')||'{}');
@@ -624,7 +624,14 @@ function md(src){
  h=h.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
  h=h.replace(/(^|[\s(>])\*([^*\n]+)\*/g,'$1<em>$2</em>');
  h=h.replace(/`([^`\n]+)`/g,'<code>$1</code>');
- h=h.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+ const openLinkIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 5h5v5"/><path d="M13 11l6-6"/><path d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>';
+ h=h.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,(m,n,u)=>'<span class="msg-link"><span class="msg-link-name">'+n+'</span><a class="msg-link-open" href="'+u+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+n.replace(/"/g,'&quot;')+'">'+openLinkIcon+'</a></span>');
+ h=h.replace(/(?:^|\n)\|\s*([^|\n]+?)\s*\|\s*([^|\n]+?)\s*\|?\s*(?=\n|$)/g,(m,n,u)=>{
+   const url=(u||'').trim().replace(/^<|>$/g,'');
+   if(!/^https?:\/\//i.test(url))return m;
+   const name=n.trim();
+   return '\n<span class="msg-link"><span class="msg-link-name">'+name+'</span><a class="msg-link-open" href="'+url+'" target="_blank" rel="noopener noreferrer" aria-label="Open '+name.replace(/"/g,'&quot;')+'">'+openLinkIcon+'</a></span>\n';
+ });
  const lines=h.split('\n');let out='',inUl=false;
  for(const ln of lines){if(/^\s*[-*] /.test(ln)){if(!inUl){out+='<ul>';inUl=true;}out+='<li>'+ln.replace(/^\s*[-*] /,'')+'</li>';}
   else{if(inUl){out+='</ul>';inUl=false;}out+=ln+'<br>';}}
@@ -886,7 +893,9 @@ Code delivery rules:
 - "path" is a plain file name like MainActivity.kt or a relative path; never absolute, never "..". Use action create/modify/delete.
 - When you deliver files, your visible reply must be only a brief summary of what you created.
 - If the user asks to see the full code of an already generated file inside the chat, quote it VERBATIM from the GENERATED FILES section of the conversation into a normal code block. Never regenerate or alter it in that case.
-- Never invent tool results, statuses or completions.`;
+- Never invent tool results, statuses or completions.\n- When the user asks for a link, return only the relevant link(s). Use a descriptive link name with the actual URL as the target; do not expose the raw URL as visible text when a descriptive name is available. If the request is only “Link” and the intended link is unclear from context, ask which link they want instead of generating an unrelated list.`;
+async function searchWeb(query,signal){const q=String(query||'').trim();if(!q)return '';const url='https://r.jina.ai/http://www.google.com/search?q='+encodeURIComponent(q);let res;try{res=await fetch(url,{headers:{Accept:'text/plain'},signal});}catch(e){if(e.name==='AbortError')throw e;throw new Error('Web search failed: '+(e.message||'network error'));}if(!res.ok)throw new Error('Web search failed (HTTP '+res.status+').');const raw=(await res.text()).trim();if(!raw)throw new Error('Web search returned no results.');const links=[];const seen=new Set();const re=/\[([^\]]{2,180})\]\((https?:\/\/[^)]+)\)/g;let m;while((m=re.exec(raw))&&links.length<8){const title=m[1].replace(/\s+/g,' ').trim();const link=m[2].trim();if(!seen.has(link)&&!/google\.com\/search/i.test(link)){seen.add(link);links.push({title,link});}}let text=raw.replace(/\\r/g,'').replace(/\\n{3,}/g,'\\n\\n').slice(0,12000);if(links.length)text+='\\n\\n--- Extracted result links ---\\n'+links.map((x,i)=>(i+1)+'. '+x.title+'\\n'+x.link).join('\\n');return 'LIVE WEB SEARCH RESULTS FOR: '+q+'\\nUse these results as external context. Do not claim to have browsed anything beyond the supplied results. Cite source URLs when relevant.\\n\\n'+text;}
+function setWebAccess(on){S.webAccess=!!on;['#chipWeb','#chipWeb2'].forEach(s=>{const b=$(s);if(b){b.classList.toggle('web-on',S.webAccess);b.setAttribute('aria-pressed',S.webAccess?'true':'false');b.title=S.webAccess?'Web access ON':'Web access OFF';}});}
 function buildChatMessages(chat){
  const p=activeProvider();
  const msgs=[{role:'system',content:SYS_CHAT}];
@@ -896,7 +905,7 @@ function buildChatMessages(chat){
   m.generatedFiles.forEach(g=>{if(g.status==='generated'&&typeof g.content==='string'&&g.content)
    genBlock+=`\n### FILE: ${g.path}\n${g.content.slice(0,30000)}\n### END FILE\n`;});});
  for(const m of hist){
-  if(m.role==='user'){let c=m.content||'';const atts=m.rawAtts||[];
+  if(m.role==='user'){let c=m.content||'';if(m.webContext)c+='\n\n--- LIVE WEB CONTEXT ---\n'+m.webContext+'\n--- END LIVE WEB CONTEXT ---';const atts=m.rawAtts||[];
    for(const a of atts){if(a.kind==='text')c+=`\n\n--- FILE: ${a.name} (${fmtBytes(a.size)}) ---\n${(a.content||'').slice(0,60000)}\n--- END FILE ---`;
     else if(a.kind==='zip')c+=`\n\n--- ZIP: ${a.name} ---\n${a.tree||''}\n--- END ZIP ---`;
     else if(a.kind==='image')c+=`\n[Image attached: ${a.name}, ${fmtBytes(a.size)}]`;}
@@ -918,6 +927,7 @@ async function sendChat(){if(S.streaming)return;
  if(!S.chat)newChat();
  if(!S.chat.title)S.chat.title=(text||atts[0].name||'New chat').slice(0,60);
  S.chat.messages.push({id:uid(),role:'user',content:text||'(attachments)',rawAtts:atts,attachments:atts.map(a=>({name:a.name||a.path,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
+ if(S.webAccess){const last=S.chat.messages[S.chat.messages.length-1];try{last.webContext=await searchWeb(text);}catch(e){S.chat.messages.pop();toast(e.message||'Web search failed.','warn');return;}}
  S.pendingAttachments=[];inp.value='';if(draftKey())localStorage.removeItem(draftKey());autoGrow(inp);
  S.chat.updatedAt=Date.now();renderChat();persistChat();S.pinned=true;pinScroll(false);
  const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',_hadThink:true};
@@ -971,8 +981,8 @@ function closeSheet(){$('#sheetWrap').classList.remove('show');}
  $('#shFile').onclick=()=>{closeSheet();(S.sheetTarget==='agent'?$('#filePickAgent'):$('#filePickFile')).click();};
  $('#shPFiles').onclick=()=>{closeSheet();setTab('code');enterSelection(null);toast('Tap files to select, then use "To AI".','info');};
  $('#shPlugins').onclick=()=>{closeSheet();modal(`<h3>Plugins</h3><p class="muted" style="line-height:1.6">No plugins or integrations are connected. Only real, configured integrations would appear here — nothing is simulated.</p><div class="mrow"><button class="btn" id="plC">Close</button></div>`);$('#plC').onclick=closeModal;};
- $('#chipWeb').onclick=()=>{modal(`<h3>Web access</h3><p class="muted" style="line-height:1.6">Web / browsing tool is <b>not connected</b> for the current provider. No browsing is simulated.</p><div class="mrow"><button class="btn" id="wC">Close</button></div>`);$('#wC').onclick=closeModal;};
- $('#chipWeb2').onclick=()=>$('#chipWeb').click();
+ $('#chipWeb').onclick=()=>{setWebAccess(!S.webAccess);toast(S.webAccess?'Web access ON — live search will be added to the AI context.':'Web access OFF.','info');};
+ $('#chipWeb2').onclick=()=>{setWebAccess(!S.webAccess);toast(S.webAccess?'Web access ON — live search will be added to the AI context.':'Web access OFF.','info');};
  $('#filePickPhoto').onchange=e=>{readIn(e.target.files,'chat');e.target.value='';};
  $('#filePickFile').onchange=e=>{readIn(e.target.files,'chat');e.target.value='';};
  $('#filePickAgent').onchange=e=>{readIn(e.target.files,'agent');e.target.value='';};
@@ -1573,6 +1583,7 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
  renderChat();
  startComposerPlaceholder();
  startAgentPlaceholder();
+ setWebAccess(false);
  if(typeof JSZip==='undefined')toast('JSZip could not load (offline?). ZIP import/export is unavailable.','warn');})();
 </script>
 </body>
