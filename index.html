@@ -319,7 +319,7 @@ input,textarea,select{font:inherit;color:inherit}
   <div class="composer">
     <div class="atts hidden" id="chatAtts"></div>
     <div class="cbox2">
-      <textarea id="chatInput" rows="1" placeholder="Message Flay AI..."></textarea>
+      <textarea id="chatInput" rows="1" placeholder="👾 Ask Flay AI to build something..."></textarea>
       <div class="crow">
         <button class="cbtn" id="btnPlus" aria-label="Attach"><svg class="ic"><use href="#i-plus"/></svg></button>
         <button class="cbtn" id="chipWeb" aria-label="Web"><svg class="ic sm"><use href="#i-globe"/></svg></button>
@@ -858,7 +858,7 @@ function renderChat(){updateChips();renderAtts();
 const draftKey=()=>S.chat?'flay.draft.'+S.chat.id:null;
 let draftT=null;
 function restoreDraft(){const i=$('#chatInput');i.value=(draftKey()&&localStorage.getItem(draftKey()))||'';autoGrow(i);}
-function startComposerPlaceholder(){const i=$('#chatInput');if(!i)return;const full='Message Flay AI...';let pos=0,del=false,timer=null;const stop=()=>{if(timer){clearTimeout(timer);timer=null;}};const tick=()=>{if(i.value){stop();return;}if(!del){pos=Math.min(full.length,pos+1);i.placeholder=full.slice(0,pos);if(pos===full.length){del=true;timer=setTimeout(tick,1100);return;}timer=setTimeout(tick,95);}else{pos=Math.max(0,pos-1);i.placeholder=full.slice(0,pos);if(pos===0){del=false;timer=setTimeout(tick,280);return;}timer=setTimeout(tick,55);}};i.addEventListener('input',()=>{if(i.value)stop();else if(!timer)tick();});tick();}
+function startComposerPlaceholder(){const i=$('#chatInput');if(!i)return;const full='👾 Ask Flay AI to build something...';let pos=0,del=false,timer=null;const stop=()=>{if(timer){clearTimeout(timer);timer=null;}};const tick=()=>{if(i.value){stop();return;}if(!del){pos=Math.min(full.length,pos+1);i.placeholder=full.slice(0,pos);if(pos===full.length){del=true;timer=setTimeout(tick,1100);return;}timer=setTimeout(tick,95);}else{pos=Math.max(0,pos-1);i.placeholder=full.slice(0,pos);if(pos===0){del=false;timer=setTimeout(tick,280);return;}timer=setTimeout(tick,55);}};i.addEventListener('input',()=>{if(i.value)stop();else if(!timer)tick();});tick();}
 function autoGrow(t){if(!t)return;const cs=getComputedStyle(t);const lh=parseFloat(cs.lineHeight)||22.5;const pt=parseFloat(cs.paddingTop)||4;const pb=parseFloat(cs.paddingBottom)||4;const minH=Math.ceil(lh+pt+pb);const maxH=Math.ceil(lh*10+pt+pb);t.style.minHeight=minH+'px';t.style.maxHeight=maxH+'px';t.style.height='auto';const target=Math.min(Math.max(t.scrollHeight,minH),maxH);t.style.height=target+'px';t.style.overflowY=t.scrollHeight>maxH?'auto':'hidden';}
 function updateSendBtn(){const b=$('#btnSend');
  if(S.streaming){b.innerHTML=icon('stop');}else{b.innerHTML=icon('send');}}
