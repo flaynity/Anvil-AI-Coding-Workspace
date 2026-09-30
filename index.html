@@ -739,6 +739,12 @@ function syncThinkHeights(host){
  if(!host)return;
  requestAnimationFrame(()=>host.querySelectorAll('.card.think .tbody').forEach(syncThinkHeight));
 }
+function deepThinkingText(m){
+ const parts=(m.reasoning||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+ if(!parts.length)return '';
+ const t=parts[parts.length-1];
+ return t.length>300?t.slice(0,300)+'…':t;
+}
 /* ---------- generated-file watcher (real stream parsing) ---------- */
 function syncGenFiles(m){
  const c=m.content||'';const fm=c.match(/```flayfiles\n?([\s\S]*?)(```|$)/);
@@ -790,7 +796,8 @@ function msgHtml(m){
  if(m.role==='user'){const long=m.content.length>600||m.content.split('\n').length>10;
   const atts=(m.attachments||[]).map(a=>`<span class="att-chip">${icon(a.kind==='image'?'image':a.kind==='zip'?'zip':a.kind==='project'?'folder':fileIcon(a.name||'x'),'sm')}<span>${esc(a.name||a.path)}</span><em>${fmtBytes(a.size||0)}</em></span>`).join('');
   return `<div class="msg user" data-mid="${m.id}">${atts?`<div>${atts}</div>`:''}<div class="bubble ${long?'clamp':''}">${esc(m.content).replace(/\n/g,'<br>')}</div>${long?'<button class="more-btn" data-more>More</button>':''}</div>`;}
- const pill=m.status==='streaming'?'<span class="status-pill">streaming</span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
+ const deep=deepThinkingText(m);
+ const pill=deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
  return `<div class="msg ai" data-mid="${m.id}">
   ${thinkCard(m)}
   ${genCard(m)}
