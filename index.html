@@ -1552,7 +1552,7 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
  $('#bjDlProject').onclick=async()=>{try{const blob=await zipProject(S.project);saveBlob(blob,S.project.name+'.zip');}catch(e){toast('ZIP export failed: '+e.message,'err');}};
  $('#bjBuildBtn').onclick=async()=>{const p=S.project;const out=$('#bjBuildOut');
  if(!S.settings.buildServer){renderBuildPane();return;}
- const base=S.settings.buildServer.replace(/\\/+$/,'');
+ const base=S.settings.buildServer.replace(/\/+$/,'');
  out.innerHTML='<div class="vrow"><span class="spin"></span><div class="lb">Packaging project...</div></div>';
  try{
   const blob=await zipProject(p);
