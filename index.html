@@ -1582,6 +1582,7 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
    out.innerHTML='<div class="vrow">'+icon(s.status==='failed'?'alert':s.status==='success'?'check':'info','sm '+(s.status==='failed'?'st-fail':s.status==='success'?'st-done':'st-run'))+'<div class="lb">'+esc(label)+'<br><span class="muted small">Job ID: '+esc(jobId)+'</span></div></div>';
    if(s.status==='success'){
     const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));
+    S._apkUrl=apkUrl;
     p.builds.unshift({at:Date.now(),ok:true,msg:'Real APK build completed successfully.'});
     out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">APK build completed successfully.</div></div><div class="vrow"><a class="btn primary sm" href="'+esc(apkUrl)+'" download>'+icon('download','sm')+'Download APK</a></div><div class="muted small" style="padding:4px 12px 8px">Job ID: '+esc(jobId)+'</div>';
     if(s.htmlUrl)out.innerHTML+='<div class="vrow"><a class="btn sm" href="'+esc(s.htmlUrl)+'" target="_blank" rel="noopener">'+icon('external','sm')+'Open GitHub Actions</a></div>';
@@ -1599,7 +1600,7 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
  }catch(e){const msg=e.name==='AbortError'?'Build server request timed out.':e.message;
   p.builds.unshift({at:Date.now(),ok:false,msg:msg});
   out.innerHTML='<div class="vrow">'+icon('alert','sm st-fail')+'<div class="lb">Build failed: '+esc(msg)+'</div></div><div class="muted small" style="padding:4px 12px 8px">No APK is claimed without a real build.</div>';}
- finally{persistProject(p);renderBuildPane();}};
+ finally{persistProject(p);if(lastStatus!=='success')renderBuildPane();}};
 function renderBuildPane(){const p=S.project;if(!p)return;
  $('#bjServerUrl').value=S.settings.buildServer||'';
  $('#bjBuildBtn').disabled=!S.settings.buildServer;
