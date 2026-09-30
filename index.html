@@ -1405,7 +1405,7 @@ function agentSystem(p){
 '- Operations available to you: READ (from provided files), CREATE, FOLDER, WRITE/MODIFY, DELETE, RENAME (delete old + create new with updated references), SEARCH (request needed files), VALIDATE (via summary after apply), BUILD (via the Build tab by the user).\n'+
 '- If you need a file that was not provided, output a line "NEED: <exact path>" (one per file) and stop; the file will be provided next turn.\n'+
 '- After the block, give a short factual summary of the changes.\n'+
-'- Before writing code for a creation/modification task, first formulate a detailed implementation plan/prompt covering requirements, affected files, architecture, UI/logic behavior and validation points. Then implement only the required changes. After implementation, perform a full consistency/code check of the changed result and report concrete issues if any remain. Provider-supplied reasoning may be streamed to the Deep Thinking UI; never fabricate reasoning.';\n}
+'- Before writing code for a creation/modification task, first formulate a detailed implementation plan/prompt covering requirements, affected files, architecture, UI/logic behavior and validation points. Then implement only the required changes. After implementation, perform a full consistency/code check of the changed result and report concrete issues if any remain. Provider-supplied reasoning may be streamed to the Deep Thinking UI; never fabricate reasoning.';}
 function buildProjectContext(p,request,force=[]){const paths=Object.keys(p.files).sort();
  const treeRoot=buildTree(paths);
  let tree='';const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/\n';walk(sub,depth+1);}
