@@ -597,9 +597,7 @@ public class MainActivity extends Activity {
             req.setAllowedOverMetered(true);
             req.setAllowedOverRoaming(true);
             req.setVisibleInDownloadsUi(true);
-            req.setDestinationInExternalPublicDir(
-                Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_FOLDER, fileName
-            );
+            req.setDestinationInExternalFilesDir(MainActivity.this, Environment.DIRECTORY_DOWNLOADS, fileName);
 
             String ua = webview1 != null
                 ? webview1.getSettings().getUserAgentString()
