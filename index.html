@@ -169,7 +169,7 @@ input,textarea,select{font:inherit;color:inherit}
 .sr-row{padding:8px 12px;border-bottom:1px solid var(--border)}
 .pj-foot{padding:10px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);flex:none;background:var(--bg)}
 /* terminal build page */
-.build-terminal{flex:1;min-height:0;display:flex;flex-direction:column;background:#050505;color:#E8E8E8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+.build-terminal{position:fixed;top:35px;left:0;right:0;bottom:0;display:flex;min-height:0;display:flex;flex-direction:column;background:#050505;color:#E8E8E8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
 .bt-head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #262626;background:#080808;flex:none}
 .bt-title{flex:1;min-width:0}.bt-title b{display:block;font-size:14px}.bt-title span{display:block;font-size:10.5px;color:#858585;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bt-dot{width:9px;height:9px;border-radius:50%;background:#777;flex:none}.bt-dot.run{background:#D80E45;box-shadow:0 0 10px rgba(216,14,69,.55)}.bt-dot.ok{background:#2FB56B}.bt-dot.fail{background:#FF4D6A}
@@ -554,7 +554,7 @@ input,textarea,select{font:inherit;color:inherit}
     <div class="bt-foot">
       <span class="status" id="btStatus">Starting...</span>
       <button class="btn danger sm hidden" id="btFix"><svg class="ic sm"><use href="#i-wrench"/></svg>Fix</button>
-      <button class="btn sm hidden" id="btOpenActions"><svg class="ic sm"><use href="#i-external"/></svg>Actions</button>
+      
     </div>
   </div>
 </section>
@@ -1596,8 +1596,15 @@ function terminalSet(state,jobId){
 }
 function terminalRender(logs,state){
  const host=$('#btLog');const text=String(logs||'');
- const safe=esc(text||'Waiting for GitHub Actions logs...');
- host.innerHTML=safe.split('\n').map(line=>'<span class="bt-line">'+line+'</span>').join('');
+ const next=text||'Waiting for build logs...';
+ if(host.dataset.raw===next){terminalSet(state,S._buildJobId||'');return;}
+ host.dataset.raw=next;
+ host.innerHTML='';
+ const lines=next.split('\n');
+ lines.forEach((line,i)=>{
+  const span=document.createElement('span');span.className='bt-line';span.textContent=line;host.appendChild(span);
+  if(i<lines.length-1)host.appendChild(document.createTextNode('\n'));
+ });
  host.scrollTop=host.scrollHeight;
  terminalSet(state,S._buildJobId||'');
 }
@@ -1632,7 +1639,7 @@ async function startBuildTerminal(){
    if(!s||!s.status)throw new Error('Build server returned an invalid status response.');
    lastStatus=String(s.status);
    S._buildLogs=String(s.logs||'');
-   if(s.htmlUrl){S._buildActionsUrl=s.htmlUrl;$('#btOpenActions').classList.remove('hidden');$('#btOpenActions').onclick=()=>window.open(s.htmlUrl,'_blank','noopener');}
+   if(s.htmlUrl){S._buildActionsUrl=s.htmlUrl;}
    terminalRender(S._buildLogs,s.status==='failed'?'failed':s.status==='success'?'success':'running');
    if(!S._buildLogs){
     if(s.status==='queued')terminalAdd('[QUEUE] Build queued — waiting for GitHub Actions...','dim');
