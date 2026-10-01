@@ -1637,7 +1637,7 @@ function terminalAdd(text,cls=''){
 }
 async function startBuildTerminal(){
  const p=S.project;if(!p||!S.settings.buildServer)return;
- const base=S.settings.buildServer.replace(/\\/+$/,'');const out=$('#btLog');
+ const base=S.settings.buildServer.replace(/\/+$/,'');const out=$('#btLog');
  S._buildFailure='';S._buildJobId='';S._buildLogs='';S._terminalLogShown='';S._terminalStepState={};S._terminalLastState='';
  $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';out.dataset.shown='';out.dataset.queue='';out.dataset.typing='0';
  terminalAdd('Flay AI Android Build Terminal','cmd');
