@@ -169,7 +169,7 @@ input,textarea,select{font:inherit;color:inherit}
 .sr-row{padding:8px 12px;border-bottom:1px solid var(--border)}
 .pj-foot{padding:10px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);flex:none;background:var(--bg)}
 /* terminal build page */
-.build-terminal{flex:1;min-height:0;display:flex;flex-direction:column;background:#050505;color:#E8E8E8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+.build-terminal{position:fixed;top:35px;left:0;right:0;bottom:0;display:flex;min-height:0;flex-direction:column;background:#050505;color:#E8E8E8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
 .bt-head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #262626;background:#080808;flex:none}
 .bt-title{flex:1;min-width:0}.bt-title b{display:block;font-size:14px}.bt-title span{display:block;font-size:10.5px;color:#858585;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bt-dot{width:9px;height:9px;border-radius:50%;background:#777;flex:none}.bt-dot.run{background:#D80E45;box-shadow:0 0 10px rgba(216,14,69,.55)}.bt-dot.ok{background:#2FB56B}.bt-dot.fail{background:#FF4D6A}
@@ -1589,26 +1589,66 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
  S.settings.buildServer=v;saveSettings();renderBuildPane();toast(v?'Build server saved. Build APK will send a real request.':'Build server cleared.','ok');};
  $('#bjDlProject').onclick=async()=>{try{const blob=await zipProject(S.project);saveBlob(blob,S.project.name+'.zip');}catch(e){toast('ZIP export failed: '+e.message,'err');}};
 function terminalSet(state,jobId){
- const dot=$('#btDot'),status=$('#btStatus'),fix=$('#btFix'),actions=$('#btOpenActions');
+ const dot=$('#btDot'),status=$('#btStatus'),fix=$('#btFix');
  dot.className='bt-dot '+(state==='running'?'run':state==='success'?'ok':state==='failed'?'fail':'');
  status.textContent=state==='running'?'Build running...':state==='success'?'Build completed successfully.':state==='failed'?'Build failed.':'Preparing...';
  fix.classList.toggle('hidden',state!=='failed');if(jobId)$('#btJob').textContent='Job ID: '+jobId;
 }
+function appendTerminalTyping(host,text){
+ const incoming=String(text||'');
+ if(!incoming)return;
+ const queued=String(host.dataset.queue||'');
+ host.dataset.queue=queued+incoming;
+ if(host.dataset.typing==='1')return;
+ host.dataset.typing='1';
+ const tick=()=>{
+  let q=String(host.dataset.queue||'');
+  if(!q){host.dataset.typing='0';return;}
+  const take=Math.min(q.length,Math.max(1,Math.ceil(q.length/24)));
+  const chunk=q.slice(0,take);q=q.slice(take);host.dataset.queue=q;
+  let line=host.lastElementChild;
+  if(!line||!line.classList.contains('bt-line')){line=document.createElement('span');line.className='bt-line';host.appendChild(line);}
+  for(const ch of chunk){
+   if(ch==='\n'){host.appendChild(document.createTextNode('\n'));line=document.createElement('span');line.className='bt-line';host.appendChild(line);}
+   else line.textContent+=ch;
+  }
+  host.scrollTop=host.scrollHeight;
+  requestAnimationFrame(tick);
+ };
+ requestAnimationFrame(tick);
+}
 function terminalRender(logs,state){
- const host=$('#btLog');const text=String(logs||'');
- const safe=esc(text||'Waiting for GitHub Actions logs...');
- host.innerHTML=safe.split('\n').map(line=>'<span class="bt-line">'+line+'</span>').join('');
- host.scrollTop=host.scrollHeight;
+ const host=$('#btLog');const next=String(logs||'');
+ const shown=String(host.dataset.serverShown||'');
+ const queued=String(host.dataset.serverQueue||'');
+ const consumed=shown+queued;
+ if(next===shown||next===consumed){terminalSet(state,S._buildJobId||'');return;}
+ if(next.startsWith(consumed)){
+  const delta=next.slice(consumed.length);
+  if(delta){host.dataset.serverQueue=queued+delta;appendTerminalTyping(host,delta);}
+ }else if(!next){
+  // No server log yet; keep local terminal lines intact.
+ }else{
+  // GitHub can return a truncated tail; append only the new tail instead of
+  // rebuilding the terminal DOM, preventing jump/jikjak movement.
+  const common=Math.min(shown.length,next.length);
+  let i=0;while(i<common&&shown[i]===next[i])i++;
+  const delta=next.slice(i);
+  if(delta)appendTerminalTyping(host,delta);
+ }
+ host.dataset.serverShown=next;
+ host.dataset.serverQueue='';
  terminalSet(state,S._buildJobId||'');
 }
 function terminalAdd(text,cls=''){
- const host=$('#btLog');const span=document.createElement('span');span.className='bt-line '+cls;span.textContent=String(text||'');host.appendChild(span);host.appendChild(document.createTextNode('\n'));host.scrollTop=host.scrollHeight;
+ const host=$('#btLog');const span=document.createElement('span');span.className='bt-line '+cls;span.textContent=String(text||'');host.appendChild(span);host.appendChild(document.createTextNode('\n'));
+ host.scrollTop=host.scrollHeight;
 }
 async function startBuildTerminal(){
  const p=S.project;if(!p||!S.settings.buildServer)return;
  const base=S.settings.buildServer.replace(/\/+$/,'');const out=$('#btLog');
  S._buildFailure='';S._buildJobId='';S._buildLogs='';
- $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';
+ $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';out.dataset.serverShown='';out.dataset.serverQueue='';out.dataset.queue='';out.dataset.typing='0';
  terminalAdd('Flay AI Android Build Terminal','cmd');
  terminalAdd('$ package project '+p.name,'cmd');
  try{
@@ -1622,7 +1662,7 @@ async function startBuildTerminal(){
   if(!j||!j.ok||!j.jobId)throw new Error('Build server returned an invalid build response.');
   const jobId=String(j.jobId);S._buildJobId=jobId;
   const statusUrl=String(j.statusUrl||base+'/build/status/'+encodeURIComponent(jobId));
-  $('#btJob').textContent='Job ID: '+jobId;terminalAdd('[OK] Build job created: '+jobId,'ok');terminalAdd('[INFO] Waiting for GitHub Actions...','dim');terminalSet('running',jobId);
+  $('#btJob').textContent='Job ID: '+jobId;terminalAdd('[OK] Build job created: '+jobId,'ok');terminalAdd('[INFO] Build environment started...','dim');terminalSet('running',jobId);
   const started=Date.now(),maxWait=30*60*1000;let lastStatus='';
   while(Date.now()-started<maxWait){
    await new Promise(r=>setTimeout(r,lastStatus?'2500':'1200'));
@@ -1632,11 +1672,11 @@ async function startBuildTerminal(){
    if(!s||!s.status)throw new Error('Build server returned an invalid status response.');
    lastStatus=String(s.status);
    S._buildLogs=String(s.logs||'');
-   if(s.htmlUrl){S._buildActionsUrl=s.htmlUrl;$('#btOpenActions').classList.remove('hidden');$('#btOpenActions').onclick=()=>window.open(s.htmlUrl,'_blank','noopener');}
+   if(s.htmlUrl)S._buildActionsUrl=s.htmlUrl;
    terminalRender(S._buildLogs,s.status==='failed'?'failed':s.status==='success'?'success':'running');
    if(!S._buildLogs){
-    if(s.status==='queued')terminalAdd('[QUEUE] Build queued — waiting for GitHub Actions...','dim');
-    else if(s.status==='building')terminalAdd('[BUILD] GitHub Actions is running...','cmd');
+    if(s.status==='queued')terminalAdd('[QUEUE] Build queued — waiting for build environment...','dim');
+    else if(s.status==='building')terminalAdd('[RUN] Build environment is running...','cmd');
    }
    if(s.status==='success'){
     const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));S._apkUrl=apkUrl;
