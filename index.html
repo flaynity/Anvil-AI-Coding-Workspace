@@ -183,6 +183,8 @@ input,textarea,select{font:inherit;color:inherit}
 .bt-line{display:inline;word-wrap:break-word}.bt-line.cmd{color:#D80E45;font-weight:600}.bt-line.ok{color:#2FB56B;font-weight:600}.bt-line.err{color:#FF4D6A;font-weight:600}.bt-line.dim{color:#777}
 .bt-foot{display:flex;gap:10px;align-items:center;padding:12px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #262626;background:#050505;flex:none}
 .bt-foot .btn{font-family:inherit;font-weight:700}.bt-foot .status{flex:1;min-width:0;color:#8C8C8C;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.build-error-tag{border-color:var(--err)!important;color:var(--err)!important;background:var(--accent-soft)!important}
+
 /* tech cards */
 .techwrap{padding:18px 16px calc(24px + env(safe-area-inset-bottom));max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:16px;height:100%}
 .tech-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
@@ -532,13 +534,9 @@ input,textarea,select{font:inherit;color:inherit}
       
       <div class="premium-card" style="margin:0">
         <div class="card-head" style="padding:0; gap:10px;"><svg class="ic sm"><use href="#i-cloud"/></svg><b style="font-size:15px">APK build environment</b></div>
-        <div class="small muted">Package the current codebase and execute a real Android compilation to generate a debug APK.</div>
-        <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px">
-          <button class="btn primary" id="bjBuildBtn" style="height:48px; font-size:15px"><svg class="ic sm"><use href="#i-box"/></svg>Build APK</button>
-          <div style="display:flex; gap:10px">
-            <button class="btn hidden" id="bjApkDl" style="flex:1"><svg class="ic sm"><use href="#i-download"/></svg>Download APK</button>
-            <button class="btn" id="bjDlProject" style="flex:1"><svg class="ic sm"><use href="#i-download"/></svg>Download Project</button>
-          </div>
+        <div style="display:flex; gap:10px; margin-top:4px">
+          <button class="btn primary" id="bjBuildBtn" style="height:48px; flex:1; font-size:15px"><svg class="ic sm"><use href="#i-box"/></svg>Build APK</button>
+          <button class="btn" id="bjDlProject" style="height:48px; flex:1; font-size:15px"><svg class="ic sm"><use href="#i-download"/></svg>Download Project</button>
         </div>
       </div>
       
@@ -568,7 +566,7 @@ input,textarea,select{font:inherit;color:inherit}
     <div class="bt-foot">
       <span class="status" id="btStatus">Starting...</span>
       <button class="btn danger sm hidden" id="btFix"><svg class="ic sm"><use href="#i-wrench"/></svg>Fix</button>
-      <button class="btn sm hidden" id="btOpenActions"><svg class="ic sm"><use href="#i-external"/></svg>Actions</button>
+
     </div>
   </div>
 </section>
@@ -1458,24 +1456,43 @@ function restoreAgentDraft(){const i=$('#agentInput');i.value=(agentDraftKey()&&
 function renderAgentAtts(){const host=$('#agentAtts');
  if(!S.agentAttachments.length){host.classList.add('hidden');host.innerHTML='';return;}
  host.classList.remove('hidden');
- host.innerHTML=S.agentAttachments.map((a,i)=>`<span class="att-chip">${icon(a.kind==='project'?'folder':a.kind==='image'?'image':fileIcon(a.name||'x'),'sm')}<span>${esc(a.path||a.name)}</span><em>${fmtBytes(a.size||0)}</em><button data-rmagatt="${i}">${icon('x','xs')}</button></span>`).join('');}
+ host.innerHTML=S.agentAttachments.map((a,i)=>{const isBuildError=a.kind==='build-error';const label=isBuildError?'Build Error':(a.path||a.name);return `<span class="att-chip ${isBuildError?'build-error-tag':''}">${icon(isBuildError?'alert':a.kind==='project'?'folder':a.kind==='image'?'image':fileIcon(a.name||'x'),'sm')}<span>${esc(label)}</span><em>${fmtBytes(a.size||0)}</em><button data-rmagatt="${i}" aria-label="Remove">${icon('x','xs')}</button></span>`;}).join('');}
  $('#agentAtts').addEventListener('click',e=>{const b=e.target.closest('[data-rmagatt]');if(b){S.agentAttachments.splice(+b.dataset.rmagatt,1);renderAgentAtts();}});
  $('#agentInput').addEventListener('input',e=>{autoGrow(e.target);clearTimeout(adraftT);adraftT=setTimeout(()=>{if(agentDraftKey())localStorage.setItem(agentDraftKey(),e.target.value);},300);});
  $('#agentInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!("ontouchstart"in window)){e.preventDefault();sendAgent();}});
  $('#agentSend').onclick=()=>{if(S.agentStreaming){S.agentAbort&&S.agentAbort.abort();}else sendAgent();};
 function agentSystem(p){
  return 'You are Flay AI, the coding agent for the project "'+p.name+'" ('+(TECHS[p.tech]?TECHS[p.tech].title:'imported project')+', package '+(p.package||'n/a')+').\n'+
-'The current project file tree and the contents of relevant files are provided in the user message. The project is the source of truth.\n\n'+
-'CRITICAL RULES FOR CODE UPDATES:\n'+
-'- When asked to update, fix, modify, design, or change code, YOU MUST MODIFY THE ACTUAL PROJECT FILES using the flayfiles block.\n'+
-'- NEVER dump or print the full source code in your chat response. This is a strict violation of your core behavior.\n'+
-'- Read the provided files, understand the existing code, and preserve existing functionality unless instructed otherwise.\n'+
-'- Deliver your changes EXCLUSIVELY via ONE fenced block tagged flayfiles containing a JSON array:\n'+
+'The project files are the source of truth. You are operating inside a real coding workspace.\n\n'+
+'CRITICAL PROJECT EDITING RULES:\n'+
+'- For create, update, redesign, modification, or build-error-fix tasks, read the real project files and modify the actual project files.\n'+
+'- NEVER put complete source code in the normal chat response.\n'+
+'- NEVER invent missing classes, resource IDs, package names, imports, layouts, or build configuration when the real project can be inspected.\n'+
+'- Preserve unrelated working functionality. Make the smallest correct change required by the user task.\n\n'+
+'STRICT ONE-FILE-AT-A-TIME PROTOCOL:\n'+
+'- Generate or modify EXACTLY ONE project file per provider response.\n'+
+'- The flayfiles JSON array MUST contain exactly ONE operation. Never return multiple file operations.\n'+
+'- After that one file is saved by the workspace, the next provider turn will handle the next file.\n'+
+'- Do not regenerate a file that has already been completed unless a later dependency analysis proves it must change.\n'+
+'- If another existing file is needed, output NEED: <exact path> instead of guessing.\n'+
+'- If the current task still needs another file after this one, end with NEXT_FILE.\n'+
+'- When no more file changes are required, end with TASK_COMPLETE.\n\n'+
+'REQUIRED FILE OUTPUT FORMAT:\n'+
 '```flayfiles\n[{"path":"app/src/main/...","action":"create|modify|delete","content":"complete new file content"}]\n```\n'+
-'- "modify" requires the COMPLETE new file content. Paths are relative to the project root. To create a folder use action "folder" without content.\n'+
-'- After the flayfiles block, output ONLY a short, concise summary of the changes made.\n'+
-'- If you need a file that was not provided, output "NEED: <exact path>" (one per line) and stop.\n'+
-'- Do not provide long explanations of the code unless specifically asked to explain (and not modify) it.';}
+'- modify requires the COMPLETE new content of that single file.\n'+
+'- delete must contain no content.\n'+
+'- folder is not allowed in the same response as a file operation. Use a separate turn.\n'+
+'- After the flayfiles block output only a short summary followed by NEXT_FILE or TASK_COMPLETE.\n'+
+'- If you need a file not provided, output NEED: <exact path> and do not generate another file in that response.\n\n'+
+'BUILD ERROR FIX MODE:\n'+
+'- When a Build Error attachment is present, treat it as a real compiler/build failure, not as a request for a chat explanation.\n'+
+'- Read the complete error and inspect the actual project tree/files. Identify the root cause before changing code.\n'+
+'- Fix the real affected project file(s), one file at a time.\n'+
+'- Check imports, package declarations, class references, resource IDs, XML resources, Gradle files and dependencies when relevant.\n'+
+'- Do not randomly rewrite unrelated files.\n'+
+'- Do not claim the build is fixed unless the project files were actually repaired.\n'+
+'- After each repaired file, the workspace will save it and expose it in Code Tab before the next file is generated.\n\n'+
+'When no project-file change is needed, answer briefly and end with TASK_COMPLETE.';}
 function buildProjectContext(p,request,force=[]){const paths=Object.keys(p.files).sort();
  const treeRoot=buildTree(paths);
  let tree='';const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/\n';walk(sub,depth+1);}
@@ -1522,51 +1539,42 @@ async function sendAgent(){if(S.agentStreaming)return;
  p.agent.push({id:uid(),role:'user',content:text||'(selected files)',attachments:atts.map(a=>({name:a.path||a.name,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
  S.agentAttachments=[];inp.value='';if(agentDraftKey())localStorage.removeItem(agentDraftKey);autoGrow(inp);
  renderThread('#agentMsgs',p.agent);S.pinned=true;pinScroll(true);
- const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[]};
+ const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[],generatedFiles:[]};
  p.agent.push(am);renderThread('#agentMsgs',p.agent);pinScroll(true);
  S.agentStreaming=true;S.agentAbort=new AbortController();updateSendBtn();
+ const runSnapshot=JSON.parse(JSON.stringify(p.files));const allResults=[];const allDiffs={};
+ let force=[];let turn=0;let taskDone=false;let lastTurnSummary='';const maxFileTurns=32;
+ const history=p.agent.filter(m=>m!==am&&m.status==='done').slice(-8).filter(m=>m.content).map(m=>({role:m.role,content:stripFences(m.content)}));
  try{
-  let round=0,need=[];
-  const baseMsgs=[{role:'system',content:agentSystem(p)}];
-  const history=p.agent.filter(m=>m!==am&&m.status==='done').slice(-8).filter(m=>m.content).map(m=>({role:m.role,content:stripFences(m.content)}));
-  do{round++;
-   const ctx=buildProjectContext(p,text+(need.length?' '+need.join(' '):''),need);
-   if(round===1)am.activity.push({icon:'folder',label:'Project context prepared — '+ctx.included.size+'/'+ctx.total+' files, '+fmtBytes(ctx.chars)+' of project content included',status:'done'});
-   else am.activity.push({icon:'download',label:'Retrieved '+need.length+' additional file(s): '+need.slice(0,4).join(', ')+(need.length>4?' ...':''),status:'done'});
-   if(atts.length)am.activity.push({icon:'clip',label:'Selected files attached: '+atts.map(a=>a.path||a.name).join(', '),status:'done'});
-   am._actDirty=true;updateLive(am,'#agentMsgs');
-   let prompt=(text||'Work with the attached project files.')+'\n\nPROJECT TREE:\n'+ctx.tree+'\nFILES PROVIDED:'+ctx.blocks;
-   if(atts.length){prompt+='\nSELECTED FILE CONTENTS:';for(const a of atts){prompt+='\n### FILE: '+(a.path||a.name)+'\n'+(a.content||'')+'\n### END FILE\n';}}
-   if(need.length){prompt+='\nThese are the additional files you requested via NEED. Continue the task and output the final result (and the flayfiles block if files change).';}
-   const msgs=round===1?[...baseMsgs,...history,{role:'user',content:prompt}]
-    :[...baseMsgs,...history,{role:'user',content:stripFences(text)||'Work with the attached project files.'},{role:'assistant',content:stripFences(am.content)},{role:'user',content:prompt}];
-   await providerChat({provider:activeProvider(),messages:msgs,signal:S.agentAbort.signal,
-    onDelta:d=>{am.content+=d;syncGenFiles(am);updateLive(am,'#agentMsgs');},
-    onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#agentMsgs');}});
-   need=extractNeeds(am.content,buildProjectContext(p,text).included,p);
-  }while(need.length&&round<2);
-  const parsed=parseOps(am.content);
-  if(parsed.error){am.activity.push({icon:'warn',label:parsed.error,status:'fail'});}
-  else if(parsed.ops){
-   am.activity.push({icon:'xml',label:'Parsed '+parsed.ops.length+' structured file operation(s)',status:'done'});
-   const{results,snapshot}=applyOps(p,parsed.ops);
-   for(const r of results){am.activity.push({icon:r.ok?(r.action==='folder'?'folder':r.action==='create'?'fileplus':r.action==='delete'?'trash':'edit'):'alert',
-    label:(r.action==='folder'?'Created folder ':r.action==='create'?'Created ':r.action==='modify'?'Modified ':'Deleted ')+r.path+(r.ok?'':' — '+r.error),
-    status:r.ok?'done':'fail'});}
-   const applied=results.filter(r=>r.ok);
-   if(applied.length){p.lastSnapshot={messageId:am.id,files:snapshot};
-    am.ops={results,diffs:buildDiffs(snapshot,p,results)};
-    const fails=results.filter(r=>!r.ok).length;
-    am.activity.push({icon:fails?'warn':'ok',label:'Applied '+applied.length+' change(s) to the project'+(fails?', '+fails+' operation(s) failed':''),status:fails?'warn':'done'});}}
-  else{am.activity.push({icon:'info',label:'No structured file changes were requested — answered directly.',status:'done'});}
-  am.status='done';}
- catch(e){if(e.name==='AbortError'){am.status='stopped';am.activity.push({icon:'stop',label:'Stopped by user — partial response preserved.',status:'warn'});}
-  else{am.status='error';console.error('Flay AI agent request failed:',e);am.activity.push({icon:'alert',label:'Unable to get a response. Please try again.',status:'fail'});}}
- finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;finishGen(am);
-  if(am._genErr)am.activity.push({icon:'warn',label:am._genErr,status:'fail'});
-  S.agentStreaming=false;S.agentAbort=null;p.updatedAt=Date.now();p.expanded=[...S.expanded];persistProject(p);
-  renderThread('#agentMsgs',p.agent);pinScroll(true);updateSendBtn();}}
-function buildDiffs(snapshot,p,results){const diffs={};
+  while(!taskDone&&turn<maxFileTurns){
+   turn++;const ctx=buildProjectContext(p,text+(force.length?' '+force.join(' '):''),force);
+   const prompt=(text||'Work with the attached project files.')+'\n\nSEQUENTIAL FILE TURN '+turn+'/'+maxFileTurns+'. The previous completed files are already saved in the current project state.'+'\n\nPROJECT TREE:\n'+ctx.tree+'\nFILES PROVIDED:'+ctx.blocks+(atts.length&&turn===1?'\nSELECTED FILE CONTENTS:'+atts.map(a=>'\n### FILE: '+(a.path||a.name)+'\n'+(a.content||'')+'\n### END FILE\n').join(''):'')+(force.length?'\n\nRead these exact additional files now: '+force.join(', '):'')+'\n\nReturn exactly ONE flayfiles operation for ONE file, OR NEED: <exact path>, OR TASK_COMPLETE. If another file is required after this one, use NEXT_FILE.';
+   am.activity.push({icon:'file',label:'File turn '+turn+': generating one file at a time.',status:'run'});am._actDirty=true;updateLive(am,'#agentMsgs');
+   let turnText='';
+   await providerChat({provider:activeProvider(),messages:[{role:'system',content:agentSystem(p)},...history,{role:'user',content:prompt}],signal:S.agentAbort.signal,onDelta:d=>{turnText+=d;},onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#agentMsgs');}});
+   const needMatches=[];const needRe=/(?:^|\n)NEED:\s*([^\n]+)/g;let nm;while((nm=needRe.exec(turnText))){const np=normPath(nm[1].trim());if(np&&!isUnsafe(np)&&p.files[np]&&!p.files[np].binary&&!needMatches.includes(np))needMatches.push(np);}
+   if(needMatches.length){force=needMatches.slice(0,8);am.activity.push({icon:'download',label:'Reading required project file: '+force[0],status:'done'});am._actDirty=true;updateLive(am,'#agentMsgs');continue;}
+   const parsed=parseOps(turnText);
+   if(parsed.error){am._genErr=parsed.error;am.activity.push({icon:'alert',label:parsed.error,status:'fail'});break;}
+   if(parsed.ops&&parsed.ops.length){
+    const op=parsed.ops[0];if(parsed.ops.length>1)am.activity.push({icon:'warn',label:'Multiple file operations were returned; only one file is accepted per turn.',status:'warn'});
+    const single=applyOps(p,[op]);const rr=single.results[0];
+    if(rr&&rr.ok){
+     allResults.push(rr);const d=buildDiffs(runSnapshot,p,[rr])[rr.path];if(d)allDiffs[rr.path]=d;
+     const path=rr.path;am.generatedFiles.push({path:path,name:path.split('/').pop(),status:'generated',content:rr.action==='delete'?'':((p.files[path]&&p.files[path].content)||''),deleted:rr.action==='delete'});
+     am.activity.push({icon:rr.action==='create'?'fileplus':rr.action==='delete'?'trash':'edit',label:(rr.action==='create'?'Created ':rr.action==='modify'?'Updated ':'Deleted ')+path+' — saved to Code Tab',status:'done'});
+     p.updatedAt=Date.now();persistProject(p);renderExplorer();renderBuildPane();am._actDirty=true;updateLive(am,'#agentMsgs');force=[];
+     const summary=turnText.replace(/```flayfiles[\s\S]*?```/gi,'').replace(/(?:^|\n)NEED:[^\n]*/gi,'').replace(/TASK_COMPLETE|NEXT_FILE/gi,'').trim();if(summary)lastTurnSummary=summary;
+     if(/TASK_COMPLETE/i.test(turnText))taskDone=true;
+    }else{am.activity.push({icon:'alert',label:'File change failed for '+String(op&&op.path||'unknown file')+(rr&&rr.error?' — '+rr.error:''),status:'fail'});taskDone=true;}
+   }else{taskDone=true;const summary=turnText.replace(/```flayfiles[\s\S]*?```/gi,'').replace(/(?:^|\n)NEED:[^\n]*/gi,'').replace(/TASK_COMPLETE|NEXT_FILE/gi,'').trim();if(summary)lastTurnSummary=summary;}
+  }
+  if(turn>=maxFileTurns&&!taskDone)am.activity.push({icon:'warn',label:'Sequential file generation stopped at the safety limit of '+maxFileTurns+' files.',status:'warn'});
+  if(allResults.length){am.ops={results:allResults,diffs:allDiffs};p.lastSnapshot={messageId:am.id,files:runSnapshot};am.content=lastTurnSummary||('Updated '+allResults.length+' project file(s).');am.activity.push({icon:'ok',label:'Applied '+allResults.length+' project file change(s). Each file was saved before the next file started.',status:'done'});}else am.content=lastTurnSummary||'No project file changes were required.';
+  am.status='done';
+ }catch(e){if(e.name==='AbortError'){am.status='stopped';am.activity.push({icon:'stop',label:'Stopped by user — completed file changes were preserved.',status:'warn'});}else{am.status='error';console.error('Flay AI agent request failed:',e);am.activity.push({icon:'alert',label:'Unable to get a response. Completed file changes were preserved.',status:'fail'});}}
+ finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;S.agentStreaming=false;S.agentAbort=null;p.updatedAt=Date.now();p.expanded=[...S.expanded];persistProject(p);renderThread('#agentMsgs',p.agent);renderExplorer();renderBuildPane();pinScroll(true);updateSendBtn();}
+}function buildDiffs(snapshot,p,results){const diffs={};
  for(const r of results){if(!r.ok)continue;
   if(r.action==='folder'){diffs[r.path]={ops:[],plus:0,minus:0};continue;}
   const before=(snapshot[r.path]&&snapshot[r.path].content)||'';const after=(p.files[r.path]&&p.files[r.path].content)||'';
@@ -1819,11 +1827,10 @@ async function startBuildTerminal(){
 
 function buildFixFromTerminal(){
  const p=S.project;const err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
- S.agentAttachments=[{kind:'doc',path:'build-error.log',name:'build-error.log',size:err.length,content:err}];
- const prompt='CRITICAL: Fix the real Android build failure shown in the attached build-error.log. Analyze the project files, identify the exact cause, and MODIFY the required files using the flayfiles block. DO NOT print the full code in your chat response. Make the smallest safe fix and output ONLY a short summary of what was changed in the project files.';
+ S.agentAttachments=[{kind:'build-error',path:'build-error.log',name:'Build Error',size:err.length,content:err}];
+ const prompt='BUILD ERROR FIX: Fix the real Android build failure attached to this message. Read the complete error first, inspect the CURRENT project files, identify the root cause, then repair the actual project files. Work strictly ONE FILE AT A TIME. After each file is fixed it must be saved to the project and reflected in Code Tab before the next file. Check dependent imports, packages, classes, resources, XML IDs and Gradle/build configuration when relevant. Do not dump source code into Chat. Do not invent unrelated code. Continue until the real project has no remaining fixable cause from this build failure. Use exactly one flayfiles operation per provider turn and use TASK_COMPLETE only when no further project-file repair is required.';
  const backId=$('.screen.active')?.id;goBack();if(backId!=='screen-project')return;
- setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=prompt;autoGrow(inp);persistProject(p);
- setTimeout(()=>sendAgent(),120);
+ setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=prompt;autoGrow(inp);persistProject(p);setTimeout(()=>sendAgent(),120);
 }
 
 $('#btBack').onclick=goBack;
@@ -1863,8 +1870,6 @@ function renderBuildPane(){const p=S.project;if(!p)return;
  
  $('#bjBuildBtn').disabled = false;
  
- $('#bjApkDl').classList.toggle('hidden',!S._apkUrl);
- if(S._apkUrl){$('#bjApkDl').onclick=()=>downloadApkFromLink(S._apkUrl,p.name.replace(/\s+/g,'-')+'-debug.apk');}
  
  $('#bjHistory').innerHTML=(p.builds&&p.builds.length)?p.builds.slice(0,20).map(b=>`
   <div class="premium-history-item">
