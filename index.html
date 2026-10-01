@@ -1670,11 +1670,12 @@ async function startBuildTerminal(){
   const started=Date.now(),maxWait=30*60*1000;let lastStatus='';
   while(Date.now()-started<maxWait){
    await new Promise(r=>setTimeout(r,lastStatus?2500:500));
-   let sr;try{sr=await fetch(statusUrl,{method:'GET',headers:{Accept:'application/json','Cache-Control':'no-cache'},cache:'no-store',signal:withTimeout(30000)});}
-   catch(e){terminalAdd('[WARN] Status request failed; retrying...','dim');continue;}
+   let sr;try{sr=await fetch(statusUrl,{method:'GET',headers:{Accept:'application/json','Cache-Control':'no-cache'},cache:'no-store',signal:withTimeout(60000)});}
+   catch(e){if(S._terminalLastWarn!=='network'){terminalAdd('[WARN] Status connection interrupted. Retrying automatically...','dim');S._terminalLastWarn='network';}continue;}
    let s=null;try{const body=await sr.text();if(body){try{s=JSON.parse(body)}catch(_){} }}catch(_){}
-   if(!sr.ok){terminalAdd('[WARN] Status HTTP '+sr.status+'; retrying...','dim');continue;}
-   if(!s||!s.status){terminalAdd('[WARN] No build status yet; retrying...','dim');continue;}
+   if(!sr.ok){if(S._terminalLastWarn!=='http'+sr.status){terminalAdd('[WARN] Status server returned HTTP '+sr.status+'. Retrying...','dim');S._terminalLastWarn='http'+sr.status;}continue;}
+   if(!s||!s.status){if(S._terminalLastWarn!=='empty'){terminalAdd('[WARN] Build status is temporarily unavailable. Retrying...','dim');S._terminalLastWarn='empty';}continue;}
+   S._terminalLastWarn='';
    const state=String(s.status);
    if(state!==lastStatus){terminalAdd('[SERVER] Build status: '+state.toUpperCase(),state==='failed'?'err':state==='success'?'ok':'cmd');lastStatus=state;}
    if(s.htmlUrl)S._buildActionsUrl=s.htmlUrl;
