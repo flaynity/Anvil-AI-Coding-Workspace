@@ -1589,7 +1589,7 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
  S.settings.buildServer=v;saveSettings();renderBuildPane();toast(v?'Build server saved. Build APK will send a real request.':'Build server cleared.','ok');};
  $('#bjDlProject').onclick=async()=>{try{const blob=await zipProject(S.project);saveBlob(blob,S.project.name+'.zip');}catch(e){toast('ZIP export failed: '+e.message,'err');}};
 function terminalSet(state,jobId){
- const dot=$('#btDot'),status=$('#btStatus'),fix=$('#btFix'),actions=$('#btOpenActions');
+ const dot=$('#btDot'),status=$('#btStatus'),fix=$('#btFix');
  dot.className='bt-dot '+(state==='running'?'run':state==='success'?'ok':state==='failed'?'fail':'');
  status.textContent=state==='running'?'Build running...':state==='success'?'Build completed successfully.':state==='failed'?'Build failed.':'Preparing...';
  fix.classList.toggle('hidden',state!=='failed');if(jobId)$('#btJob').textContent='Job ID: '+jobId;
@@ -1639,7 +1639,7 @@ async function startBuildTerminal(){
  const p=S.project;if(!p||!S.settings.buildServer){terminalAdd('[ERROR] Build server is not configured.','err');terminalSet('failed','');return;}
  const base=S.settings.buildServer.replace(/\/+$/,'');const out=$('#btLog');
  S._buildFailure='';S._buildJobId='';S._buildLogs='';S._terminalLogShown='';S._terminalStepState={};S._terminalLastState='';
- $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';
+ $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btStatus').textContent='Packaging...';
  out.innerHTML='';out.dataset.shown='';out.dataset.queue='';out.dataset.typing='0';
  terminalAdd('Flay AI Android Build Terminal','cmd');terminalAdd('$ package project '+p.name,'cmd');
  try{
