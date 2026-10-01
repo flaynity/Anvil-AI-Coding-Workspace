@@ -168,6 +168,16 @@ input,textarea,select{font:inherit;color:inherit}
 .fc-kt{color:#7F52FF}.fc-java{color:#B23A2E}.fc-html{color:#C7460A}.fc-css{color:#1565C0}.fc-js{color:#A87900}.fc-json{color:#5C6BC0}.fc-xml{color:#B45309}.fc-gradle{color:#0B7A3B}.fc-img{color:#0A7F5B}.fc-doc{color:#6B6B70}.fc-zip{color:#A14E12}.fc-gen{color:var(--text2)}
 .sr-row{padding:8px 12px;border-bottom:1px solid var(--border)}
 .pj-foot{padding:10px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);flex:none;background:var(--bg)}
+/* terminal build page */
+.build-terminal{flex:1;min-height:0;display:flex;flex-direction:column;background:#050505;color:#E8E8E8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+.bt-head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #262626;background:#080808;flex:none}
+.bt-title{flex:1;min-width:0}.bt-title b{display:block;font-size:14px}.bt-title span{display:block;font-size:10.5px;color:#858585;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bt-dot{width:9px;height:9px;border-radius:50%;background:#777;flex:none}.bt-dot.run{background:#D80E45;box-shadow:0 0 10px rgba(216,14,69,.55)}.bt-dot.ok{background:#2FB56B}.bt-dot.fail{background:#FF4D6A}
+.bt-log{flex:1;min-height:0;overflow:auto;padding:12px 12px 24px;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.55}
+.bt-line{display:block}.bt-line.cmd{color:#D80E45}.bt-line.ok{color:#7DDFA0}.bt-line.err{color:#FF6F86}.bt-line.dim{color:#777}
+.bt-foot{display:flex;gap:8px;align-items:center;padding:9px 10px calc(9px + env(safe-area-inset-bottom));border-top:1px solid #262626;background:#080808;flex:none}
+.bt-foot .btn{font-family:inherit}.bt-foot .status{flex:1;min-width:0;color:#8C8C8C;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+[data-theme=light] .build-terminal{background:#080808;color:#E8E8E8}
 /* build tab */
 .bwrap{padding:16px 14px calc(24px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .vrow{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-top:1px solid var(--border);font-size:13.5px}
@@ -529,6 +539,23 @@ input,textarea,select{font:inherit;color:inherit}
         <div class="card-foot"><button class="btn danger sm" id="bjDelete">Delete Project</button></div>
       </div>
     </div></div>
+  </div>
+</section>
+
+<!-- BUILD TERMINAL -->
+<section class="screen" id="screen-build-terminal">
+  <div class="build-terminal">
+    <header class="bt-head">
+      <button class="ibtn" id="btBack" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+      <div class="bt-title"><b>Build Terminal</b><span id="btJob">Preparing real Android build...</span></div>
+      <span class="bt-dot" id="btDot"></span>
+    </header>
+    <div class="bt-log" id="btLog" aria-live="polite"></div>
+    <div class="bt-foot">
+      <span class="status" id="btStatus">Starting...</span>
+      <button class="btn danger sm hidden" id="btFix"><svg class="ic sm"><use href="#i-wrench"/></svg>Fix</button>
+      <button class="btn sm hidden" id="btOpenActions"><svg class="ic sm"><use href="#i-external"/></svg>Actions</button>
+    </div>
   </div>
 </section>
 
@@ -1561,57 +1588,89 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
  if(v&&!/^https?:\/\//i.test(v)){toast('Build server URL must start with http:// or https://','err');return;}
  S.settings.buildServer=v;saveSettings();renderBuildPane();toast(v?'Build server saved. Build APK will send a real request.':'Build server cleared.','ok');};
  $('#bjDlProject').onclick=async()=>{try{const blob=await zipProject(S.project);saveBlob(blob,S.project.name+'.zip');}catch(e){toast('ZIP export failed: '+e.message,'err');}};
- $('#bjBuildBtn').onclick=async()=>{const p=S.project;const out=$('#bjBuildOut');
- if(!S.settings.buildServer){renderBuildPane();return;}
- const base=S.settings.buildServer.replace(/\/+$/,'');
- out.innerHTML='<div class="vrow"><span class="spin"></span><div class="lb">Packaging project...</div></div>';
+function terminalSet(state,jobId){
+ const dot=$('#btDot'),status=$('#btStatus'),fix=$('#btFix'),actions=$('#btOpenActions');
+ dot.className='bt-dot '+(state==='running'?'run':state==='success'?'ok':state==='failed'?'fail':'');
+ status.textContent=state==='running'?'Build running...':state==='success'?'Build completed successfully.':state==='failed'?'Build failed.':'Preparing...';
+ fix.classList.toggle('hidden',state!=='failed');if(jobId)$('#btJob').textContent='Job ID: '+jobId;
+}
+function terminalRender(logs,state){
+ const host=$('#btLog');const text=String(logs||'');
+ const safe=esc(text||'Waiting for GitHub Actions logs...');
+ host.innerHTML=safe.split('\n').map(line=>'<span class="bt-line">'+line+'</span>').join('');
+ host.scrollTop=host.scrollHeight;
+ terminalSet(state,S._buildJobId||'');
+}
+function terminalAdd(text,cls=''){
+ const host=$('#btLog');const span=document.createElement('span');span.className='bt-line '+cls;span.textContent=String(text||'');host.appendChild(span);host.appendChild(document.createTextNode('\n'));host.scrollTop=host.scrollHeight;
+}
+async function startBuildTerminal(){
+ const p=S.project;if(!p||!S.settings.buildServer)return;
+ const base=S.settings.buildServer.replace(/\/+$/,'');const out=$('#btLog');
+ S._buildFailure='';S._buildJobId='';S._buildLogs='';
+ $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';
+ terminalAdd('Flay AI Android Build Terminal','cmd');
+ terminalAdd('$ package project '+p.name,'cmd');
  try{
   const blob=await zipProject(p);
+  terminalAdd('[OK] Project packaged: '+fmtBytes(blob.size),'ok');
   const b64=await new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).slice(String(fr.result).indexOf(',')+1));fr.onerror=j;fr.readAsDataURL(blob);});
-  out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">Project packaged ('+fmtBytes(blob.size)+')</div></div><div class="vrow"><span class="spin"></span><div class="lb">Submitting build to the real build server...</div></div>';
+  terminalAdd('$ POST '+base+'/build','cmd');
   const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(180000)});
-  const ct=res.headers.get('content-type')||'';
-  let j=null;
-  if(ct.includes('json')){try{j=await res.json();}catch(_){j=null;}}
+  const ct=res.headers.get('content-type')||'';let j=null;if(ct.includes('json')){try{j=await res.json()}catch(_){}}
   if(!res.ok)throw new Error(describeHttp(res.status,j?JSON.stringify(j):''));
   if(!j||!j.ok||!j.jobId)throw new Error('Build server returned an invalid build response.');
-  const jobId=String(j.jobId);
+  const jobId=String(j.jobId);S._buildJobId=jobId;
   const statusUrl=String(j.statusUrl||base+'/build/status/'+encodeURIComponent(jobId));
-  const started=Date.now();
-  const maxWait=30*60*1000;
-  let lastStatus='';
+  $('#btJob').textContent='Job ID: '+jobId;terminalAdd('[OK] Build job created: '+jobId,'ok');terminalAdd('[INFO] Waiting for GitHub Actions...','dim');terminalSet('running',jobId);
+  const started=Date.now(),maxWait=30*60*1000;let lastStatus='';
   while(Date.now()-started<maxWait){
-   await new Promise(r=>setTimeout(r,lastStatus?'5000':'2000'));
-   const sr=await fetch(statusUrl,{method:'GET',headers:{'Accept':'application/json'},signal:withTimeout(30000)});
-   const sct=sr.headers.get('content-type')||'';
-   let s=null;
-   if(sct.includes('json')){try{s=await sr.json();}catch(_){s=null;}}
+   await new Promise(r=>setTimeout(r,lastStatus?'2500':'1200'));
+   const sr=await fetch(statusUrl,{method:'GET',headers:{Accept:'application/json'},signal:withTimeout(30000)});
+   const sct=sr.headers.get('content-type')||'';let s=null;if(sct.includes('json')){try{s=await sr.json()}catch(_){}}
    if(!sr.ok)throw new Error(describeHttp(sr.status,s?JSON.stringify(s):''));
    if(!s||!s.status)throw new Error('Build server returned an invalid status response.');
    lastStatus=String(s.status);
-   const label=s.status==='queued'?'Build queued — waiting for GitHub Actions...':s.status==='building'?'Build is running on GitHub Actions...':s.status==='success'?'Build completed successfully.':'Build failed.';
-   out.innerHTML='<div class="vrow">'+icon(s.status==='failed'?'alert':s.status==='success'?'check':'info','sm '+(s.status==='failed'?'st-fail':s.status==='success'?'st-done':'st-run'))+'<div class="lb">'+esc(label)+'<br><span class="muted small">Job ID: '+esc(jobId)+'</span></div></div>';
+   S._buildLogs=String(s.logs||'');
+   if(s.htmlUrl){S._buildActionsUrl=s.htmlUrl;$('#btOpenActions').classList.remove('hidden');$('#btOpenActions').onclick=()=>window.open(s.htmlUrl,'_blank','noopener');}
+   terminalRender(S._buildLogs,s.status==='failed'?'failed':s.status==='success'?'success':'running');
+   if(!S._buildLogs){
+    if(s.status==='queued')terminalAdd('[QUEUE] Build queued — waiting for GitHub Actions...','dim');
+    else if(s.status==='building')terminalAdd('[BUILD] GitHub Actions is running...','cmd');
+   }
    if(s.status==='success'){
-    const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));
-    S._apkUrl=apkUrl;
+    const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));S._apkUrl=apkUrl;
     p.builds.unshift({at:Date.now(),ok:true,msg:'Real APK build completed successfully.'});
-    out.innerHTML='<div class="vrow">'+icon('check','sm st-done')+'<div class="lb">APK build completed successfully.</div></div><div class="vrow"><a class="btn primary sm" href="'+esc(apkUrl)+'" download onclick="event.preventDefault();downloadApkFromLink(this.href);">'+icon('download','sm')+'Download APK</a></div><div class="muted small" style="padding:4px 12px 8px">Job ID: '+esc(jobId)+'</div>';
-    if(s.htmlUrl)out.innerHTML+='<div class="vrow"><a class="btn sm" href="'+esc(s.htmlUrl)+'" target="_blank" rel="noopener">'+icon('external','sm')+'Open GitHub Actions</a></div>';
-    return;
+    terminalAdd('[SUCCESS] Real APK build completed successfully.','ok');
+    terminalAdd('[APK] '+apkUrl,'ok');
+    terminalSet('success',jobId);return;
    }
    if(s.status==='failed'){
     const detail=String(s.error||'GitHub Actions Android build failed.');
+    S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+detail;
     p.builds.unshift({at:Date.now(),ok:false,msg:detail});
-    out.innerHTML='<div class="vrow">'+icon('alert','sm st-fail')+'<div class="lb">Build failed: '+esc(detail)+'</div></div><div class="muted small" style="padding:4px 12px 8px">No APK is claimed because the real build failed.</div>';
-    if(s.htmlUrl)out.innerHTML+='<div class="vrow"><a class="btn sm" href="'+esc(s.htmlUrl)+'" target="_blank" rel="noopener">'+icon('external','sm')+'Open GitHub Actions Log</a></div>';
-    return;
+    terminalRender(S._buildLogs||detail,'failed');terminalAdd('[FAILED] '+detail,'err');terminalSet('failed',jobId);return;
    }
   }
-  throw new Error('Build timed out while waiting for the build server. Check the build status again before starting another build.');
- }catch(e){const msg=e.name==='AbortError'?'Build server request timed out.':e.message;
+  throw new Error('Build timed out while waiting for the build server.');
+ }catch(e){
+  const msg=e.name==='AbortError'?'Build server request timed out.':String(e.message||e);
+  S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+msg;
   p.builds.unshift({at:Date.now(),ok:false,msg:msg});
-  out.innerHTML='<div class="vrow">'+icon('alert','sm st-fail')+'<div class="lb">Build failed: '+esc(msg)+'</div></div><div class="muted small" style="padding:4px 12px 8px">No APK is claimed without a real build.</div>';}
- finally{persistProject(p);if(lastStatus!=='success')renderBuildPane();}};
+  terminalAdd('[FAILED] '+msg,'err');terminalSet('failed',S._buildJobId||''); 
+ }finally{persistProject(p);}
+}
+function buildFixFromTerminal(){
+ const p=S.project;const err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
+ S.agentAttachments=[{kind:'doc',path:'build-error.log',name:'build-error.log',size:err.length,content:err}];
+ const prompt='Fix the real Android build failure shown in the attached build-error.log. Analyze the project source of truth, identify the exact cause, modify only the required project files, and make the smallest safe fix. Do not just explain the error; implement the fix using the flayfiles block, then summarize what was changed.';
+ const backId=$('.screen.active')?.id;goBack();if(backId!=='screen-project')return;
+ setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=prompt;autoGrow(inp);persistProject(p);
+ setTimeout(()=>sendAgent(),120);
+}
+$('#btBack').onclick=goBack;
+$('#btFix').onclick=buildFixFromTerminal;
+$('#bjBuildBtn').onclick=async()=>{openScreen('screen-build-terminal');await startBuildTerminal();};
 async function downloadApkFromLink(url,filename){
  try{
   const u=String(url||'').trim();if(!u)throw new Error('APK download URL is missing.');
