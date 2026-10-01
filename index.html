@@ -574,7 +574,18 @@ function toast(msg,type='info',action){const t=document.createElement('div');t.c
 async function copyText(s){try{await navigator.clipboard.writeText(s);return true}catch(e){
  const ta=document.createElement('textarea');ta.value=s;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();
  try{document.execCommand('copy')}catch(_){}ta.remove();return true;}}
-function saveBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);}
+async function saveBlob(blob,name){
+ try{
+  if(window.AndroidBridge&&typeof window.AndroidBridge.downloadBase64==='function'){
+   const reader=new FileReader();
+   reader.onload=()=>{try{window.AndroidBridge.downloadBase64(String(reader.result||''),String(name||'download'),String(blob.type||'application/octet-stream'));}catch(e){console.error('Native download failed:',e);toast('Download failed: '+String(e.message||e),'err');}};
+   reader.onerror=()=>toast('Download failed: Could not read file.','err');
+   reader.readAsDataURL(blob);
+   return;
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+ }catch(e){console.error('Download failed:',e);toast('Download failed: '+String(e.message||e),'err');}
+}
 /* modals */
 const modalRoot=$('#modalRoot');let _modalCancel=null;
 function modal(html){modalRoot.innerHTML=`<div class="scrim2"></div><div class="modal">${html}</div>`;modalRoot.classList.add('show');
