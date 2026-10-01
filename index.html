@@ -1608,7 +1608,7 @@ async function downloadApkFromLink(url,filename){
 
   // Android WebView: send the original HTTPS APK URL directly to native
   // DownloadManager. Never create a blob: URL for the native download path.
-  if(window.AndroidBridge&&typeof window.AndroidBridge.downloadApk==='function'&&/^https?:\\/\\//i.test(u)){
+  if(window.AndroidBridge&&typeof window.AndroidBridge.downloadApk==='function'&&/^https?:\/\//i.test(u)){
    window.AndroidBridge.downloadApk(u,name);
    return;
   }
@@ -1625,7 +1625,7 @@ async function downloadApkFromLink(url,filename){
  }catch(e){
   console.error('APK download failed:',e);
   const u=String(url||'').trim();
-  if(/^https?:\\/\\//i.test(u)){window.location.href=u;return;}
+  if(/^https?:\/\//i.test(u)){window.location.href=u;return;}
   toast('APK download failed: '+String(e.message||e),'err');
  }
 }
