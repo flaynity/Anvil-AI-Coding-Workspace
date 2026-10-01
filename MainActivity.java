@@ -26,6 +26,9 @@ import android.os.Build;
 import android.os.Bundle; 
 import android.os.Environment;
 import android.os.Handler;
+import android.provider.MediaStore;
+import android.content.ContentValues;
+import android.util.Base64;
 import android.os.Looper;
 import android.view.View;
 import android.view.Window;
@@ -148,6 +151,81 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     MainActivity.this.retryConnection();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void downloadBase64(final String dataUrl, final String fileName, final String mimeType) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        if (dataUrl == null || dataUrl.trim().isEmpty()) {
+                            Toast.makeText(mContext, "Download data is empty", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+
+                        String raw = dataUrl.trim();
+                        int comma = raw.indexOf(',');
+                        String encoded = comma >= 0 ? raw.substring(comma + 1) : raw;
+                        if (encoded.isEmpty()) {
+                            Toast.makeText(mContext, "Download data is empty", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+
+                        byte[] bytes = Base64.decode(encoded, Base64.DEFAULT);
+                        if (bytes == null || bytes.length == 0) {
+                            Toast.makeText(mContext, "Downloaded file is empty", Toast.LENGTH_LONG).show();
+                            return;
+                        }
+
+                        String name = fileName == null ? "download" : fileName.trim();
+                        if (name.isEmpty()) name = "download";
+                        String mime = mimeType == null || mimeType.trim().isEmpty()
+                            ? "application/octet-stream" : mimeType.trim();
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            ContentValues values = new ContentValues();
+                            values.put(MediaStore.Downloads.DISPLAY_NAME, name);
+                            values.put(MediaStore.Downloads.MIME_TYPE, mime);
+                            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                            values.put(MediaStore.Downloads.IS_PENDING, 1);
+
+                            Uri uri = getContentResolver().insert(
+                                MediaStore.Downloads.EXTERNAL_CONTENT_URI, values
+                            );
+                            if (uri == null) throw new Exception("Could not create Downloads file.");
+
+                            try (OutputStream out = getContentResolver().openOutputStream(uri)) {
+                                if (out == null) throw new Exception("Could not open Downloads file.");
+                                out.write(bytes);
+                                out.flush();
+                            }
+
+                            ContentValues done = new ContentValues();
+                            done.put(MediaStore.Downloads.IS_PENDING, 0);
+                            getContentResolver().update(uri, done, null, null);
+                        } else {
+                            File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                            if (!dir.exists() && !dir.mkdirs()) {
+                                throw new Exception("Could not open Downloads folder.");
+                            }
+                            File outFile = new File(dir, name);
+                            try (OutputStream out = new FileOutputStream(outFile)) {
+                                out.write(bytes);
+                                out.flush();
+                            }
+                        }
+
+                        Toast.makeText(mContext, "Download completed", Toast.LENGTH_SHORT).show();
+                    } catch (IllegalArgumentException e) {
+                        android.util.Log.e("FLAY_DOWNLOAD", "Invalid Base64 download data", e);
+                        Toast.makeText(mContext, "Download failed: invalid file data", Toast.LENGTH_LONG).show();
+                    } catch (Exception e) {
+                        android.util.Log.e("FLAY_DOWNLOAD", "Base64 download failed", e);
+                        Toast.makeText(mContext, "Download failed: " + String.valueOf(e.getMessage()), Toast.LENGTH_LONG).show();
+                    }
                 }
             });
         }
@@ -802,6 +880,12 @@ public class MainActivity extends Activity {
         webview1.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String ua, String cd, String mt, long cl) {
+                if (url != null && url.toLowerCase().startsWith("blob:")) {
+                    android.util.Log.w("FLAY_DOWNLOAD", "Blocked blob URL from DownloadManager: " + url);
+                    Toast.makeText(MainActivity.this, "This download must be started by the app.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
                 String mime = mt == null ? "" : mt.toLowerCase();
                 String disposition = cd == null ? "" : cd.toLowerCase();
                 String lowerUrl = url == null ? "" : url.toLowerCase();
