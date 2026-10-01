@@ -169,7 +169,7 @@ input,textarea,select{font:inherit;color:inherit}
 .sr-row{padding:8px 12px;border-bottom:1px solid var(--border)}
 .pj-foot{padding:10px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);flex:none;background:var(--bg)}
 /* terminal build page */
-.build-terminal{position:fixed;top:35px;left:0;right:0;bottom:0;display:flex;min-height:0;display:flex;flex-direction:column;background:#050505;color:#E8E8E8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+.build-terminal{flex:1;min-height:0;display:flex;flex-direction:column;background:#050505;color:#E8E8E8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
 .bt-head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #262626;background:#080808;flex:none}
 .bt-title{flex:1;min-width:0}.bt-title b{display:block;font-size:14px}.bt-title span{display:block;font-size:10.5px;color:#858585;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bt-dot{width:9px;height:9px;border-radius:50%;background:#777;flex:none}.bt-dot.run{background:#D80E45;box-shadow:0 0 10px rgba(216,14,69,.55)}.bt-dot.ok{background:#2FB56B}.bt-dot.fail{background:#FF4D6A}
@@ -554,7 +554,7 @@ input,textarea,select{font:inherit;color:inherit}
     <div class="bt-foot">
       <span class="status" id="btStatus">Starting...</span>
       <button class="btn danger sm hidden" id="btFix"><svg class="ic sm"><use href="#i-wrench"/></svg>Fix</button>
-      
+      <button class="btn sm hidden" id="btOpenActions"><svg class="ic sm"><use href="#i-external"/></svg>Actions</button>
     </div>
   </div>
 </section>
@@ -1589,110 +1589,76 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
  S.settings.buildServer=v;saveSettings();renderBuildPane();toast(v?'Build server saved. Build APK will send a real request.':'Build server cleared.','ok');};
  $('#bjDlProject').onclick=async()=>{try{const blob=await zipProject(S.project);saveBlob(blob,S.project.name+'.zip');}catch(e){toast('ZIP export failed: '+e.message,'err');}};
 function terminalSet(state,jobId){
- const dot=$('#btDot'),status=$('#btStatus'),fix=$('#btFix');
+ const dot=$('#btDot'),status=$('#btStatus'),fix=$('#btFix'),actions=$('#btOpenActions');
  dot.className='bt-dot '+(state==='running'?'run':state==='success'?'ok':state==='failed'?'fail':'');
  status.textContent=state==='running'?'Build running...':state==='success'?'Build completed successfully.':state==='failed'?'Build failed.':'Preparing...';
  fix.classList.toggle('hidden',state!=='failed');if(jobId)$('#btJob').textContent='Job ID: '+jobId;
 }
 function terminalRender(logs,state){
- const host=$('#btLog');const next=String(logs||'')||'Waiting for build logs...';
- const shown=String(host.dataset.shown||'');
- if(shown===next){terminalSet(state,S._buildJobId||'');return;}
- const queued=String(host.dataset.queue||'');
- if(!shown||(!next.startsWith(shown)&&!next.startsWith(shown+queued))){
-  host.innerHTML='';host.dataset.shown='';host.dataset.queue='';
-  appendTerminalTyping(host,next);
- }else{
-  const delta=next.slice((shown+queued).length);
-  if(delta)appendTerminalTyping(host,delta);
- }
+ const host=$('#btLog');const text=String(logs||'');
+ const safe=esc(text||'Waiting for GitHub Actions logs...');
+ host.innerHTML=safe.split('\n').map(line=>'<span class="bt-line">'+line+'</span>').join('');
+ host.scrollTop=host.scrollHeight;
  terminalSet(state,S._buildJobId||'');
-}
-function appendTerminalTyping(host,text){
- const oldQueue=String(host.dataset.queue||'');
- host.dataset.queue=oldQueue+String(text||'');
- if(host.dataset.typing==='1')return;
- host.dataset.typing='1';
- const tick=()=>{
-  let q=String(host.dataset.queue||'');
-  if(!q){host.dataset.typing='0';return;}
-  const take=Math.min(q.length,Math.max(1,Math.ceil(q.length/18)));
-  const chunk=q.slice(0,take);q=q.slice(take);host.dataset.queue=q;
-  if(!host.lastChild||host.lastChild.nodeType!==1||!host.lastChild.classList.contains('bt-line')){
-   const span=document.createElement('span');span.className='bt-line';host.appendChild(span);
-  }
-  let line=host.lastChild;
-  for(const ch of chunk){
-   if(ch==='\\n'){host.appendChild(document.createTextNode('\\n'));const span=document.createElement('span');span.className='bt-line';host.appendChild(span);line=span;}
-   else line.textContent+=ch;
-  }
-  host.dataset.shown=String(host.dataset.shown||'')+chunk;
-  host.scrollTop=host.scrollHeight;
-  requestAnimationFrame(tick);
- };
- requestAnimationFrame(tick);
 }
 function terminalAdd(text,cls=''){
  const host=$('#btLog');const span=document.createElement('span');span.className='bt-line '+cls;span.textContent=String(text||'');host.appendChild(span);host.appendChild(document.createTextNode('\n'));host.scrollTop=host.scrollHeight;
 }
 async function startBuildTerminal(){
- const p=S.project;if(!p||!S.settings.buildServer){terminalAdd('[ERROR] Build server is not configured.','err');terminalSet('failed','');return;}
+ const p=S.project;if(!p||!S.settings.buildServer)return;
  const base=S.settings.buildServer.replace(/\/+$/,'');const out=$('#btLog');
- S._buildFailure='';S._buildJobId='';S._buildLogs='';S._terminalLogShown='';S._terminalStepState={};S._terminalLastState='';
- $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btStatus').textContent='Packaging...';
- out.innerHTML='';out.dataset.shown='';out.dataset.queue='';out.dataset.typing='0';
- terminalAdd('Flay AI Android Build Terminal','cmd');terminalAdd('$ package project '+p.name,'cmd');
+ S._buildFailure='';S._buildJobId='';S._buildLogs='';
+ $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';
+ terminalAdd('Flay AI Android Build Terminal','cmd');
+ terminalAdd('$ package project '+p.name,'cmd');
  try{
-  if(typeof JSZip==='undefined')throw new Error('JSZip is not loaded. ZIP library is unavailable.');
-  terminalAdd('[INFO] Packaging '+Object.keys(p.files||{}).length+' project file(s)...','dim');
-  const blob=await Promise.race([
-   zipProject(p),
-   new Promise((_,rej)=>setTimeout(()=>rej(new Error('Project packaging timed out after 60 seconds.')),60000))
-  ]);
+  const blob=await zipProject(p);
   terminalAdd('[OK] Project packaged: '+fmtBytes(blob.size),'ok');
-  terminalAdd('[INFO] Encoding project archive...','dim');
-  const b64=await Promise.race([
-   new Promise((resolve,reject)=>{
-    try{const fr=new FileReader();fr.onload=()=>resolve(String(fr.result||'').split(',').slice(1).join(','));fr.onerror=()=>reject(new Error('Could not read the project archive.'));fr.readAsDataURL(blob);}
-    catch(e){reject(e);}
-   }),
-   new Promise((_,rej)=>setTimeout(()=>rej(new Error('Project archive encoding timed out after 60 seconds.')),60000))
-  ]);
-  if(!b64)throw new Error('Project archive is empty.');
-  terminalAdd('[OK] Archive encoded.','ok');terminalAdd('$ POST '+base+'/build','cmd');terminalAdd('[INFO] Connecting to build server...','dim');
-  const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(180000)});
-  const ct=res.headers.get('content-type')||'';let j=null;let body='';
-  try{body=await res.text();if(body){try{j=JSON.parse(body)}catch(_){}}}catch(_){}
-  if(!res.ok)throw new Error(describeHttp(res.status,j?JSON.stringify(j):body||'No response body.'));
+  const b64=await new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).slice(String(fr.result).indexOf(',')+1));fr.onerror=j;fr.readAsDataURL(blob);});
+  terminalAdd('$ POST '+base+'/build','cmd');
+  const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(180000)});
+  const ct=res.headers.get('content-type')||'';let j=null;if(ct.includes('json')){try{j=await res.json()}catch(_){}}
+  if(!res.ok)throw new Error(describeHttp(res.status,j?JSON.stringify(j):''));
   if(!j||!j.ok||!j.jobId)throw new Error('Build server returned an invalid build response.');
-  const jobId=String(j.jobId);S._buildJobId=jobId;const statusUrl=String(j.statusUrl||base+'/build/status/'+encodeURIComponent(jobId));
-  $('#btJob').textContent='Job ID: '+jobId;terminalAdd('[OK] Build job created: '+jobId,'ok');terminalAdd('[INFO] Build environment started...','dim');terminalSet('running',jobId);
+  const jobId=String(j.jobId);S._buildJobId=jobId;
+  const statusUrl=String(j.statusUrl||base+'/build/status/'+encodeURIComponent(jobId));
+  $('#btJob').textContent='Job ID: '+jobId;terminalAdd('[OK] Build job created: '+jobId,'ok');terminalAdd('[INFO] Waiting for GitHub Actions...','dim');terminalSet('running',jobId);
   const started=Date.now(),maxWait=30*60*1000;let lastStatus='';
   while(Date.now()-started<maxWait){
-   await new Promise(r=>setTimeout(r,lastStatus?2500:500));
-   let sr;try{sr=await fetch(statusUrl,{method:'GET',headers:{Accept:'application/json','Cache-Control':'no-cache'},cache:'no-store',signal:withTimeout(60000)});}
-   catch(e){if(S._terminalLastWarn!=='network'){terminalAdd('[WARN] Status connection interrupted. Retrying automatically...','dim');S._terminalLastWarn='network';}continue;}
-   let s=null;try{const body=await sr.text();if(body){try{s=JSON.parse(body)}catch(_){} }}catch(_){}
-   if(!sr.ok){if(S._terminalLastWarn!=='http'+sr.status){terminalAdd('[WARN] Status server returned HTTP '+sr.status+'. Retrying...','dim');S._terminalLastWarn='http'+sr.status;}continue;}
-   if(!s||!s.status){if(S._terminalLastWarn!=='empty'){terminalAdd('[WARN] Build status is temporarily unavailable. Retrying...','dim');S._terminalLastWarn='empty';}continue;}
-   S._terminalLastWarn='';
-   const state=String(s.status);
-   if(state!==lastStatus){terminalAdd('[SERVER] Build status: '+state.toUpperCase(),state==='failed'?'err':state==='success'?'ok':'cmd');lastStatus=state;}
-   if(s.htmlUrl)S._buildActionsUrl=s.htmlUrl;
-   const raw=String(s.logs||'');
-   if(raw){const prev=String(S._terminalLogShown||'');if(raw.startsWith(prev)){const delta=raw.slice(prev.length);if(delta)appendTerminalTyping(out,delta);}else{terminalAdd('[LOG] Latest build output:','dim');appendTerminalTyping(out,raw);}S._terminalLogShown=raw;S._buildLogs=raw;}
-   const steps=Array.isArray(s.steps)?s.steps:[];
-   if(s.jobIdGithub){try{const lr=await fetch(base+'/build/logs/'+encodeURIComponent(jobId),{method:'GET',headers:{Accept:'application/json','Cache-Control':'no-cache'},cache:'no-store',signal:withTimeout(10000)});if(lr.ok){let lj=null;try{lj=await lr.json()}catch(_){}const live=String(lj?.logs||'');if(live){const prev=String(S._terminalLogShown||'');if(live.startsWith(prev)){const delta=live.slice(prev.length);if(delta)appendTerminalTyping(out,delta)}else{terminalAdd('[LOG] Live build output:','dim');appendTerminalTyping(out,live)}S._terminalLogShown=live;S._buildLogs=live}}}catch(_){} }
-   for(const x of steps){const n=String(x.name||'').trim();if(!n)continue;const st=String(x.status||'').toLowerCase(),co=String(x.conclusion||'').toLowerCase();const mark=co==='success'?'[OK]':co==='failure'?'[ERROR]':co==='cancelled'?'[CANCELLED]':st==='in_progress'?'[RUN]':'[WAIT]';const key=n+'|'+mark+'|'+co;if(S._terminalStepState[n]!==key){S._terminalStepState[n]=key;terminalAdd(mark+' '+n+(co?' — '+co:''),co==='failure'?'err':co==='success'?'ok':st==='in_progress'?'cmd':'dim');}}
-   if(!raw&&!steps.length&&state==='queued'&&S._terminalLastState!=='queued')terminalAdd('[QUEUE] Build queued — waiting for build environment...','dim');
-   if(!raw&&!steps.length&&state==='building'&&S._terminalLastState!=='building')terminalAdd('[RUN] Build server connected — waiting for live job output...','cmd');
-   S._terminalLastState=state;
-   if(state==='success'){const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));S._apkUrl=apkUrl;p.builds.unshift({at:Date.now(),ok:true,msg:'Real APK build completed successfully.'});terminalAdd('[SUCCESS] Real APK build completed successfully.','ok');terminalAdd('[APK] Download APK','ok');terminalAdd(apkUrl,'ok');terminalSet('success',jobId);return;}
-   if(state==='failed'){const detail=String(s.error||'GitHub Actions Android build failed.');S._buildFailure=(S._buildLogs?S._buildLogs+'\\n\\n':'')+'BUILD FAILED: '+detail;p.builds.unshift({at:Date.now(),ok:false,msg:detail});terminalAdd('[FAILED] '+detail,'err');terminalSet('failed',jobId);return;}
+   await new Promise(r=>setTimeout(r,lastStatus?'2500':'1200'));
+   const sr=await fetch(statusUrl,{method:'GET',headers:{Accept:'application/json'},signal:withTimeout(30000)});
+   const sct=sr.headers.get('content-type')||'';let s=null;if(sct.includes('json')){try{s=await sr.json()}catch(_){}}
+   if(!sr.ok)throw new Error(describeHttp(sr.status,s?JSON.stringify(s):''));
+   if(!s||!s.status)throw new Error('Build server returned an invalid status response.');
+   lastStatus=String(s.status);
+   S._buildLogs=String(s.logs||'');
+   if(s.htmlUrl){S._buildActionsUrl=s.htmlUrl;$('#btOpenActions').classList.remove('hidden');$('#btOpenActions').onclick=()=>window.open(s.htmlUrl,'_blank','noopener');}
+   terminalRender(S._buildLogs,s.status==='failed'?'failed':s.status==='success'?'success':'running');
+   if(!S._buildLogs){
+    if(s.status==='queued')terminalAdd('[QUEUE] Build queued — waiting for GitHub Actions...','dim');
+    else if(s.status==='building')terminalAdd('[BUILD] GitHub Actions is running...','cmd');
+   }
+   if(s.status==='success'){
+    const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));S._apkUrl=apkUrl;
+    p.builds.unshift({at:Date.now(),ok:true,msg:'Real APK build completed successfully.'});
+    terminalAdd('[SUCCESS] Real APK build completed successfully.','ok');
+    terminalAdd('[APK] '+apkUrl,'ok');
+    terminalSet('success',jobId);return;
+   }
+   if(s.status==='failed'){
+    const detail=String(s.error||'GitHub Actions Android build failed.');
+    S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+detail;
+    p.builds.unshift({at:Date.now(),ok:false,msg:detail});
+    terminalRender(S._buildLogs||detail,'failed');terminalAdd('[FAILED] '+detail,'err');terminalSet('failed',jobId);return;
+   }
   }
   throw new Error('Build timed out while waiting for the build server.');
- }catch(e){const msg=e.name==='AbortError'?'Build server request timed out.':String(e.message||e);S._buildFailure=(S._buildLogs?S._buildLogs+'\\n\\n':'')+'BUILD FAILED: '+msg;p.builds.unshift({at:Date.now(),ok:false,msg:msg});terminalAdd('[FAILED] '+msg,'err');terminalSet('failed',S._buildJobId||'');}
- finally{persistProject(p);}
+ }catch(e){
+  const msg=e.name==='AbortError'?'Build server request timed out.':String(e.message||e);
+  S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+msg;
+  p.builds.unshift({at:Date.now(),ok:false,msg:msg});
+  terminalAdd('[FAILED] '+msg,'err');terminalSet('failed',S._buildJobId||''); 
+ }finally{persistProject(p);}
 }
 function buildFixFromTerminal(){
  const p=S.project;const err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
