@@ -550,90 +550,155 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void startApkDownload(String url, String requestedFileName) {
-        try {
-            if (url == null || url.trim().isEmpty()) {
-                Toast.makeText(this, "APK download link is empty", Toast.LENGTH_LONG).show();
-                return;
-            }
-
-            Uri downloadUri = Uri.parse(url.trim());
-            String scheme = downloadUri.getScheme();
-            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
-                Toast.makeText(this, "Invalid APK download link", Toast.LENGTH_LONG).show();
-                android.util.Log.e("FLAY_APK_DOWNLOAD", "Unsupported URL scheme: " + scheme);
-                return;
-            }
-
-            String fileName = requestedFileName;
-            if (fileName == null || fileName.trim().isEmpty()) {
-                fileName = URLUtil.guessFileName(url, null, "application/vnd.android.package-archive");
-            }
-            if (fileName == null || fileName.trim().isEmpty()) {
-                fileName = "flay-app-debug.apk";
-            }
-            fileName = fileName.trim();
-            if (!fileName.toLowerCase().endsWith(".apk")) {
-                fileName += ".apk";
-            }
-
-            DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-            if (dm == null) {
-                Toast.makeText(this, "Android Download Manager is unavailable", Toast.LENGTH_LONG).show();
-                return;
-            }
-
-            DownloadManager.Request req = new DownloadManager.Request(downloadUri);
-            req.setMimeType("application/vnd.android.package-archive");
-            req.setTitle(fileName);
-            req.setDescription("Downloading APK");
-            req.setNotificationVisibility(
-                DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-            );
-            req.setAllowedNetworkTypes(
-                DownloadManager.Request.NETWORK_WIFI |
-                DownloadManager.Request.NETWORK_MOBILE
-            );
-            req.setAllowedOverMetered(true);
-            req.setAllowedOverRoaming(true);
-            req.setVisibleInDownloadsUi(true);
-            req.setDestinationInExternalFilesDir(MainActivity.this, Environment.DIRECTORY_DOWNLOADS, fileName);
-
-            String ua = webview1 != null
-                ? webview1.getSettings().getUserAgentString()
-                : null;
-            if (ua != null && !ua.trim().isEmpty()) {
-                req.addRequestHeader("User-Agent", ua);
-            }
-
-            try {
-                String cookie = CookieManager.getInstance().getCookie(url);
-                if (cookie != null && !cookie.trim().isEmpty()) {
-                    req.addRequestHeader("Cookie", cookie);
-                }
-            } catch (Exception ignored) {}
-
-            long id = dm.enqueue(req);
-            android.util.Log.d(
-                "FLAY_APK_DOWNLOAD",
-                "Queued APK download id=" + id + " url=" + url
-            );
-            Toast.makeText(this, "APK download started", Toast.LENGTH_SHORT).show();
-
-        } catch (SecurityException e) {
-            android.util.Log.e("FLAY_APK_DOWNLOAD", "Security error while queuing APK", e);
-            Toast.makeText(this, "Download permission/service error", Toast.LENGTH_LONG).show();
-        } catch (IllegalArgumentException e) {
-            android.util.Log.e("FLAY_APK_DOWNLOAD", "Invalid APK download request", e);
-            Toast.makeText(this, "Invalid APK download request", Toast.LENGTH_LONG).show();
-        } catch (Exception e) {
-            android.util.Log.e("FLAY_APK_DOWNLOAD", "Could not queue APK download", e);
-            Toast.makeText(
-                this,
-                "Could not start APK download: " + String.valueOf(e.getMessage()),
-                Toast.LENGTH_LONG
-            ).show();
+    private void startApkDownload(final String url, final String requestedFileName) {
+        if (url == null || url.trim().isEmpty()) {
+            Toast.makeText(this, "APK download link is empty", Toast.LENGTH_LONG).show();
+            return;
         }
+
+        final String downloadUrl = url.trim();
+        final String fileName0 = requestedFileName == null || requestedFileName.trim().isEmpty()
+            ? URLUtil.guessFileName(downloadUrl, null, "application/vnd.android.package-archive")
+            : requestedFileName.trim();
+        final String fileName = (fileName0 == null || fileName0.isEmpty())
+            ? "flay-app-debug.apk"
+            : (fileName0.toLowerCase().endsWith(".apk") ? fileName0 : fileName0 + ".apk");
+
+        if (!downloadUrl.startsWith("http://") && !downloadUrl.startsWith("https://")) {
+            Toast.makeText(this, "Invalid APK download link", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        Toast.makeText(this, "APK download started", Toast.LENGTH_SHORT).show();
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                HttpURLConnection connection = null;
+                Uri savedUri = null;
+                try {
+                    URL u = new URL(downloadUrl);
+                    connection = (HttpURLConnection) u.openConnection();
+                    connection.setConnectTimeout(15000);
+                    connection.setReadTimeout(30000);
+                    connection.setInstanceFollowRedirects(true);
+                    connection.setRequestProperty("Accept-Encoding", "identity");
+
+                    String ua = webview1 != null ? webview1.getSettings().getUserAgentString() : null;
+                    if (ua != null && !ua.trim().isEmpty()) {
+                        connection.setRequestProperty("User-Agent", ua);
+                    }
+
+                    try {
+                        String cookie = CookieManager.getInstance().getCookie(downloadUrl);
+                        if (cookie != null && !cookie.trim().isEmpty()) {
+                            connection.setRequestProperty("Cookie", cookie);
+                        }
+                    } catch (Exception ignored) {}
+
+                    connection.connect();
+
+                    int code = connection.getResponseCode();
+                    if (code < 200 || code >= 400) {
+                        throw new Exception("HTTP " + code);
+                    }
+
+                    String mime = connection.getContentType();
+                    if (mime == null || mime.trim().isEmpty()) {
+                        mime = "application/vnd.android.package-archive";
+                    } else if (mime.contains(";")) {
+                        mime = mime.substring(0, mime.indexOf(';')).trim();
+                    }
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        ContentValues values = new ContentValues();
+                        values.put(MediaStore.Downloads.DISPLAY_NAME, fileName);
+                        values.put(MediaStore.Downloads.MIME_TYPE, "application/vnd.android.package-archive");
+                        values.put(MediaStore.Downloads.RELATIVE_PATH,
+                            Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_FOLDER);
+                        values.put(MediaStore.Downloads.IS_PENDING, 1);
+
+                        savedUri = getContentResolver().insert(
+                            MediaStore.Downloads.EXTERNAL_CONTENT_URI, values
+                        );
+                        if (savedUri == null) {
+                            throw new Exception("Could not create Downloads/Flay AI file.");
+                        }
+
+                        try (InputStream in = new BufferedInputStream(connection.getInputStream());
+                             OutputStream out = getContentResolver().openOutputStream(savedUri)) {
+                            if (out == null) throw new Exception("Could not open APK file.");
+                            byte[] buffer = new byte[64 * 1024];
+                            int n;
+                            while ((n = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, n);
+                            }
+                            out.flush();
+                        }
+
+                        ContentValues done = new ContentValues();
+                        done.put(MediaStore.Downloads.IS_PENDING, 0);
+                        getContentResolver().update(savedUri, done, null, null);
+                    } else {
+                        File dir = new File(
+                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                            DOWNLOAD_FOLDER
+                        );
+                        if (!dir.exists() && !dir.mkdirs()) {
+                            throw new Exception("Could not create Downloads/Flay AI folder.");
+                        }
+
+                        File outFile = new File(dir, fileName);
+                        try (InputStream in = new BufferedInputStream(connection.getInputStream());
+                             OutputStream out = new BufferedOutputStream(new FileOutputStream(outFile))) {
+                            byte[] buffer = new byte[64 * 1024];
+                            int n;
+                            while ((n = in.read(buffer)) != -1) {
+                                out.write(buffer, 0, n);
+                            }
+                            out.flush();
+                        }
+
+                        MediaScannerConnection.scanFile(
+                            MainActivity.this,
+                            new String[]{outFile.getAbsolutePath()},
+                            new String[]{"application/vnd.android.package-archive"},
+                            null
+                        );
+                    }
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(
+                                MainActivity.this,
+                                "APK downloaded\nDownloads/Flay AI/" + fileName,
+                                Toast.LENGTH_LONG
+                            ).show();
+                        }
+                    });
+
+                } catch (Exception e) {
+                    if (savedUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        try { getContentResolver().delete(savedUri, null, null); } catch (Exception ignored) {}
+                    }
+                    android.util.Log.e("FLAY_APK_DOWNLOAD", "APK download failed", e);
+                    final String msg = String.valueOf(e.getMessage());
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(
+                                MainActivity.this,
+                                "Could not start APK download: " + msg,
+                                Toast.LENGTH_LONG
+                            ).show();
+                        }
+                    });
+                } finally {
+                    if (connection != null) connection.disconnect();
+                }
+            }
+        }).start();
     }
 
     private void setupFullScreen() {
