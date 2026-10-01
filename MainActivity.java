@@ -570,6 +570,23 @@ public class MainActivity extends Activity {
             return;
         }
 
+        String downloadUserAgent = null;
+        String downloadCookie = null;
+        try {
+            if (webview1 != null) {
+                downloadUserAgent = webview1.getSettings().getUserAgentString();
+            }
+        } catch (Exception ignored) {}
+        try {
+            String cookie = CookieManager.getInstance().getCookie(downloadUrl);
+            if (cookie != null && !cookie.trim().isEmpty()) {
+                downloadCookie = cookie;
+            }
+        } catch (Exception ignored) {}
+
+        final String finalUserAgent = downloadUserAgent;
+        final String finalCookie = downloadCookie;
+
         Toast.makeText(this, "APK download started", Toast.LENGTH_SHORT).show();
 
         new Thread(new Runnable() {
@@ -585,17 +602,13 @@ public class MainActivity extends Activity {
                     connection.setInstanceFollowRedirects(true);
                     connection.setRequestProperty("Accept-Encoding", "identity");
 
-                    String ua = webview1 != null ? webview1.getSettings().getUserAgentString() : null;
-                    if (ua != null && !ua.trim().isEmpty()) {
-                        connection.setRequestProperty("User-Agent", ua);
+                    if (finalUserAgent != null && !finalUserAgent.trim().isEmpty()) {
+                        connection.setRequestProperty("User-Agent", finalUserAgent);
                     }
 
-                    try {
-                        String cookie = CookieManager.getInstance().getCookie(downloadUrl);
-                        if (cookie != null && !cookie.trim().isEmpty()) {
-                            connection.setRequestProperty("Cookie", cookie);
-                        }
-                    } catch (Exception ignored) {}
+                    if (finalCookie != null && !finalCookie.trim().isEmpty()) {
+                        connection.setRequestProperty("Cookie", finalCookie);
+                    }
 
                     connection.connect();
 
