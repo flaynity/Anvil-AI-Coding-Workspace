@@ -43,6 +43,8 @@ input,textarea,select{font:inherit;color:inherit}
 .scrollpane{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .pane{display:none;flex:1;min-height:0;flex-direction:column}
 .pane.on{display:flex}
+/* terminal screens */
+.screen-term{top:35px;height:calc(100% - 35px);background:#000000;border-radius:18px 18px 0 0;box-shadow:0 -6px 30px rgba(0,0,0,0.6);overflow:hidden;}
 /* ── floating chat top bar (ChatGPT-style) ── */
 .ftop{position:absolute;top:0;left:0;right:0;z-index:12;display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) 14px 12px;pointer-events:none;background:linear-gradient(var(--bg) 55%,transparent)}
 .ftop>*{pointer-events:auto}
@@ -90,7 +92,7 @@ input,textarea,select{font:inherit;color:inherit}
 .gen-note{border:1px dashed var(--border);border-radius:12px;padding:9px 12px;margin:10px 0;color:var(--text2);font-size:13px;display:flex;gap:8px;align-items:center}
 .att-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:10px;padding:5px 10px;font-size:12.5px;margin:4px 4px 0 0;background:var(--bg)}
 .att-chip em{font-style:normal;color:var(--text2)}
-/* cards (activity / thinking / generated files / changes) */
+/* cards */
 .card{border:1px solid var(--border);border-radius:14px;margin:0 0 12px;background:var(--bg);overflow:hidden}
 .card-head{display:flex;align-items:center;gap:9px;padding:11px 12px;font-size:13px;cursor:pointer;user-select:none}
 .card-head b{flex:1}
@@ -100,7 +102,6 @@ input,textarea,select{font:inherit;color:inherit}
 .card.think.open>.card-head .ic:last-child{transform:rotate(180deg)}
 .card-head .ic:last-child{transition:transform .18s ease}
 .tline{display:flex;gap:8px;align-items:flex-start;min-height:24px;padding:3.5px 0;color:var(--text2)}.tline.processing{color:var(--text2)}
-@keyframes tin{}
 .tline .ic{margin-top:2px;color:var(--text2)}
 .tline.genline{color:var(--accent)}
 .act-row{display:flex;align-items:center;gap:9px;padding:7px 12px;font-size:13px;border-top:1px solid var(--border);color:var(--text)}
@@ -168,21 +169,20 @@ input,textarea,select{font:inherit;color:inherit}
 .fc-kt{color:#7F52FF}.fc-java{color:#B23A2E}.fc-html{color:#C7460A}.fc-css{color:#1565C0}.fc-js{color:#A87900}.fc-json{color:#5C6BC0}.fc-xml{color:#B45309}.fc-gradle{color:#0B7A3B}.fc-img{color:#0A7F5B}.fc-doc{color:#6B6B70}.fc-zip{color:#A14E12}.fc-gen{color:var(--text2)}
 .sr-row{padding:8px 12px;border-bottom:1px solid var(--border)}
 .pj-foot{padding:10px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border);flex:none;background:var(--bg)}
-/* terminal build page */
-.build-terminal{flex:1;min-height:0;display:flex;flex-direction:column;background:#050505;color:#E8E8E8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
-.bt-head{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #262626;background:#080808;flex:none}
-.bt-title{flex:1;min-width:0}.bt-title b{display:block;font-size:14px}.bt-title span{display:block;font-size:10.5px;color:#858585;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bt-dot{width:9px;height:9px;border-radius:50%;background:#777;flex:none}.bt-dot.run{background:#D80E45;box-shadow:0 0 10px rgba(216,14,69,.55)}.bt-dot.ok{background:#2FB56B}.bt-dot.fail{background:#FF4D6A}
-.bt-log{flex:1;min-height:0;overflow:auto;padding:12px 12px 24px;white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.55}
-.bt-line{display:block}.bt-line.cmd{color:#D80E45}.bt-line.ok{color:#7DDFA0}.bt-line.err{color:#FF6F86}.bt-line.dim{color:#777}
-.bt-foot{display:flex;gap:8px;align-items:center;padding:9px 10px calc(9px + env(safe-area-inset-bottom));border-top:1px solid #262626;background:#080808;flex:none}
-.bt-foot .btn{font-family:inherit}.bt-foot .status{flex:1;min-width:0;color:#8C8C8C;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-[data-theme=light] .build-terminal{background:#080808;color:#E8E8E8}
 /* build tab */
-.bwrap{padding:16px 14px calc(24px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.bwrap{padding:16px 14px calc(24px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
 .vrow{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-top:1px solid var(--border);font-size:13.5px}
 .vrow:first-of-type{border-top:0}
 .vrow .lb{flex:1}
+/* terminal pages (Build & Validation) */
+.build-terminal{flex:1;min-height:0;display:flex;flex-direction:column;background:#000000;color:#E8E8E8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+.bt-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #262626;background:#050505;flex:none}
+.bt-title{flex:1;min-width:0}.bt-title b{display:block;font-size:14px;color:#FFFFFF}.bt-title span{display:block;font-size:11px;color:#858585;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.bt-dot{width:9px;height:9px;border-radius:50%;background:#777;flex:none}.bt-dot.run{background:#D80E45;box-shadow:0 0 10px rgba(216,14,69,.55)}.bt-dot.ok{background:#2FB56B}.bt-dot.fail{background:#FF4D6A}
+.bt-log{flex:1;min-height:0;overflow:auto;padding:16px 14px 30px;white-space:pre-wrap;word-break:break-word;font-size:12.5px;line-height:1.6}
+.bt-line{display:inline;word-wrap:break-word}.bt-line.cmd{color:#D80E45;font-weight:600}.bt-line.ok{color:#2FB56B;font-weight:600}.bt-line.err{color:#FF4D6A;font-weight:600}.bt-line.dim{color:#777}
+.bt-foot{display:flex;gap:10px;align-items:center;padding:12px 14px calc(12px + env(safe-area-inset-bottom));border-top:1px solid #262626;background:#050505;flex:none}
+.bt-foot .btn{font-family:inherit;font-weight:700}.bt-foot .status{flex:1;min-width:0;color:#8C8C8C;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* tech cards */
 .techwrap{padding:18px 16px calc(24px + env(safe-area-inset-bottom));max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:16px;height:100%}
 .tech-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
@@ -263,6 +263,13 @@ input,textarea,select{font:inherit;color:inherit}
 .li-main b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .li-main span{font-size:12.5px;color:var(--text2)}
 .hrow-btn{color:var(--err)}
+.premium-card{background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 4px 16px var(--accent-soft)}
+.premium-history-item{display:flex; align-items:center; border-radius:14px; border:1px solid var(--border); margin-bottom:10px; padding:14px; background:var(--bg)}
+.phi-icon{flex:none; width:36px; height:36px; border-radius:12px; background:var(--surface); display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow)}
+.phi-body{flex:1; margin-left:14px; min-width:0}
+.phi-body b{display:block; font-size:14.5px; margin-bottom:2px}
+.phi-body span{display:block; line-height:1.4; color:var(--text2); font-size:13px}
+.phi-date{font-size:11.5px; display:block; margin-top:4px; opacity:0.8}
 </style>
 </head>
 <body>
@@ -317,6 +324,8 @@ input,textarea,select{font:inherit;color:inherit}
 <symbol id="i-edit" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></symbol>
 <symbol id="i-newchat" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4Z"/></symbol>
 <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+<symbol id="i-external" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></symbol>
 </svg>
 
 <!-- CHAT (base screen) -->
@@ -514,47 +523,67 @@ input,textarea,select{font:inherit;color:inherit}
   </div>
   <div class="pane" id="pjBuild">
     <div class="scrollpane"><div class="bwrap">
-      <div class="card" style="margin:0">
-        <div class="card-head"><svg class="ic sm"><use href="#i-ok"/></svg><b>Project validation</b></div>
-        <div id="bjValOut" style="padding:6px 0 10px"><div class="muted small" style="padding:8px 12px">Run validation to check structure, manifest, Gradle files and resources.</div></div>
-        <div class="card-foot"><button class="btn primary sm" id="bjValidate"><svg class="ic sm"><use href="#i-hammer"/></svg>Validate Project</button></div>
+      
+      <div class="premium-card" style="margin:0">
+        <div class="card-head" style="padding:0; gap:10px;"><svg class="ic sm"><use href="#i-ok"/></svg><b style="font-size:15px">Project validation</b></div>
+        <div class="small muted">Run validation to check structure, manifest, Gradle files and resources before compiling.</div>
+        <div><button class="btn sm" id="bjValidate" style="width:100%"><svg class="ic sm"><use href="#i-hammer"/></svg>Validate Project</button></div>
       </div>
-      <div class="card" style="margin:0">
-        <div class="card-head"><svg class="ic sm"><use href="#i-cloud"/></svg><b>APK build environment</b></div>
-        <div style="padding:10px 12px 4px" class="small muted" id="bjEnvInfo">A browser cannot compile APKs. APK generation requires a build server with JDK 17, Android SDK and Gradle. Configure one below — Flay AI will send the real project archive and report the real result. No build is ever faked.</div>
-        <div style="padding:10px 12px"><div class="keybox"><input class="inp" id="bjServerUrl" placeholder="https://your-build-server.example.com"><button class="btn sm" id="bjServerSave">Save</button></div></div>
-        <div id="bjBuildOut" style="padding:4px 12px 8px"></div>
-        <div class="card-foot">
-          <button class="btn primary sm" id="bjBuildBtn" disabled><svg class="ic sm"><use href="#i-box"/></svg>Build APK</button>
-          <button class="btn sm hidden" id="bjApkDl"><svg class="ic sm"><use href="#i-download"/></svg>Download APK</button>
-          <button class="btn sm" id="bjDlProject"><svg class="ic sm"><use href="#i-download"/></svg>Download Project</button>
+      
+      <div class="premium-card" style="margin:0">
+        <div class="card-head" style="padding:0; gap:10px;"><svg class="ic sm"><use href="#i-cloud"/></svg><b style="font-size:15px">APK build environment</b></div>
+        <div class="small muted">Package the current codebase and execute a real Android compilation to generate a debug APK.</div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:4px">
+          <button class="btn primary" id="bjBuildBtn" style="height:48px; font-size:15px"><svg class="ic sm"><use href="#i-box"/></svg>Build APK</button>
+          <div style="display:flex; gap:10px">
+            <button class="btn hidden" id="bjApkDl" style="flex:1"><svg class="ic sm"><use href="#i-download"/></svg>Download APK</button>
+            <button class="btn" id="bjDlProject" style="flex:1"><svg class="ic sm"><use href="#i-download"/></svg>Download Project</button>
+          </div>
         </div>
       </div>
-      <div class="card" style="margin:0">
-        <div class="card-head"><svg class="ic sm"><use href="#i-history"/></svg><b>Build history</b></div>
-        <div id="bjHistory" style="padding:4px 0 8px"></div>
+      
+      <div class="premium-card" style="margin:0; padding:16px 12px">
+        <div class="card-head" style="padding:0 4px 10px; gap:10px;"><svg class="ic sm"><use href="#i-history"/></svg><b style="font-size:15px">Build history</b></div>
+        <div id="bjHistory"></div>
       </div>
-      <div class="card" style="margin:0">
-        <div class="card-head"><svg class="ic sm"><use href="#i-trash"/></svg><b>Danger zone</b></div>
+      
+      <div class="card" style="margin:0; border-color:var(--accent-soft)">
+        <div class="card-head" style="color:var(--err)"><svg class="ic sm"><use href="#i-trash"/></svg><b>Danger zone</b></div>
         <div class="card-foot"><button class="btn danger sm" id="bjDelete">Delete Project</button></div>
       </div>
+      
     </div></div>
   </div>
 </section>
 
 <!-- BUILD TERMINAL -->
-<section class="screen" id="screen-build-terminal">
+<section class="screen screen-term" id="screen-build-terminal">
   <div class="build-terminal">
     <header class="bt-head">
-      <button class="ibtn" id="btBack" aria-label="Back"><svg class="ic"><use href="#i-back"/></svg></button>
+      <button class="ibtn" id="btBack" aria-label="Back"><svg class="ic"><use href="#i-x"/></svg></button>
       <div class="bt-title"><b>Build Terminal</b><span id="btJob">Preparing real Android build...</span></div>
-      <span class="bt-dot" id="btDot"></span>
+      <span class="bt-dot run" id="btDot"></span>
     </header>
     <div class="bt-log" id="btLog" aria-live="polite"></div>
     <div class="bt-foot">
       <span class="status" id="btStatus">Starting...</span>
       <button class="btn danger sm hidden" id="btFix"><svg class="ic sm"><use href="#i-wrench"/></svg>Fix</button>
       <button class="btn sm hidden" id="btOpenActions"><svg class="ic sm"><use href="#i-external"/></svg>Actions</button>
+    </div>
+  </div>
+</section>
+
+<!-- VALIDATION TERMINAL -->
+<section class="screen screen-term" id="screen-val-terminal">
+  <div class="build-terminal">
+    <header class="bt-head">
+      <button class="ibtn" id="vtBack" aria-label="Back"><svg class="ic"><use href="#i-x"/></svg></button>
+      <div class="bt-title"><b>Validation Terminal</b><span id="vtJob">Analyzing project structure...</span></div>
+      <span class="bt-dot run" id="vtDot"></span>
+    </header>
+    <div class="bt-log" id="vtLog" aria-live="polite"></div>
+    <div class="bt-foot">
+      <span class="status" id="vtStatus">Running...</span>
     </div>
   </div>
 </section>
@@ -638,15 +667,15 @@ const DB=(()=>{let dbp;
  async function tx(store,mode,fn){const db=await open();return new Promise((res,rej)=>{const t=db.transaction(store,mode);const r=fn(t.objectStore(store));t.oncomplete=()=>res(r&&r.result);t.onerror=()=>rej(t.error);});}
  return{put:(s,v)=>tx(s,'readwrite',o=>o.put(v)),del:(s,id)=>tx(s,'readwrite',o=>o.delete(id)),all:s=>tx(s,'readonly',o=>o.getAll()),get:(s,id)=>tx(s,'readonly',o=>o.get(id))};})();
 /* ---------- global state ---------- */
-const S={theme:'light',settings:{providers:[],selectedProviderId:null,reasoning:'balanced',buildServer:''},
+const S={theme:'light',settings:{providers:[],selectedProviderId:null,reasoning:'balanced'},
  chats:[],chat:null,projects:[],project:null,navStack:[],
  streaming:false,abort:null,agentStreaming:false,agentAbort:null,
  pendingAttachments:[],agentAttachments:[],webAccess:false,selection:null,expanded:new Set(),techSel:null,appDraft:null,sheetTarget:'chat',pinned:true,zipMode:'new'};
 const activeProvider=()=>S.settings.providers.find(p=>p.id===S.settings.selectedProviderId)||S.settings.providers[0]||null;
-function saveSettings(){try{localStorage.setItem('flay.settings.v1',JSON.stringify({providers:S.settings.providers,selectedProviderId:S.settings.selectedProviderId,reasoning:S.settings.reasoning,buildServer:S.settings.buildServer,theme:S.theme,lastChatId:S.chat?S.chat.id:null}));}catch(e){}}
+function saveSettings(){try{localStorage.setItem('flay.settings.v1',JSON.stringify({providers:S.settings.providers,selectedProviderId:S.settings.selectedProviderId,reasoning:S.settings.reasoning,theme:S.theme,lastChatId:S.chat?S.chat.id:null}));}catch(e){}}
 function loadSettings(){try{const s=JSON.parse(localStorage.getItem('flay.settings.v1')||'{}');
  if(s.providers)S.settings.providers=s.providers;
- if(s.selectedProviderId)S.settings.selectedProviderId=s.selectedProviderId;if(s.reasoning)S.settings.reasoning=s.reasoning;if(s.buildServer!==undefined)S.settings.buildServer=s.buildServer;if(s.theme)S.theme=s.theme;}catch(e){}}
+ if(s.selectedProviderId)S.settings.selectedProviderId=s.selectedProviderId;if(s.reasoning)S.settings.reasoning=s.reasoning;if(s.theme)S.theme=s.theme;}catch(e){}}
 function applyTheme(){document.documentElement.setAttribute('data-theme',S.theme);$('#themeIco').innerHTML=`<use href="#i-${S.theme==='dark'?'sun':'moon'}"/>`;$('#themeLbl').textContent=S.theme==='dark'?'Light theme':'Dark theme';}
 const persistChat=()=>S.chat&&DB.put('chats',S.chat);
 const persistProject=(p=S.project)=>p&&DB.put('projects',p);
@@ -843,7 +872,6 @@ function msgHtml(m){
   <div class="msg-body">${m.content?md(m.content):''}${m.status==='streaming'?'<span class="caret"></span>':''}</div>
   ${m.activity&&m.activity.length?activityCard(m):''}
   ${m.ops?changesCard(m):''}</div>`;}
-function renderThread(sel,msgs){const host=$(sel);host.innerHTML=msgs.length?msgs.map(msgHtml).join(''):'';syncThinkHeights(host);}
 let rafP=false;
 function updateLive(m,hostSel){
  if(rafP)return;rafP=true;
@@ -907,6 +935,7 @@ function closeDrawer(){drawer.classList.remove('open');scrim.classList.add('hidd
 /* ---------- chat ---------- */
 function newChat(){S.chat={id:uid(),title:'',createdAt:Date.now(),updatedAt:Date.now(),messages:[]};
  S.chats.unshift(S.chat);S.pendingAttachments=[];renderChat();saveSettings();}
+function renderThread(sel,msgs){const host=$(sel);host.innerHTML=msgs.length?msgs.map(msgHtml).join(''):'';syncThinkHeights(host);}
 function renderChat(){updateChips();renderAtts();
  const msgs=$('#msgs');
  if(!S.chat.messages.length){msgs.innerHTML=`<div class="empty">
@@ -1437,18 +1466,16 @@ function renderAgentAtts(){const host=$('#agentAtts');
 function agentSystem(p){
  return 'You are Flay AI, the coding agent for the project "'+p.name+'" ('+(TECHS[p.tech]?TECHS[p.tech].title:'imported project')+', package '+(p.package||'n/a')+').\n'+
 'The current project file tree and the contents of relevant files are provided in the user message. The project is the source of truth.\n\n'+
-'Rules:\n'+
-'- Modify ONLY the files required by the request. Never regenerate unrelated files, screens, configuration or the whole project.\n'+
-'- Preserve the project\'s existing architecture, naming, APIs and functionality. Make the smallest change that fulfills the request.\n'+
-'- NEVER print full file contents in your reply text. ALL file changes must be delivered only through the flayfiles block. Your visible reply is a short factual summary of the operations.\n'+
-'- When files must be created, modified or deleted, output exactly ONE fenced block tagged flayfiles containing a JSON array:\n'+
+'CRITICAL RULES FOR CODE UPDATES:\n'+
+'- When asked to update, fix, modify, design, or change code, YOU MUST MODIFY THE ACTUAL PROJECT FILES using the flayfiles block.\n'+
+'- NEVER dump or print the full source code in your chat response. This is a strict violation of your core behavior.\n'+
+'- Read the provided files, understand the existing code, and preserve existing functionality unless instructed otherwise.\n'+
+'- Deliver your changes EXCLUSIVELY via ONE fenced block tagged flayfiles containing a JSON array:\n'+
 '```flayfiles\n[{"path":"app/src/main/...","action":"create|modify|delete","content":"complete new file content"}]\n```\n'+
-'- "delete" requires no content. "modify"/"create" require the COMPLETE new file content. Paths are relative to the project root; never use absolute paths or "..".\n'+
-'- To create a folder, use {"path":"app/src/main/java/.../ui/","action":"folder"} (no content).\n'+
-'- Operations available to you: READ (from provided files), CREATE, FOLDER, WRITE/MODIFY, DELETE, RENAME (delete old + create new with updated references), SEARCH (request needed files), VALIDATE (via summary after apply), BUILD (via the Build tab by the user).\n'+
-'- If you need a file that was not provided, output a line "NEED: <exact path>" (one per file) and stop; the file will be provided next turn.\n'+
-'- After the block, give a short factual summary of the changes.\n'+
-'- If no file changes are needed (explanations, analysis, advice), answer in plain text without any flayfiles block.';}
+'- "modify" requires the COMPLETE new file content. Paths are relative to the project root. To create a folder use action "folder" without content.\n'+
+'- After the flayfiles block, output ONLY a short, concise summary of the changes made.\n'+
+'- If you need a file that was not provided, output "NEED: <exact path>" (one per line) and stop.\n'+
+'- Do not provide long explanations of the code unless specifically asked to explain (and not modify) it.';}
 function buildProjectContext(p,request,force=[]){const paths=Object.keys(p.files).sort();
  const treeRoot=buildTree(paths);
  let tree='';const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/\n';walk(sub,depth+1);}
@@ -1552,6 +1579,70 @@ async function revertChanges(messageId){const p=S.project;if(!p||!p.lastSnapshot
   p.files=p.lastSnapshot.files;p.lastSnapshot=null;p.updatedAt=Date.now();persistProject(p);
   renderThread('#agentMsgs',p.agent);renderExplorer();renderBuildPane();toast('Changes reverted. Project restored.','ok');}}
 /* ---------- build tab ---------- */
+let termQueue=[];
+let termTyping=false;
+let termScrollLock=true;
+
+function processTermQueue() {
+ if (termQueue.length === 0) {
+  termTyping = false;
+  return;
+ }
+ termTyping = true;
+ const item = termQueue.shift();
+ const host = $(item.hostId);
+ if (!host) {
+  processTermQueue();
+  return;
+ }
+
+ if (!item.isTypewriter) {
+  const span = document.createElement('span');
+  span.className = 'bt-line ' + item.cls;
+  span.textContent = item.text;
+  host.appendChild(span);
+  host.appendChild(document.createTextNode('\n'));
+  if (termScrollLock) host.scrollTop = host.scrollHeight;
+  if (item.cb) item.cb();
+  requestAnimationFrame(processTermQueue);
+  return;
+ }
+
+ const span = document.createElement('span');
+ span.className = 'bt-line ' + item.cls;
+ host.appendChild(span);
+ host.appendChild(document.createTextNode('\n'));
+
+ let i = 0;
+ function typeChar() {
+  if (i < item.text.length) {
+   const chunkSize = Math.max(1, Math.floor(item.text.length / 40));
+   span.textContent += item.text.substring(i, i + chunkSize);
+   i += chunkSize;
+   if (termScrollLock) host.scrollTop = host.scrollHeight;
+   setTimeout(typeChar, 10);
+  } else {
+   if (item.cb) item.cb();
+   processTermQueue();
+  }
+ }
+ typeChar();
+}
+
+function terminalQueueLine(text, cls, typewrite=true, hostId='#btLog', cb=null) {
+ termQueue.push({ text, cls, isTypewriter: typewrite, hostId, cb });
+ if (!termTyping) processTermQueue();
+}
+
+function attachTermScroll(id) {
+ const el = $(id);
+ if (el) {
+  el.addEventListener('scroll', e => {
+   termScrollLock = (e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight < 40);
+  });
+ }
+}
+
 function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({ok,label,detail});
  const f=p.files;const has=x=>!!f[x];
  add(!!p.name,'App name is set',p.name);
@@ -1579,50 +1670,108 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
    const np=normPath(b+r);if(!f[np])missing.push(r);});
   add(missing.length===0,'Local web assets resolve',missing.length?'Missing: '+missing.join(', '):'');}}
  return out;}
- $('#bjValidate').onclick=()=>{const p=S.project;const res=validateProject(p);
- const fails=res.filter(r=>!r.ok).length;
- $('#bjValOut').innerHTML=res.map(r=>`<div class="vrow">${r.ok?icon('check','sm st-done'):icon('warn','sm st-warn')}<div class="lb">${esc(r.label)}${r.detail?'<br><span class="muted small">'+esc(r.detail)+'</span>':''}</div></div>`).join('');
- toast(fails?'Validation finished with '+fails+' issue(s).':'Validation passed — '+res.length+' checks OK.',fails?'warn':'ok');
- p.builds=p.builds||[];p.builds.unshift({at:Date.now(),ok:!fails,msg:'Validation: '+(res.length-fails)+'/'+res.length+' checks passed'});persistProject(p);renderBuildPane();};
- $('#bjServerSave').onclick=()=>{const v=$('#bjServerUrl').value.trim();
- if(v&&!/^https?:\/\//i.test(v)){toast('Build server URL must start with http:// or https://','err');return;}
- S.settings.buildServer=v;saveSettings();renderBuildPane();toast(v?'Build server saved. Build APK will send a real request.':'Build server cleared.','ok');};
- $('#bjDlProject').onclick=async()=>{try{const blob=await zipProject(S.project);saveBlob(blob,S.project.name+'.zip');}catch(e){toast('ZIP export failed: '+e.message,'err');}};
-function terminalSet(state,jobId){
- const dot=$('#btDot'),status=$('#btStatus'),fix=$('#btFix'),actions=$('#btOpenActions');
+
+$('#bjValidate').onclick = async () => {
+ const p = S.project;
+ openScreen('screen-val-terminal');
+ const out = $('#vtLog');
+ out.innerHTML = '';
+ $('#vtJob').textContent = 'Analyzing project structure...';
+ $('#vtDot').className = 'bt-dot run';
+ $('#vtStatus').textContent = 'Validating...';
+
+ termQueue = []; termTyping = false; termScrollLock = true;
+ terminalQueueLine('Flay AI Project Validation', 'cmd', false, '#vtLog');
+ terminalQueueLine('$ validate project ' + p.name, 'cmd', false, '#vtLog');
+
+ const res = validateProject(p);
+ let fails = 0;
+
+ for(let i=0; i<res.length; i++) {
+  const r = res[i];
+  if(!r.ok) fails++;
+  terminalQueueLine(`[${r.ok ? 'OK' : 'FAIL'}] ${r.label}` + (r.detail ? ` (${r.detail})` : ''), r.ok ? 'ok' : 'err', true, '#vtLog');
+ }
+
+ terminalQueueLine(fails ? `[RESULT] Validation finished with ${fails} issue(s).` : '[RESULT] Validation passed.', fails ? 'err' : 'ok', true, '#vtLog', () => {
+  $('#vtDot').className = 'bt-dot ' + (fails ? 'fail' : 'ok');
+  $('#vtStatus').textContent = fails ? 'Validation failed' : 'Validation passed';
+  p.builds = p.builds || [];
+  p.builds.unshift({at: Date.now(), ok: !fails, msg: 'Validation: ' + (res.length - fails) + '/' + res.length + ' checks passed'});
+  persistProject(p);
+  renderBuildPane();
+ });
+};
+
+$('#vtBack').onclick = goBack;
+
+$('#bjDlProject').onclick = async () => {
+ try {
+  const blob = await zipProject(S.project);
+  saveBlob(blob, S.project.name + '.zip');
+ } catch(e) {
+  toast('ZIP export failed: ' + e.message, 'err');
+ }
+};
+
+let termRenderedLines = 0;
+
+function terminalSet(state, jobId){
+ const dot=$('#btDot'), status=$('#btStatus'), fix=$('#btFix'), actions=$('#btOpenActions');
  dot.className='bt-dot '+(state==='running'?'run':state==='success'?'ok':state==='failed'?'fail':'');
  status.textContent=state==='running'?'Build running...':state==='success'?'Build completed successfully.':state==='failed'?'Build failed.':'Preparing...';
- fix.classList.toggle('hidden',state!=='failed');if(jobId)$('#btJob').textContent='Job ID: '+jobId;
+ fix.classList.toggle('hidden',state!=='failed');
+ if(jobId) $('#btJob').textContent='Job ID: '+jobId;
 }
-function terminalRender(logs,state){
- const host=$('#btLog');const text=String(logs||'');
- const safe=esc(text||'Waiting for GitHub Actions logs...');
- host.innerHTML=safe.split('\n').map(line=>'<span class="bt-line">'+line+'</span>').join('');
- host.scrollTop=host.scrollHeight;
- terminalSet(state,S._buildJobId||'');
+
+function terminalRender(logs, state) {
+ const lines = String(logs || '').split('\n');
+ for (let i = termRenderedLines; i < lines.length; i++) {
+  let line = lines[i];
+  if (!line.trim()) continue;
+  line = line.replace(/GitHub Actions/ig, 'Remote Builder'); // Obfuscate GA
+
+  let cls = '';
+  if (line.includes('[OK]') || line.includes('SUCCESS') || line.includes('BUILD SUCCESSFUL')) cls = 'ok';
+  else if (line.includes('[FAILED]') || line.includes('ERROR') || line.includes('FAILED') || line.includes('FAILURE:')) cls = 'err';
+  else if (line.startsWith('$') || line.includes('[BUILD]') || line.includes('Task :')) cls = 'cmd';
+  else if (line.includes('[INFO]') || line.includes('[QUEUE]')) cls = 'dim';
+
+  terminalQueueLine(line, cls, true, '#btLog');
+ }
+ termRenderedLines = lines.length;
+ terminalSet(state, S._buildJobId || '');
 }
-function terminalAdd(text,cls=''){
- const host=$('#btLog');const span=document.createElement('span');span.className='bt-line '+cls;span.textContent=String(text||'');host.appendChild(span);host.appendChild(document.createTextNode('\n'));host.scrollTop=host.scrollHeight;
-}
+
 async function startBuildTerminal(){
- const p=S.project;if(!p||!S.settings.buildServer)return;
- const base=S.settings.buildServer.replace(/\/+$/,'');const out=$('#btLog');
+ const p=S.project;if(!p)return;
+ const base='https://flay-ai.flaynity.workers.dev';
+ const out=$('#btLog');
  S._buildFailure='';S._buildJobId='';S._buildLogs='';
+ termQueue = []; termTyping = false; termRenderedLines = 0; termScrollLock = true;
+ 
  $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';
- terminalAdd('Flay AI Android Build Terminal','cmd');
- terminalAdd('$ package project '+p.name,'cmd');
+ terminalQueueLine('Flay AI Android Build Terminal', 'cmd', false, '#btLog');
+ terminalQueueLine('$ package project ' + p.name, 'cmd', false, '#btLog');
+
  try{
   const blob=await zipProject(p);
-  terminalAdd('[OK] Project packaged: '+fmtBytes(blob.size),'ok');
+  terminalQueueLine('[OK] Project packaged: '+fmtBytes(blob.size), 'ok', true, '#btLog');
   const b64=await new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).slice(String(fr.result).indexOf(',')+1));fr.onerror=j;fr.readAsDataURL(blob);});
-  terminalAdd('$ POST '+base+'/build','cmd');
+  terminalQueueLine('$ POST /build', 'cmd', true, '#btLog');
   const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(180000)});
+  
   const ct=res.headers.get('content-type')||'';let j=null;if(ct.includes('json')){try{j=await res.json()}catch(_){}}
   if(!res.ok)throw new Error(describeHttp(res.status,j?JSON.stringify(j):''));
   if(!j||!j.ok||!j.jobId)throw new Error('Build server returned an invalid build response.');
+  
   const jobId=String(j.jobId);S._buildJobId=jobId;
   const statusUrl=String(j.statusUrl||base+'/build/status/'+encodeURIComponent(jobId));
-  $('#btJob').textContent='Job ID: '+jobId;terminalAdd('[OK] Build job created: '+jobId,'ok');terminalAdd('[INFO] Waiting for GitHub Actions...','dim');terminalSet('running',jobId);
+  $('#btJob').textContent='Job ID: '+jobId;
+  terminalQueueLine('[OK] Build job created: '+jobId, 'ok', true, '#btLog');
+  terminalQueueLine('[INFO] Waiting for remote builder...', 'dim', true, '#btLog');
+  terminalSet('running',jobId);
+  
   const started=Date.now(),maxWait=30*60*1000;let lastStatus='';
   while(Date.now()-started<maxWait){
    await new Promise(r=>setTimeout(r,lastStatus?'2500':'1200'));
@@ -1630,26 +1779,32 @@ async function startBuildTerminal(){
    const sct=sr.headers.get('content-type')||'';let s=null;if(sct.includes('json')){try{s=await sr.json()}catch(_){}}
    if(!sr.ok)throw new Error(describeHttp(sr.status,s?JSON.stringify(s):''));
    if(!s||!s.status)throw new Error('Build server returned an invalid status response.');
+   
    lastStatus=String(s.status);
    S._buildLogs=String(s.logs||'');
    if(s.htmlUrl){S._buildActionsUrl=s.htmlUrl;$('#btOpenActions').classList.remove('hidden');$('#btOpenActions').onclick=()=>window.open(s.htmlUrl,'_blank','noopener');}
-   terminalRender(S._buildLogs,s.status==='failed'?'failed':s.status==='success'?'success':'running');
+   
+   terminalRender(S._buildLogs, s.status==='failed'?'failed':s.status==='success'?'success':'running');
+   
    if(!S._buildLogs){
-    if(s.status==='queued')terminalAdd('[QUEUE] Build queued — waiting for GitHub Actions...','dim');
-    else if(s.status==='building')terminalAdd('[BUILD] GitHub Actions is running...','cmd');
+    if(s.status==='queued')terminalQueueLine('[QUEUE] Build queued — waiting for remote builder...', 'dim', true, '#btLog');
+    else if(s.status==='building')terminalQueueLine('[BUILD] Remote Builder is running...', 'cmd', true, '#btLog');
    }
+   
    if(s.status==='success'){
     const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));S._apkUrl=apkUrl;
     p.builds.unshift({at:Date.now(),ok:true,msg:'Real APK build completed successfully.'});
-    terminalAdd('[SUCCESS] Real APK build completed successfully.','ok');
-    terminalAdd('[APK] '+apkUrl,'ok');
+    terminalQueueLine('[SUCCESS] Real APK build completed successfully.', 'ok', true, '#btLog');
+    terminalQueueLine('[APK] '+apkUrl, 'ok', true, '#btLog');
     terminalSet('success',jobId);return;
    }
+   
    if(s.status==='failed'){
-    const detail=String(s.error||'GitHub Actions Android build failed.');
+    const detail=String(s.error||'Remote builder Android build failed.');
     S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+detail;
     p.builds.unshift({at:Date.now(),ok:false,msg:detail});
-    terminalRender(S._buildLogs||detail,'failed');terminalAdd('[FAILED] '+detail,'err');terminalSet('failed',jobId);return;
+    terminalQueueLine('[FAILED] '+detail, 'err', true, '#btLog');
+    terminalSet('failed',jobId);return;
    }
   }
   throw new Error('Build timed out while waiting for the build server.');
@@ -1657,27 +1812,29 @@ async function startBuildTerminal(){
   const msg=e.name==='AbortError'?'Build server request timed out.':String(e.message||e);
   S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+msg;
   p.builds.unshift({at:Date.now(),ok:false,msg:msg});
-  terminalAdd('[FAILED] '+msg,'err');terminalSet('failed',S._buildJobId||''); 
+  terminalQueueLine('[FAILED] '+msg, 'err', true, '#btLog');
+  terminalSet('failed',S._buildJobId||''); 
  }finally{persistProject(p);}
 }
+
 function buildFixFromTerminal(){
  const p=S.project;const err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
  S.agentAttachments=[{kind:'doc',path:'build-error.log',name:'build-error.log',size:err.length,content:err}];
- const prompt='Fix the real Android build failure shown in the attached build-error.log. Analyze the project source of truth, identify the exact cause, modify only the required project files, and make the smallest safe fix. Do not just explain the error; implement the fix using the flayfiles block, then summarize what was changed.';
+ const prompt='CRITICAL: Fix the real Android build failure shown in the attached build-error.log. Analyze the project files, identify the exact cause, and MODIFY the required files using the flayfiles block. DO NOT print the full code in your chat response. Make the smallest safe fix and output ONLY a short summary of what was changed in the project files.';
  const backId=$('.screen.active')?.id;goBack();if(backId!=='screen-project')return;
  setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=prompt;autoGrow(inp);persistProject(p);
  setTimeout(()=>sendAgent(),120);
 }
+
 $('#btBack').onclick=goBack;
 $('#btFix').onclick=buildFixFromTerminal;
 $('#bjBuildBtn').onclick=async()=>{openScreen('screen-build-terminal');await startBuildTerminal();};
+
 async function downloadApkFromLink(url,filename){
  try{
   const u=String(url||'').trim();if(!u)throw new Error('APK download URL is missing.');
   const name=filename||'flay-app-debug.apk';
 
-  // Android WebView: send the original HTTPS APK URL directly to native
-  // DownloadManager. Never create a blob: URL for the native download path.
   if(window.AndroidBridge&&typeof window.AndroidBridge.downloadApk==='function'&&/^https?:\/\//i.test(u)){
    window.AndroidBridge.downloadApk(u,name);
    return;
@@ -1699,13 +1856,27 @@ async function downloadApkFromLink(url,filename){
   toast('APK download failed: '+String(e.message||e),'err');
  }
 }
+
 function renderBuildPane(){const p=S.project;if(!p)return;
- $('#bjServerUrl').value=S.settings.buildServer||'';
- $('#bjBuildBtn').disabled=!S.settings.buildServer;
- $('#bjBuildOut').innerHTML=S.settings.buildServer?'':'<div class="vrow">'+icon('info','sm muted')+'<div class="lb muted">No build server configured. "Build APK" stays disabled — an APK will never be claimed without a real build.</div></div>';
+ // Internal Build Server - NO User Input
+ S.settings.buildServer = 'https://flay-ai.flaynity.workers.dev';
+ 
+ $('#bjBuildBtn').disabled = false;
+ 
  $('#bjApkDl').classList.toggle('hidden',!S._apkUrl);
  if(S._apkUrl){$('#bjApkDl').onclick=()=>downloadApkFromLink(S._apkUrl,p.name.replace(/\s+/g,'-')+'-debug.apk');}
- $('#bjHistory').innerHTML=(p.builds&&p.builds.length)?p.builds.slice(0,20).map(b=>`<div class="vrow">${b.ok?icon('check','sm st-done'):icon('alert','sm st-fail')}<div class="lb">${esc(b.msg)}<br><span class="muted small">${new Date(b.at).toLocaleString()}</span></div></div>`).join(''):'<div class="muted small" style="padding:6px 12px 8px">No builds or validations recorded yet.</div>';}
+ 
+ $('#bjHistory').innerHTML=(p.builds&&p.builds.length)?p.builds.slice(0,20).map(b=>`
+  <div class="premium-history-item">
+   <div class="phi-icon" style="color:${b.ok?'var(--ok)':'var(--err)'}">${icon(b.ok?'check':'alert','sm')}</div>
+   <div class="phi-body">
+    <b>${b.ok?'Build / Validation Success':'Build / Validation Failed'}</b>
+    <span>${esc(b.msg)}</span>
+    <span class="phi-date">${new Date(b.at).toLocaleString()}</span>
+   </div>
+  </div>`).join(''):'<div class="muted small" style="padding:4px 0">No builds or validations recorded yet.</div>';
+}
+
 /* ---------- global keys / boot ---------- */
 document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
  if($('#viewer').classList.contains('show')){closeViewer();return;}
@@ -1713,6 +1884,7 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
  if($('#sheetWrap').classList.contains('show')){closeSheet();return;}
  if(drawer.classList.contains('open')){closeDrawer();return;}
  const cur=$('.screen.active');if(cur&&cur.id!=='screen-chat')goBack();});
+
 (async function boot(){loadSettings();applyTheme();
  try{const[chats,projects]=await Promise.all([DB.all('chats'),DB.all('projects')]);
   S.chats=chats.sort((a,b)=>b.updatedAt-a.updatedAt);S.projects=projects;}catch(e){/* storage unavailable: app still runs in-memory */}
@@ -1723,6 +1895,8 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
  startComposerPlaceholder();
  startAgentPlaceholder();
  setWebAccess(false);
+ attachTermScroll('#btLog');
+ attachTermScroll('#vtLog');
  if(typeof JSZip==='undefined')toast('JSZip could not load (offline?). ZIP import/export is unavailable.','warn');})();
 </script>
 </body>
