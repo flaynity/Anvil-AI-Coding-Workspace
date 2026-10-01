@@ -1637,9 +1637,9 @@ function terminalAdd(text,cls=''){
 }
 async function startBuildTerminal(){
  const p=S.project;if(!p||!S.settings.buildServer)return;
- const base=S.settings.buildServer.replace(/\/+$/,'');const out=$('#btLog');
- S._buildFailure='';S._buildJobId='';S._buildLogs='';
- $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';
+ const base=S.settings.buildServer.replace(/\\/+$/,'');const out=$('#btLog');
+ S._buildFailure='';S._buildJobId='';S._buildLogs='';S._terminalLogShown='';S._terminalStepState={};S._terminalLastState='';
+ $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';out.dataset.shown='';out.dataset.queue='';out.dataset.typing='0';
  terminalAdd('Flay AI Android Build Terminal','cmd');
  terminalAdd('$ package project '+p.name,'cmd');
  try{
@@ -1653,49 +1653,76 @@ async function startBuildTerminal(){
   if(!j||!j.ok||!j.jobId)throw new Error('Build server returned an invalid build response.');
   const jobId=String(j.jobId);S._buildJobId=jobId;
   const statusUrl=String(j.statusUrl||base+'/build/status/'+encodeURIComponent(jobId));
-  $('#btJob').textContent='Job ID: '+jobId;terminalAdd('[OK] Build job created: '+jobId,'ok');terminalAdd('[INFO] Build environment started...','dim');terminalSet('running',jobId);
+  $('#btJob').textContent='Job ID: '+jobId;
+  terminalAdd('[OK] Build job created: '+jobId,'ok');
+  terminalAdd('[INFO] Build environment started...','dim');
+  terminalSet('running',jobId);
   const started=Date.now(),maxWait=30*60*1000;let lastStatus='';
   while(Date.now()-started<maxWait){
-   await new Promise(r=>setTimeout(r,lastStatus?'2500':'1200'));
+   await new Promise(r=>setTimeout(r,lastStatus?'2500':'300'));
    const sr=await fetch(statusUrl,{method:'GET',headers:{Accept:'application/json'},signal:withTimeout(30000)});
    const sct=sr.headers.get('content-type')||'';let s=null;if(sct.includes('json')){try{s=await sr.json()}catch(_){}}
    if(!sr.ok)throw new Error(describeHttp(sr.status,s?JSON.stringify(s):''));
    if(!s||!s.status)throw new Error('Build server returned an invalid status response.');
-   lastStatus=String(s.status);
-   S._buildLogs=String(s.logs||'');
-   if(s.htmlUrl){S._buildActionsUrl=s.htmlUrl;}
-   const stepText=(Array.isArray(s.steps)?s.steps:[]).map(x=>{
-    const n=String(x.name||'').trim();const st=String(x.status||'').toLowerCase();const co=String(x.conclusion||'').toLowerCase();
-    if(!n)return '';
-    const mark=co==='success'?'[OK]':co==='failure'?'[ERROR]':co==='cancelled'?'[CANCELLED]':st==='in_progress'?'[RUN]':'[WAIT]';
-    return mark+' '+n+(co?' — '+co:'');
-   }).filter(Boolean).join('\n');
-   const visibleLog=S._buildLogs||(stepText?('[BUILD STEPS]\n'+stepText):'');
-   terminalRender(visibleLog,s.status==='failed'?'failed':s.status==='success'?'success':'running');
-   if(!S._buildLogs&&!stepText){
-    if(s.status==='queued')terminalAdd('[QUEUE] Build queued — build environment is starting...','dim');
-    else if(s.status==='building')terminalAdd('[RUN] Build environment is running...','cmd');
+   const state=String(s.status);
+   if(state!==lastStatus){
+    terminalAdd('[SERVER] Build status: '+state.toUpperCase(),state==='failed'?'err':state==='success'?'ok':'cmd');
+    lastStatus=state;
    }
-   if(s.status==='success'){
+   if(s.htmlUrl)S._buildActionsUrl=s.htmlUrl;
+   const raw=String(s.logs||'');
+   if(raw){
+    const prev=String(S._terminalLogShown||'');
+    if(raw.startsWith(prev)){
+     const delta=raw.slice(prev.length);
+     if(delta)appendTerminalTyping(out,delta);
+    }else{
+     terminalAdd('[LOG] Build log stream updated; showing latest output.','dim');
+     appendTerminalTyping(out,raw);
+    }
+    S._terminalLogShown=raw;
+    S._buildLogs=raw;
+   }
+   const steps=Array.isArray(s.steps)?s.steps:[];
+   for(const x of steps){
+    const n=String(x.name||'').trim();if(!n)continue;
+    const st=String(x.status||'').toLowerCase();const co=String(x.conclusion||'').toLowerCase();
+    const mark=co==='success'?'[OK]':co==='failure'?'[ERROR]':co==='cancelled'?'[CANCELLED]':st==='in_progress'?'[RUN]':'[WAIT]';
+    const key=n+'|'+mark+'|'+co;
+    if(S._terminalStepState[n]!==key){
+     S._terminalStepState[n]=key;
+     terminalAdd(mark+' '+n+(co?' — '+co:''),co==='failure'?'err':co==='success'?'ok':st==='in_progress'?'cmd':'dim');
+    }
+   }
+   if(!raw&&!steps.length&&state==='queued'&&S._terminalLastState!=='queued'){
+    terminalAdd('[QUEUE] Build queued — waiting for build environment...','dim');
+   }
+   if(!raw&&!steps.length&&state==='building'&&S._terminalLastState!=='building'){
+    terminalAdd('[RUN] Build server connected — waiting for live job output...','cmd');
+   }
+   S._terminalLastState=state;
+   if(state==='success'){
     const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));S._apkUrl=apkUrl;
     p.builds.unshift({at:Date.now(),ok:true,msg:'Real APK build completed successfully.'});
     terminalAdd('[SUCCESS] Real APK build completed successfully.','ok');
-    terminalAdd('[APK] '+apkUrl,'ok');
+    terminalAdd('[APK] Download APK','ok');
+    terminalAdd(apkUrl,'ok');
     terminalSet('success',jobId);return;
    }
-   if(s.status==='failed'){
+   if(state==='failed'){
     const detail=String(s.error||'GitHub Actions Android build failed.');
-    S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+detail;
+    S._buildFailure=(S._buildLogs?S._buildLogs+'\\n\\n':'')+'BUILD FAILED: '+detail;
     p.builds.unshift({at:Date.now(),ok:false,msg:detail});
-    terminalRender(S._buildLogs||detail,'failed');terminalAdd('[FAILED] '+detail,'err');terminalSet('failed',jobId);return;
+    terminalAdd('[FAILED] '+detail,'err');
+    terminalSet('failed',jobId);return;
    }
   }
   throw new Error('Build timed out while waiting for the build server.');
  }catch(e){
   const msg=e.name==='AbortError'?'Build server request timed out.':String(e.message||e);
-  S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+msg;
+  S._buildFailure=(S._buildLogs?S._buildLogs+'\\n\\n':'')+'BUILD FAILED: '+msg;
   p.builds.unshift({at:Date.now(),ok:false,msg:msg});
-  terminalAdd('[FAILED] '+msg,'err');terminalSet('failed',S._buildJobId||''); 
+  terminalAdd('[FAILED] '+msg,'err');terminalSet('failed',S._buildJobId||'');
  }finally{persistProject(p);}
 }
 function buildFixFromTerminal(){
