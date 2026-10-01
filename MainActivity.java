@@ -161,28 +161,30 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    Uri savedUri = null;
                     try {
                         if (dataUrl == null || dataUrl.trim().isEmpty()) {
-                            Toast.makeText(mContext, "Download data is empty", Toast.LENGTH_LONG).show();
-                            return;
+                            throw new Exception("Download data is empty.");
                         }
 
                         String raw = dataUrl.trim();
                         int comma = raw.indexOf(',');
                         String encoded = comma >= 0 ? raw.substring(comma + 1) : raw;
+
                         if (encoded.isEmpty()) {
-                            Toast.makeText(mContext, "Download data is empty", Toast.LENGTH_LONG).show();
-                            return;
+                            throw new Exception("Download data is empty.");
                         }
 
+                        encoded = encoded.replaceAll("\\s+", "");
                         byte[] bytes = Base64.decode(encoded, Base64.DEFAULT);
+
                         if (bytes == null || bytes.length == 0) {
-                            Toast.makeText(mContext, "Downloaded file is empty", Toast.LENGTH_LONG).show();
-                            return;
+                            throw new Exception("Downloaded file is empty.");
                         }
 
                         String name = fileName == null ? "download" : fileName.trim();
                         if (name.isEmpty()) name = "download";
+
                         String mime = mimeType == null || mimeType.trim().isEmpty()
                             ? "application/octet-stream" : mimeType.trim();
 
@@ -190,42 +192,89 @@ public class MainActivity extends Activity {
                             ContentValues values = new ContentValues();
                             values.put(MediaStore.Downloads.DISPLAY_NAME, name);
                             values.put(MediaStore.Downloads.MIME_TYPE, mime);
-                            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_FOLDER);
+                            values.put(MediaStore.Downloads.RELATIVE_PATH,
+                                Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_FOLDER);
                             values.put(MediaStore.Downloads.IS_PENDING, 1);
 
-                            Uri uri = getContentResolver().insert(
+                            savedUri = getContentResolver().insert(
                                 MediaStore.Downloads.EXTERNAL_CONTENT_URI, values
                             );
-                            if (uri == null) throw new Exception("Could not create Downloads file.");
 
-                            try (OutputStream out = getContentResolver().openOutputStream(uri)) {
-                                if (out == null) throw new Exception("Could not open Downloads file.");
+                            if (savedUri == null) {
+                                throw new Exception("Could not create file in Downloads/Flay AI.");
+                            }
+
+                            try (OutputStream out = getContentResolver().openOutputStream(savedUri)) {
+                                if (out == null) {
+                                    throw new Exception("Could not open file for writing.");
+                                }
                                 out.write(bytes);
                                 out.flush();
                             }
 
                             ContentValues done = new ContentValues();
                             done.put(MediaStore.Downloads.IS_PENDING, 0);
-                            getContentResolver().update(uri, done, null, null);
+                            getContentResolver().update(savedUri, done, null, null);
                         } else {
-                            File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DOWNLOAD_FOLDER);
+                            File dir = new File(
+                                Environment.getExternalStoragePublicDirectory(
+                                    Environment.DIRECTORY_DOWNLOADS
+                                ),
+                                DOWNLOAD_FOLDER
+                            );
+
                             if (!dir.exists() && !dir.mkdirs()) {
-                                throw new Exception("Could not open Downloads folder.");
+                                throw new Exception("Could not create Downloads/Flay AI folder.");
                             }
+
                             File outFile = new File(dir, name);
                             try (OutputStream out = new FileOutputStream(outFile)) {
                                 out.write(bytes);
                                 out.flush();
                             }
+
+                            savedUri = Uri.fromFile(outFile);
+
+                            android.media.MediaScannerConnection.scanFile(
+                                MainActivity.this,
+                                new String[] { outFile.getAbsolutePath() },
+                                new String[] { mime },
+                                null
+                            );
                         }
 
-                        Toast.makeText(mContext, "Download completed", Toast.LENGTH_SHORT).show();
+                        android.util.Log.d(
+                            "FLAY_DOWNLOAD",
+                            "Saved: Downloads/" + DOWNLOAD_FOLDER + "/" + name +
+                            " size=" + bytes.length
+                        );
+
+                        Toast.makeText(
+                            mContext,
+                            "Download completed\nDownloads/Flay AI/" + name,
+                            Toast.LENGTH_LONG
+                        ).show();
+
                     } catch (IllegalArgumentException e) {
+                        if (savedUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            try { getContentResolver().delete(savedUri, null, null); } catch (Exception ignored) {}
+                        }
                         android.util.Log.e("FLAY_DOWNLOAD", "Invalid Base64 download data", e);
-                        Toast.makeText(mContext, "Download failed: invalid file data", Toast.LENGTH_LONG).show();
+                        Toast.makeText(
+                            mContext,
+                            "Download failed: invalid file data",
+                            Toast.LENGTH_LONG
+                        ).show();
                     } catch (Exception e) {
+                        if (savedUri != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            try { getContentResolver().delete(savedUri, null, null); } catch (Exception ignored) {}
+                        }
                         android.util.Log.e("FLAY_DOWNLOAD", "Base64 download failed", e);
-                        Toast.makeText(mContext, "Download failed: " + String.valueOf(e.getMessage()), Toast.LENGTH_LONG).show();
+                        Toast.makeText(
+                            mContext,
+                            "Download failed: " + String.valueOf(e.getMessage()),
+                            Toast.LENGTH_LONG
+                        ).show();
                     }
                 }
             });
