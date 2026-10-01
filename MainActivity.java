@@ -91,6 +91,7 @@ public class MainActivity extends Activity {
     private boolean hasWebBackStack = false;
 
     private static final String ACTION_CANCEL_DOWNLOAD = "com.devnix.ai.CANCEL_DOWNLOAD";
+    private static final String DOWNLOAD_FOLDER = "Flay AI";
     private HashMap<Integer, DownloadTask> activeDownloads = new HashMap<>();
     private int notificationIdCounter = 1000;
     private BroadcastReceiver cancelReceiver;
@@ -189,7 +190,7 @@ public class MainActivity extends Activity {
                             ContentValues values = new ContentValues();
                             values.put(MediaStore.Downloads.DISPLAY_NAME, name);
                             values.put(MediaStore.Downloads.MIME_TYPE, mime);
-                            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_FOLDER);
                             values.put(MediaStore.Downloads.IS_PENDING, 1);
 
                             Uri uri = getContentResolver().insert(
@@ -207,7 +208,7 @@ public class MainActivity extends Activity {
                             done.put(MediaStore.Downloads.IS_PENDING, 0);
                             getContentResolver().update(uri, done, null, null);
                         } else {
-                            File dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                            File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DOWNLOAD_FOLDER);
                             if (!dir.exists() && !dir.mkdirs()) {
                                 throw new Exception("Could not open Downloads folder.");
                             }
@@ -352,7 +353,7 @@ public class MainActivity extends Activity {
                 input = new BufferedInputStream(connection.getInputStream(), 128 * 1024);
 
                 File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                File flaynityDir = new File(downloadDir, "Devnix-ai");
+                File flaynityDir = new File(downloadDir, DOWNLOAD_FOLDER);
                 if (!flaynityDir.exists()) {
                     flaynityDir.mkdirs();
                 }
@@ -548,7 +549,7 @@ public class MainActivity extends Activity {
             req.setAllowedOverRoaming(true);
             req.setVisibleInDownloadsUi(true);
             req.setDestinationInExternalPublicDir(
-                Environment.DIRECTORY_DOWNLOADS, fileName
+                Environment.DIRECTORY_DOWNLOADS + "/" + DOWNLOAD_FOLDER, fileName
             );
 
             String ua = webview1 != null
