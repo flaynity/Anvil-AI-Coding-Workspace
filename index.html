@@ -1598,11 +1598,12 @@ function terminalRender(logs,state){
  const host=$('#btLog');const next=String(logs||'')||'Waiting for build logs...';
  const shown=String(host.dataset.shown||'');
  if(shown===next){terminalSet(state,S._buildJobId||'');return;}
- if(!shown||!next.startsWith(shown)){
+ const queued=String(host.dataset.queue||'');
+ if(!shown||(!next.startsWith(shown)&&!next.startsWith(shown+queued))){
   host.innerHTML='';host.dataset.shown='';host.dataset.queue='';
   appendTerminalTyping(host,next);
  }else{
-  const delta=next.slice(shown.length);
+  const delta=next.slice((shown+queued).length);
   if(delta)appendTerminalTyping(host,delta);
  }
  terminalSet(state,S._buildJobId||'');
