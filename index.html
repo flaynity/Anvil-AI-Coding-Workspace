@@ -1604,19 +1604,28 @@ function validateProject(p){const out=[];const add=(ok,label,detail)=>out.push({
 async function downloadApkFromLink(url,filename){
  try{
   const u=String(url||'').trim();if(!u)throw new Error('APK download URL is missing.');
+  const name=filename||'flay-app-debug.apk';
+
+  // Android WebView: send the original HTTPS APK URL directly to native
+  // DownloadManager. Never create a blob: URL for the native download path.
+  if(window.AndroidBridge&&typeof window.AndroidBridge.downloadApk==='function'&&/^https?:\\/\\//i.test(u)){
+   window.AndroidBridge.downloadApk(u,name);
+   return;
+  }
+
   const res=await fetch(u,{method:'GET',mode:'cors',cache:'no-store'});
   if(!res.ok)throw new Error('APK download failed (HTTP '+res.status+').');
   const blob=await res.blob();
   if(!blob.size)throw new Error('Downloaded APK is empty.');
   const objectUrl=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=objectUrl;a.download=filename||'flay-app-debug.apk';a.style.display='none';
+  const a=document.createElement('a');a.href=objectUrl;a.download=name;a.style.display='none';
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(objectUrl),15000);
   toast('APK download started.','ok');
  }catch(e){
   console.error('APK download failed:',e);
   const u=String(url||'').trim();
-  if(u){window.location.href=u;return;}
+  if(/^https?:\\/\\//i.test(u)){window.location.href=u;return;}
   toast('APK download failed: '+String(e.message||e),'err');
  }
 }
