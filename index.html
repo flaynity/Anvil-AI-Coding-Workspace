@@ -554,7 +554,6 @@ input,textarea,select{font:inherit;color:inherit}
     <div class="bt-foot">
       <span class="status" id="btStatus">Starting...</span>
       <button class="btn danger sm hidden" id="btFix"><svg class="ic sm"><use href="#i-wrench"/></svg>Fix</button>
-      <button class="btn sm hidden" id="btOpenActions"><svg class="ic sm"><use href="#i-external"/></svg>Actions</button>
     </div>
   </div>
 </section>
@@ -1686,7 +1685,7 @@ async function startBuildTerminal(){
     terminalSet('success',jobId);return;
    }
    if(s.status==='failed'){
-    const detail=String(s.error||'GitHub Actions Android build failed.');
+    const detail=String(s.error||'Android build failed. See the terminal build log for details.');
     S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+detail;
     p.builds.unshift({at:Date.now(),ok:false,msg:detail});
     terminalRender(S._buildLogs||detail,'failed');terminalAdd('[FAILED] '+detail,'err');terminalSet('failed',jobId);return;
