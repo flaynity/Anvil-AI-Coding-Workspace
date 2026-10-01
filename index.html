@@ -1595,18 +1595,41 @@ function terminalSet(state,jobId){
  fix.classList.toggle('hidden',state!=='failed');if(jobId)$('#btJob').textContent='Job ID: '+jobId;
 }
 function terminalRender(logs,state){
- const host=$('#btLog');const text=String(logs||'');
- const next=text||'Waiting for build logs...';
- if(host.dataset.raw===next){terminalSet(state,S._buildJobId||'');return;}
- host.dataset.raw=next;
- host.innerHTML='';
- const lines=next.split('\n');
- lines.forEach((line,i)=>{
-  const span=document.createElement('span');span.className='bt-line';span.textContent=line;host.appendChild(span);
-  if(i<lines.length-1)host.appendChild(document.createTextNode('\n'));
- });
- host.scrollTop=host.scrollHeight;
+ const host=$('#btLog');const next=String(logs||'')||'Waiting for build logs...';
+ const shown=String(host.dataset.shown||'');
+ if(shown===next){terminalSet(state,S._buildJobId||'');return;}
+ if(!shown||!next.startsWith(shown)){
+  host.innerHTML='';host.dataset.shown='';host.dataset.queue='';
+  appendTerminalTyping(host,next);
+ }else{
+  const delta=next.slice(shown.length);
+  if(delta)appendTerminalTyping(host,delta);
+ }
  terminalSet(state,S._buildJobId||'');
+}
+function appendTerminalTyping(host,text){
+ const oldQueue=String(host.dataset.queue||'');
+ host.dataset.queue=oldQueue+String(text||'');
+ if(host.dataset.typing==='1')return;
+ host.dataset.typing='1';
+ const tick=()=>{
+  let q=String(host.dataset.queue||'');
+  if(!q){host.dataset.typing='0';return;}
+  const take=Math.min(q.length,Math.max(1,Math.ceil(q.length/18)));
+  const chunk=q.slice(0,take);q=q.slice(take);host.dataset.queue=q;
+  if(!host.lastChild||host.lastChild.nodeType!==1||!host.lastChild.classList.contains('bt-line')){
+   const span=document.createElement('span');span.className='bt-line';host.appendChild(span);
+  }
+  let line=host.lastChild;
+  for(const ch of chunk){
+   if(ch==='\\n'){host.appendChild(document.createTextNode('\\n'));const span=document.createElement('span');span.className='bt-line';host.appendChild(span);line=span;}
+   else line.textContent+=ch;
+  }
+  host.dataset.shown=String(host.dataset.shown||'')+chunk;
+  host.scrollTop=host.scrollHeight;
+  requestAnimationFrame(tick);
+ };
+ requestAnimationFrame(tick);
 }
 function terminalAdd(text,cls=''){
  const host=$('#btLog');const span=document.createElement('span');span.className='bt-line '+cls;span.textContent=String(text||'');host.appendChild(span);host.appendChild(document.createTextNode('\n'));host.scrollTop=host.scrollHeight;
