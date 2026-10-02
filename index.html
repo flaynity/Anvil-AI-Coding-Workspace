@@ -1891,7 +1891,9 @@ function buildFailureReport(s,detail,logs){
  const v=x=>(x===undefined||x===null||x==='')?'unavailable':String(x);
  const failedStep=jobs.flatMap(j=>j.steps||[]).find(x=>x.conclusion==='failure');
  const infra=failedStep?/^(set up job|download project archive|extract project|find android gradle project|setup java|prepare android sdk|upload apk)/i.test(failedStep.name):null;
- const cls=failedStep?(infra?'infrastructure':'project'):(jobs.length?'unknown':'infrastructure');
+ const rawLogs=String(logs||'')+' '+String(detail||'');
+ const hasProjectError=/FAILURE: Build failed|What went wrong|Execution failed for task|Compilation error|Unresolved reference|cannot find symbol|AAPT|resource .* not found|Could not resolve|BUILD FAILED/i.test(rawLogs);
+ const cls=failedStep?(infra?'infrastructure':'project'):(jobs.length?'unknown':hasProjectError?'project':'unknown');
  const L=['BUILD FAILED','','Workflow:','  Name: '+v(wf.name||run.name),'  File: '+v(wf.file),'',
   'Workflow Run:','  Title: '+v(run.display_title),'  Number: '+v(run.number),'  Status: '+v(run.status),'  Conclusion: '+v(run.conclusion),'  URL: '+v(s.htmlUrl),'',
   'Run ID:','  '+v(run.id),'  Build job ID: '+v(S._buildJobId),'','Jobs:'];
@@ -1929,11 +1931,33 @@ async function startBuildTerminal(){
   terminalQueueLine('[OK] Project packaged: '+fmtBytes(blob.size), 'ok', true, '#btLog');
   const b64=await new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).slice(String(fr.result).indexOf(',')+1));fr.onerror=j;fr.readAsDataURL(blob);});
   terminalQueueLine('$ POST /build', 'cmd', true, '#btLog');
-  const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(180000)});
+  const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(20*60*1000)});
   
-  const ct=res.headers.get('content-type')||'';let j=null;if(ct.includes('json')){try{j=await res.json()}catch(_){}}
-  if(!res.ok)throw new Error(describeHttp(res.status,j?JSON.stringify(j):''));
-  if(!j||!j.ok||!j.jobId)throw new Error('Build server returned an invalid build response.');
+  const ct=res.headers.get('content-type')||'';let j=null;
+  if(ct.includes('json')){try{j=await res.json()}catch(_){j=null;}}
+  if(!res.ok){
+   const detail=String(j&&(j.error||j.message)||describeHttp(res.status,j?JSON.stringify(j):''));
+   S._buildLogs=String(j&&(j.log||j.logs||j.details)||'');
+   S._buildMeta={status:'failed',error:detail,logs:S._buildLogs};
+   throw new Error(detail+(S._buildLogs?'\\n'+S._buildLogs.slice(-12000):''));
+  }
+  /* Support both Worker job/status responses and servers that return the APK binary directly. */
+  if(!ct.includes('json')){
+   const apkBlob=await res.blob();
+   if(!apkBlob.size)throw new Error('Build server returned an empty APK response.');
+   const apkUrl=URL.createObjectURL(apkBlob);S._apkUrl=apkUrl;
+   p.builds.unshift({at:Date.now(),ok:true,msg:'APK build completed successfully.'});
+   terminalQueueLine('[SUCCESS] APK build completed successfully.','ok',true,'#btLog');
+   terminalQueueLine('[APK] Ready to download ('+fmtBytes(apkBlob.size)+')','ok',true,'#btLog');
+   terminalSet('success','');
+   persistProject(p);renderBuildPane();return;
+  }
+  if(!j||!j.ok||!j.jobId){
+   const detail=String(j&&(j.error||j.message)||'Build server returned an invalid build response.');
+   S._buildLogs=String(j&&(j.log||j.logs||j.details)||'');
+   S._buildMeta={status:'failed',error:detail,logs:S._buildLogs};
+   throw new Error(detail+(S._buildLogs?'\\n'+S._buildLogs.slice(-12000):''));
+  }
   
   const jobId=String(j.jobId);S._buildJobId=jobId;
   const statusUrl=String(j.statusUrl||base+'/build/status/'+encodeURIComponent(jobId));
@@ -1992,8 +2016,8 @@ function buildFixFromTerminal(){
  const evidence=err;/* the full real report: workflow, run, jobs, steps, complete logs, failure */
  S.agentAttachments=[{kind:'builderror',path:'[BUILD ERROR]',name:'build-error.log',size:evidence.length,content:evidence}];
  setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=isInfrastructureBuildError(err)
-  ? 'Analyze the BUILD ERROR above. If this is a GitHub Actions/Android build-server infrastructure failure, do not modify project files; explain the exact server/workflow component that must be fixed. If it is a real project Gradle/compiler/resource error, modify the required project files sequentially and verify the references.'
-  : 'Fix the BUILD ERROR above. Identify the exact file named by the earliest real Gradle/compiler error, read only that file first (plus a directly referenced file only if required), apply the smallest fix, save it, then continue to the next file only if needed. Do not just repeat the error.';autoGrow(inp);inp.focus();
+  ? 'Analyze the BUILD ERROR above. If this is a build-server/Worker/runner infrastructure failure, explain the exact server component that must be fixed. If it is a real project Gradle/compiler/resource error, modify the required project files sequentially and verify the references.'
+  : 'Fix the BUILD ERROR above using the complete attached report and logs. Identify the earliest actionable root cause, read the exact named project file(s), apply and save a concrete minimal fix, and explain any infrastructure issue that cannot be fixed in project files. Do not merely repeat the error.';autoGrow(inp);sendAgent();
 }
 
 $('#btBack').onclick=goBack;
