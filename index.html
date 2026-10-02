@@ -1687,7 +1687,7 @@ async function sendAgent(){if(S.agentStreaming)return;
    const bad=(p.tech==='imported'?[]:validateProject(p)).filter(x=>!x.ok);
    if(bad.length)am.activity.push({icon:'warn',label:'Project check: '+bad.map(b=>b.label).join('; '),status:'warn'});
    am.content=(ctx.summary?ctx.summary+'\n\n':'')+(am.mode==='buildfix'?'Applied build fixes directly to the project files. Run a new build to verify.':'Changes were applied directly to the project files.')+'\n\n'+qSummary(am);
-   am.status='done';}}
+   am.status='done';}}}
  catch(e){
   if(ctx&&am.queue.some(q=>q.status!=='completed'))setPending(p,am,ctx);
   if(e.name==='AbortError'){am.status='stopped';am.activity.push({icon:'stop',label:'Stopped — completed files are saved. Send "continue" to resume.',status:'warn'});}
