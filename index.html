@@ -1978,12 +1978,20 @@ async function startBuildTerminal(){
 
 function buildFixFromTerminal(){
  const p=S.project,err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
+ if(isInfrastructureBuildError(err)){
+  const am={id:uid(),role:'assistant',content:'**Build server infrastructure failure**\n\n'+(String(err).match(/(?:BUILD FAILED:\s*)?(?:Build server request timed out\.?|Build timed out[^\n]*|[^\n]*request timed out[^\n]*)/i)?.[0]||'The build server timed out before project compilation. No project files were modified.'),createdAt:Date.now(),status:'done',activity:[],queue:[],mode:'buildfix'};
+  p.agent.push(am);persistProject(p);renderThread('#agentMsgs',p.agent);return;}
  goBack();if($('.screen.active').id!=='screen-project')return;
  const evidence='[BUILD ERROR]\nBuild ID: '+(S._buildJobId||'n/a')+'\nStatus: FAILED\n\n'+err;
+ const infrastructure=isInfrastructureBuildError(err);
  S.agentAttachments=[{kind:'builderror',path:'[BUILD ERROR]',name:'build-error.log',size:evidence.length,content:evidence}];
- setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=isInfrastructureBuildError(err)
-  ? 'Analyze the BUILD ERROR above. If this is a GitHub Actions/Android build-server infrastructure failure, do not modify project files; explain the exact server/workflow component that must be fixed. If it is a real project Gradle/compiler/resource error, modify the required project files sequentially and verify the references.'
-  : 'Fix the BUILD ERROR above. Analyze the earliest real Gradle/compiler cause, modify the required project files, save each file sequentially, then verify the project references. Do not just explain the error.';autoGrow(inp);inp.focus();
+ setTab('agent');renderAgentAtts();const inp=$('#agentInput');
+ if(infrastructure){
+  inp.value='Build server timeout detected. Do not send this infrastructure message to the AI provider. Show a single clean infrastructure-failure result and do not modify project files.';
+ }else{
+  inp.value='Fix the BUILD ERROR above. Analyze the earliest real Gradle/compiler cause, modify the required project files sequentially, save each file sequentially, then verify the project references. Do not just explain the error.';
+ }
+ autoGrow(inp);inp.focus();
 }
 
 $('#btBack').onclick=goBack;
