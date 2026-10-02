@@ -1477,22 +1477,24 @@ function agentSystem(p){
 '- After the flayfiles block, output ONLY a short, concise summary of the changes made.\n'+
 '- If you need a file that was not provided, output "NEED: <exact path>" (one per line) and stop.\n'+
 '- Do not provide long explanations of the code unless specifically asked to explain (and not modify) it.';}
-function buildProjectContext(p,request,force=[],only=false){const paths=Object.keys(p.files).sort();
- const treeRoot=buildTree(paths);
- let tree='';const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/\n';walk(sub,depth+1);}
-  for(const f of node.files){const sz=p.files[f.path].binary?fmtBytes((p.files[f.path].content||'').length*0.75):fmtBytes((p.files[f.path].content||'').length);tree+='  '.repeat(depth)+f.name+'  ('+sz+')\n';}};
+function buildProjectContext(p,request,force=[],only=false){
+ const paths=Object.keys(p.files).sort();
+ /* The path index is metadata only; file contents are read strictly by explicit path. */
+ const treeRoot=buildTree(paths);let tree='';
+ const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/'+'\\n';walk(sub,depth+1);}
+  for(const f of node.files)tree+='  '.repeat(depth)+f.name+'\\n';};
  walk(treeRoot,0);
- const words=(request||'').toLowerCase().match(/[a-z0-9_\-\.]+/g)||[];
- const score=path=>{const lp=path.toLowerCase();let s=0;words.forEach(w=>{if(w.length>2&&lp.includes(w))s+=3;});if(s&&/\.(xml|gradle|kt|java)$/.test(lp))s+=1;return s;};
  const budget=48000;let used=0;const included=new Set();
  const pick=path=>{const f=p.files[path];if(!f||f.binary||included.has(path))return false;const c=f.content||'';
   if(used+c.length+path.length>budget)return false;used+=c.length;included.add(path);return true;};
  force.forEach(pick);
- /* targeted reads only: never preload the project; fill with a few keyword-matched files only when nothing exact was forced */
- if(!(only&&included.size)){let extra=0;for(const path of[...paths].sort((a,b)=>score(b)-score(a))){if(extra>=6||score(path)<=0)break;if(pick(path))extra++;}}
- let blocks='';
- for(const path of included){blocks+='\n### FILE: '+path+'\n'+(p.files[path].content||'')+'\n### END FILE\n';}
- return{tree,blocks,included,total:paths.length,chars:used};}
+ /* only=true means no keyword-based or broad fallback reads. */
+ if(!only){const words=(request||'').toLowerCase().match(/[a-z0-9_\\-\\.]+/g)||[];
+  const score=path=>{const lp=path.toLowerCase();return words.reduce((n,w)=>n+(w.length>2&&lp.includes(w)?3:0),0);};
+  let extra=0;for(const path of paths.sort((a,b)=>score(b)-score(a))){if(extra>=2||score(path)<=0)break;if(pick(path))extra++;}}
+ let blocks='';for(const path of included)blocks+='\\n### FILE: '+path+'\\n'+(p.files[path].content||'')+'\\n### END FILE\\n';
+ return{tree,blocks,included,total:paths.length,chars:used};
+}
 function parseOps(content){const m=(content||'').match(/```flayfiles\s*([\s\S]*?)```/);
  if(!m)return{ops:null};
  const raw=m[1].trim();
@@ -1519,7 +1521,7 @@ function extractNeeds(content,included,p){const needs=[];const re=/(?:^|\n)NEED:
 const MAX_QUEUE=25;
 const pErr=m=>Object.assign(new Error(m),{pipeline:true});
 const PLAN_SYS=`You are the planning stage of Flay AI, a sequential project coding agent. Analyze the request and the provided project, then output ONLY one JSON object (no prose, no code): {"root_cause":"build errors only: the exact earliest cause in 1-2 sentences","summary":"one short sentence","answer":"","read":["existing paths worth reading while writing files"],"files":[{"path":"relative/path","action":"create|modify|delete|folder","reason":"short"}]}
-Rules: list only files that truly must change, in dependency order (models/resources/base classes before their users; for build errors the root-cause file first). Never include a file that needs no change. Existing paths must match the tree exactly. Max ${MAX_QUEUE} files. Never include file contents. If the request is a question, or needs no file change, or information needed for a safe fix is missing, return files:[] and put the reply in "answer". For BUILD ERROR FIX: the attached build log is authoritative. Identify the earliest actionable Gradle/compiler error, distinguish it from later cascading errors, and return every existing project file that must change to remove that root cause. If the failure is infrastructure/toolchain/runner setup (for example sdkmanager unavailable, Android SDK setup failure, missing GitHub runner tools, Java/Gradle executable unavailable before the project build starts), DO NOT modify project files: return files:[] and explain in "answer" that the build server/workflow must be fixed. Do not return files:[] merely because a real project Gradle/compiler/resource error is uncertain; inspect the supplied project files and choose the smallest evidence-based fix.`;
+Rules: list only files that truly must change, in dependency order (models/resources/base classes before their users; for build errors the root-cause file first). Never include a file that needs no change. Existing paths must match the tree exactly. Max ${MAX_QUEUE} files. Never include file contents. STRICT READ POLICY: do not pre-read the whole project. Start with the exact file named by the earliest actionable error. If the log names no source/config file, explain that the actual failing-step log is needed; do not guess a project file. Request only directly related dependency/reference paths when evidence requires them. The writer reads, fixes, and saves one queued file at a time. If the request is a question, or needs no file change, or information needed for a safe fix is missing, return files:[] and put the reply in "answer". For BUILD ERROR FIX: the attached build log is authoritative. Identify the earliest actionable Gradle/compiler error, distinguish it from later cascading errors, and return every existing project file that must change to remove that root cause. If the failure is infrastructure/toolchain/runner setup (for example sdkmanager unavailable, Android SDK setup failure, missing GitHub runner tools, Java/Gradle executable unavailable before the project build starts), DO NOT modify project files: return files:[] and explain in "answer" that the build server/workflow must be fixed. Do not return files:[] merely because a real project Gradle/compiler/resource error is uncertain; inspect the supplied project files and choose the smallest evidence-based fix.`;
 const FILE_SYS=`You are Flay AI writing exactly ONE project file. Output ONLY the complete file content inside a single fenced block tagged flayfile. No explanations, no other text. Use only packages, classes, methods, R.id, R.layout and resources that exist in the provided project files (saved files from earlier queue steps are included); never invent identifiers. When modifying, preserve existing behavior and make the smallest correct change. For BUILD ERROR FIX, use the real build log as authoritative evidence, fix the earliest root cause rather than a later cascade, and make a concrete source/configuration change when the supplied project proves one is required. Do not merely explain the error or leave the file unchanged.`;
 async function llm(am,msgs){let buf='';
  await providerChat({provider:activeProvider(),messages:msgs,signal:S.agentAbort.signal,
@@ -1559,7 +1561,8 @@ function saveOne(p,it,content){const path=it.path;
  const ex=!!p.files[path];p.files[path]={content};return{path,action:ex?'modify':'create',ok:true};}
 async function genOne(p,am,it,i,ctx,done){let feedback='';
  for(let attempt=0;attempt<2;attempt++){
-  const force=[it.path,...done.slice(-4),...ctx.read.slice(0,4),...(ctx.mode==='buildfix'?errorFiles(p,ctx.errText).slice(0,4):[])].filter(x=>p.files[x]);
+  /* Sequential targeted reads: never reread completed files or every filename in the log. */
+  const force=[it.path,...ctx.read.filter(x=>x!==it.path).slice(0,2)].filter(x=>p.files[x]);
   const c=buildProjectContext(p,ctx.task.slice(0,2000)+' '+it.path+' '+it.reason,force,true);
   const list=am.queue.map((q,k)=>(k+1)+'. '+q.action+' '+q.path+' ['+q.status+']'+(q.reason?' - '+q.reason:'')).join('\n');
   let prompt=ctx.task+'\n\nFILE QUEUE (sequential; completed files are already saved and shown below in their saved state):\n'+list+
@@ -1636,7 +1639,8 @@ function crossCheck(p){const F=p.files,ids=new Set(),lay=new Set(),drw=new Set()
    const n=x[1].split('.').pop();if((x[1].startsWith('.')||(p.package&&x[1].startsWith(p.package)))&&!decl.has(n))add(path,'manifest component '+x[1]+' has no class');}}
  return out;}
 async function planStep(p,am,history,text,atts,mode,errText){
- const pc=buildProjectContext(p,mode==='buildfix'?text:text+' '+errText.slice(0,3000),mode==='buildfix'?errorFiles(p,errText):[],mode==='buildfix');
+ const exactErrorFiles=mode==='buildfix'?errorFiles(p,errText):[];
+ const pc=buildProjectContext(p,mode==='buildfix'?text:text+' '+errText.slice(0,3000),mode==='buildfix'?exactErrorFiles:[],true);
  am.activity.push({icon:'folder',label:(mode==='buildfix'?'Read exact error file(s): ':'Read targeted file(s): ')+(pc.included.size?[...pc.included].slice(0,4).join(', ')+(pc.included.size>4?' +'+(pc.included.size-4)+' more':''):'none yet (project tree only)'),status:'done'});
  let task='USER REQUEST:\n'+(text||'Work with the attached files.');
  if(mode==='buildfix')task+='\n\nMODE: BUILD ERROR FIX. Think through the WHOLE error, find the earliest root cause from the real project files, fix only what is required so the next build passes.\n\n'+extractBuildErrors(errText);
@@ -1677,7 +1681,8 @@ async function sendAgent(){if(S.agentStreaming)return;
   if(resume){ctx=p.pendingRun;p.pendingRun=null;am.mode=ctx.mode;am.queue=ctx.items.map(i=>({...i,status:'queued'}));
    am.activity.push({icon:'history',label:'Resuming paused queue — '+am.queue.length+' file(s) remaining',status:'done'});}
   else{
-   const history=p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-9,-1).map(m=>({role:m.role,content:stripFences(m.content)}));
+   /* Build fixes use the actual report, not a long history of unrelated messages. */
+   const history=mode==='buildfix'?[]:p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-4,-1).map(m=>({role:m.role,content:stripFences(m.content).slice(0,3000)}));
    const be=atts.find(a=>a.kind==='builderror'),mode=be?'buildfix':'edit',errText=be?be.content:'';
    am.mode=mode;
    const r=await planStep(p,am,history,text,atts,mode,be?be.content:'');
