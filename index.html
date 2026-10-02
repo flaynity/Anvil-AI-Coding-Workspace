@@ -1481,18 +1481,18 @@ function buildProjectContext(p,request,force=[],only=false){
  const paths=Object.keys(p.files).sort();
  /* The path index is metadata only; file contents are read strictly by explicit path. */
  const treeRoot=buildTree(paths);let tree='';
- const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/'+'\\n';walk(sub,depth+1);}
-  for(const f of node.files)tree+='  '.repeat(depth)+f.name+'\\n';};
+ const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/'+'\n';walk(sub,depth+1);}
+  for(const f of node.files)tree+='  '.repeat(depth)+f.name+'\n';};
  walk(treeRoot,0);
  const budget=48000;let used=0;const included=new Set();
  const pick=path=>{const f=p.files[path];if(!f||f.binary||included.has(path))return false;const c=f.content||'';
   if(used+c.length+path.length>budget)return false;used+=c.length;included.add(path);return true;};
  force.forEach(pick);
  /* only=true means no keyword-based or broad fallback reads. */
- if(!only){const words=(request||'').toLowerCase().match(/[a-z0-9_\\-\\.]+/g)||[];
+ if(!only){const words=(request||'').toLowerCase().match(/[a-z0-9_\-\.]+/g)||[];
   const score=path=>{const lp=path.toLowerCase();return words.reduce((n,w)=>n+(w.length>2&&lp.includes(w)?3:0),0);};
   let extra=0;for(const path of paths.sort((a,b)=>score(b)-score(a))){if(extra>=2||score(path)<=0)break;if(pick(path))extra++;}}
- let blocks='';for(const path of included)blocks+='\\n### FILE: '+path+'\\n'+(p.files[path].content||'')+'\\n### END FILE\\n';
+ let blocks='';for(const path of included)blocks+='\n### FILE: '+path+'\n'+(p.files[path].content||'')+'\n### END FILE\n';
  return{tree,blocks,included,total:paths.length,chars:used};
 }
 function parseOps(content){const m=(content||'').match(/```flayfiles\s*([\s\S]*?)```/);
