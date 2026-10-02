@@ -1484,11 +1484,14 @@ function buildProjectContext(p,request,force=[],opts={}){const paths=Object.keys
  const words=(request||'').toLowerCase().match(/[a-z0-9_\-\.]+/g)||[];
  const score=path=>{const lp=path.toLowerCase();let s=0;words.forEach(w=>{if(w.length>2&&lp.includes(w))s+=3;});if(/\.(xml|gradle|kt|java)$/.test(lp))s+=1;return s;};
  const targeted=!!opts.targeted;
- const maxFiles=targeted?1:60,budget=targeted?24000:48000;let used=0;const included=new Set();
+ const maxFiles=targeted?4:60,budget=targeted?24000:48000;let used=0;const included=new Set();
  const pick=path=>{const f=p.files[path];if(!f||f.binary||included.has(path))return false;const c=f.content||'';
   if(used+c.length+path.length>budget)return false;used+=c.length;included.add(path);return true;};
  force.forEach(pick);
  if(!targeted){for(const path of[...paths].sort((a,b)=>score(b)-score(a))){if(included.size>=maxFiles)break;pick(path);}}
+ else if(included.size<maxFiles){
+  for(const path of force.filter(x=>p.files[x]&&!included.has(x)))pick(path);
+ }
  let blocks='';
  for(const path of included){blocks+='\n### FILE: '+path+'\n'+(p.files[path].content||'')+'\n### END FILE\n';}
  return{tree,blocks,included,total:paths.length,chars:used};}
@@ -1565,9 +1568,11 @@ function saveOne(p,it,content){const path=it.path;
  if(it.action==='delete'){delete p.files[path];return{path,action:'delete',ok:true};}
  const ex=!!p.files[path];p.files[path]={content};return{path,action:ex?'modify':'create',ok:true};}
 async function genOne(p,am,it,i,ctx,done){let feedback='';
- for(let attempt=0;attempt<2;attempt++){
+ for(let attempt=0;attempt<3;attempt++){
   const related=ctx.mode==='buildfix'?errorFiles(p,ctx.errText):[];
-  const force=[it.path,...done.slice(-2),...ctx.read,...related].filter(x=>p.files[x]);
+  const force=ctx.mode==='buildfix'
+   ? [it.path,...related].filter(x=>p.files[x])
+   : [it.path,...done.slice(-2),...ctx.read].filter(x=>p.files[x]);
   const c=buildProjectContext(p,ctx.task.slice(0,2000)+' '+it.path+' '+it.reason,force,{targeted:true});
   const list=am.queue.map((q,k)=>(k+1)+'. '+q.action+' '+q.path+' ['+q.status+']'+(q.reason?' - '+q.reason:'')).join('\n');
   let prompt=ctx.task+'\n\nFILE QUEUE (sequential; completed files are already saved and shown below in their saved state):\n'+list+
@@ -1577,7 +1582,8 @@ async function genOne(p,am,it,i,ctx,done){let feedback='';
   const out=await llm(am,[{role:'system',content:FILE_SYS},{role:'user',content:prompt}]);
   const ex=extractFile(out),err=ex.error||checkFile(it.path,ex.content);
   if(!err)return ex.content;
-  feedback=err;}
+  feedback=err;
+  am._genCurrent=it.path+' (retry: '+feedback+')';updateLive(am,'#agentMsgs');}
  throw pErr(feedback);}
 async function runQueue(p,am,ctx,snap){
  const ops=am.ops||(am.ops={results:[],diffs:{}});const results=ops.results,diffs=ops.diffs,done=[];
