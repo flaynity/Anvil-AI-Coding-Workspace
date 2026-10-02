@@ -1516,7 +1516,7 @@ function extractNeeds(content,included,p){const needs=[];const re=/(?:^|\n)NEED:
 /* ===== SEQUENTIAL AGENT PIPELINE ===== */
 const MAX_QUEUE=25;
 const pErr=m=>Object.assign(new Error(m),{pipeline:true});
-const PLAN_SYS=`You are the planning stage of Flay AI, a sequential project coding agent. Analyze the request and the provided project, then output ONLY one JSON object (no prose, no code): {"summary":"one short sentence","answer":"","read":["existing paths worth reading while writing files"],"files":[{"path":"relative/path","action":"create|modify|delete|folder","reason":"short"}]}
+const PLAN_SYS=`You are the planning stage of Flay AI, a sequential project coding agent. Analyze the request and the provided project, then output ONLY one JSON object (no prose, no code): {"root_cause":"build errors only: the exact earliest cause in 1-2 sentences","summary":"one short sentence","answer":"","read":["existing paths worth reading while writing files"],"files":[{"path":"relative/path","action":"create|modify|delete|folder","reason":"short"}]}
 Rules: list only files that truly must change, in dependency order (models/resources/base classes before their users; for build errors the root-cause file first). Never include a file that needs no change. Existing paths must match the tree exactly. Max ${MAX_QUEUE} files. Never include file contents. If the request is a question, or needs no file change, or information needed for a safe fix is missing, return files:[] and put the reply in "answer". For build errors: find the earliest root cause, ignore cascading symptoms, no unrelated files, no redesign.`;
 const FILE_SYS=`You are Flay AI writing exactly ONE project file. Output ONLY the complete file content inside a single fenced block tagged flayfile. No explanations, no other text. Use only packages, classes, methods, R.id, R.layout and resources that exist in the provided project files (saved files from earlier queue steps are included); never invent identifiers. When modifying, preserve existing behavior and make the smallest correct change. For build fixes, change only what the root cause requires.`;
 async function llm(am,msgs){let buf='';
@@ -1569,7 +1569,7 @@ async function genOne(p,am,it,i,ctx,done){let feedback='';
   feedback=err;}
  throw pErr(feedback);}
 async function runQueue(p,am,ctx,snap){
- const results=[],diffs={},done=[];am.ops={results,diffs};
+ const ops=am.ops||(am.ops={results:[],diffs:{}});const results=ops.results,diffs=ops.diffs,done=[];
  for(let i=0;i<am.queue.length;i++){const it=am.queue[i];
   if(it.status==='completed'){done.push(it.path);continue;}
   if(S.fileLock)throw pErr('Another file operation is still running.');
@@ -1601,6 +1601,49 @@ function qUpdate(am){const mel=$('#agentMsgs').querySelector(`[data-mid="${am.id
  const old=mel.querySelector('.card.queue');
  if(old)old.replaceWith(nw);else(mel.querySelector('.ai-st')||mel.querySelector('.msg-body')).before(nw);
  updateLive(am,'#agentMsgs');}
+function extractBuildErrors(log){
+ const L=String(log||'').split('\n'),keep=new Set();
+ L.forEach((l,i)=>{if(/(^e: |error:|Unresolved reference|AAPT|FAILURE:|What went wrong|Execution failed|cannot find symbol|does not exist|Could not resolve|Duplicate|\bFAILED\b)/i.test(l))
+  for(let k=Math.max(0,i-1);k<=Math.min(L.length-1,i+3);k++)keep.add(k);});
+ const body=[...keep].sort((a,b)=>a-b).map(i=>L[i]).join('\n');
+ return ('KEY ERROR LINES:\n'+body.slice(0,12000)+'\n\nLOG TAIL:\n'+L.slice(-40).join('\n')).slice(0,16000);}
+function crossCheck(p){const F=p.files,ids=new Set(),lay=new Set(),drw=new Set(),str=new Set(),decl=new Set(),out=[],seen=new Set();
+ const add=(path,msg)=>{const k=path+msg;if(!seen.has(k)&&out.length<30){seen.add(k);out.push({path,msg});}};
+ for(const[path,f]of Object.entries(F)){let m;
+  if((m=path.match(/\/res\/layout[^/]*\/(\w+)\.xml$/)))lay.add(m[1]);
+  if((m=path.match(/\/res\/(?:drawable|mipmap)[^/]*\/(\w+)\./)))drw.add(m[1]);
+  if(f.binary)continue;const c=f.content||'';
+  if(path.endsWith('.xml')){for(const x of c.matchAll(/@\+id\/(\w+)/g))ids.add(x[1]);for(const x of c.matchAll(/<string\s+name="(\w+)"/g))str.add(x[1]);}
+  if(/\.(kt|java)$/.test(path))for(const x of c.matchAll(/\b(?:class|object|interface|typealias)\s+(\w+)/g))decl.add(x[1]);}
+ for(const[path,f]of Object.entries(F)){if(f.binary)continue;const c=f.content||'';
+  if(/\.(kt|java)$/.test(path)){
+   for(const x of c.matchAll(/(?<![\w.])R\.id\.(\w+)/g))if(!ids.has(x[1]))add(path,'R.id.'+x[1]+' is not defined in any layout');
+   for(const x of c.matchAll(/(?<![\w.])R\.layout\.(\w+)/g))if(!lay.has(x[1]))add(path,'R.layout.'+x[1]+' does not exist');
+   for(const x of c.matchAll(/(?<![\w.])R\.string\.(\w+)/g))if(!str.has(x[1]))add(path,'R.string.'+x[1]+' is not defined');
+   for(const x of c.matchAll(/(?<![\w.])R\.(?:drawable|mipmap)\.(\w+)/g))if(!drw.has(x[1]))add(path,'drawable '+x[1]+' does not exist');
+   if(p.package)for(const x of c.matchAll(/^import\s+([\w.]+)\.([A-Z]\w*)\s*$/gm))
+    if(x[1].startsWith(p.package)&&!/databinding/.test(x[1])&&!['R','BuildConfig'].includes(x[2])&&!decl.has(x[2]))add(path,'import '+x[1]+'.'+x[2]+' - class not found in project');}
+  if(path.endsWith('AndroidManifest.xml'))for(const x of c.matchAll(/<(?:activity|service|receiver|provider)\b[^>]*?android:name="([^"]+)"/g)){
+   const n=x[1].split('.').pop();if((x[1].startsWith('.')||(p.package&&x[1].startsWith(p.package)))&&!decl.has(n))add(path,'manifest component '+x[1]+' has no class');}}
+ return out;}
+async function planStep(p,am,history,text,atts,mode,errText){
+ const pc=buildProjectContext(p,text+' '+errText.slice(0,3000),mode==='buildfix'?errorFiles(p,errText):[]);
+ am.activity.push({icon:'folder',label:'Project analyzed — '+pc.included.size+'/'+pc.total+' files read',status:'done'});
+ let task='USER REQUEST:\n'+(text||'Work with the attached files.');
+ if(mode==='buildfix')task+='\n\nMODE: BUILD ERROR FIX. Think through the WHOLE error, find the earliest root cause from the real project files, fix only what is required so the next build passes.\n\n'+extractBuildErrors(errText);
+ for(const a of atts)if(a.kind!=='builderror')task+='\n\n### ATTACHED: '+(a.path||a.name)+'\n'+(a.content||'')+'\n### END ATTACHED';
+ let j=null,fb='';
+ for(let t=0;t<2&&!j;t++){
+  am._genCurrent='analyzing the error and planning fixes';updateLive(am,'#agentMsgs');
+  const raw=await llm(am,[{role:'system',content:PLAN_SYS},...history,{role:'user',content:task+'\n\nPROJECT TREE:\n'+pc.tree+'\nFILES PROVIDED:'+pc.blocks+fb}]);
+  const k=parseJsonObj(raw);
+  if(k&&mode==='buildfix'&&!(k.files||[]).length&&t===0){fb='\n\nYour previous reply listed no files. A build error is fixed by changing real project files: return the JSON with the files that must change. Use "answer" only if a required file/information is truly missing. Never put code in "answer".';continue;}
+  if(k)j=k;else fb='\n\nYour previous reply was not a valid JSON object. Reply with ONLY the JSON object.';}
+ am._genCurrent=null;
+ if(!j)throw pErr('The AI did not return a valid file plan. Nothing was changed.');
+ if(j.root_cause){am.activity.push({icon:'brain',label:'Root cause: '+String(j.root_cause).slice(0,300),status:'done'});am._actDirty=true;}
+ return{j,queue:normPlan(p,j),ctx:{mode,errText,task,read:(j.read||[]).map(normPath).filter(x=>p.files[x]),summary:String(j.summary||'')}};}
+
 function setPending(p,am,ctx){p.pendingRun={mode:ctx.mode,errText:ctx.errText,task:ctx.task,read:ctx.read,
  items:am.queue.filter(q=>q.status!=='completed').map(q=>({path:q.path,action:q.action,reason:q.reason}))};}
 function qSummary(am){const L={create:'Created',modify:'Updated',delete:'Deleted',folder:'Created folder'};
@@ -1625,22 +1668,19 @@ async function sendAgent(){if(S.agentStreaming)return;
    const history=p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-9,-1).map(m=>({role:m.role,content:stripFences(m.content)}));
    const be=atts.find(a=>a.kind==='builderror'),mode=be?'buildfix':'edit',errText=be?be.content:'';
    am.mode=mode;
-   const pc=buildProjectContext(p,text+' '+errText.slice(0,3000),be?errorFiles(p,errText):[]);
-   am.activity.push({icon:'folder',label:'Project analyzed — '+pc.included.size+'/'+pc.total+' files read',status:'done'});
-   let task='USER REQUEST:\n'+(text||'Work with the attached files.');
-   if(be)task+='\n\nMODE: BUILD ERROR FIX. Identify the root cause from the error and the real project files, change only what is required, minimal fix.\n\n'+errText.slice(0,20000);
-   for(const a of atts)if(a.kind!=='builderror')task+='\n\n### ATTACHED: '+(a.path||a.name)+'\n'+(a.content||'')+'\n### END ATTACHED';
-   am._genCurrent='project plan';updateLive(am,'#agentMsgs');
-   const raw=await llm(am,[{role:'system',content:PLAN_SYS},...history,{role:'user',content:task+'\n\nPROJECT TREE:\n'+pc.tree+'\nFILES PROVIDED:'+pc.blocks}]);
-   am._genCurrent=null;
-   const j=parseJsonObj(raw);if(!j)throw pErr('The AI did not return a valid file plan. Nothing was changed.');
-   am.queue=normPlan(p,j);
-   ctx={mode,errText,task,read:(j.read||[]).map(normPath).filter(x=>p.files[x])};
-   if(!am.queue.length){am.content=String(j.answer||j.summary||'No file changes were needed.');am.status='done';return;}
-   ctx.summary=String(j.summary||'');}
+   const r=await planStep(p,am,history,text,atts,mode,be?be.content:'');
+   ctx=r.ctx;am.queue=r.queue;
+   if(!am.queue.length){am.content=String(r.j.answer||r.j.summary||'No file changes were needed.').replace(/\`\`\`[\s\S]*?\`\`\`/g,'(code omitted — code is only written to project files)');am.status='done';}
   qUpdate(am);
   const snap=resume&&p.lastSnapshot?p.lastSnapshot.files:JSON.parse(JSON.stringify(p.files));
-  const failed=await runQueue(p,am,ctx,snap);
+  let failed=await runQueue(p,am,ctx,snap);
+  if(!failed){
+   const issues=crossCheck(p);
+   if(issues.length){
+    am.activity.push({icon:'search',label:'Project check found '+issues.length+' reference problem(s) — repairing before you rebuild',status:'warn'});am._actDirty=true;
+    const txt='[PROJECT CHECK]\\n'+issues.map(i=>i.path+': '+i.msg).join('\\n');
+    const r2=await planStep(p,am,[],ctx.task.slice(0,1500),[],'buildfix',txt);
+    if(r2.queue.length){am.queue.push(...r2.queue);ctx.task=r2.ctx.task;ctx.errText+='\\n'+txt;qUpdate(am);failed=await runQueue(p,am,ctx,snap);}}}
   if(failed){setPending(p,am,ctx);am.status='error';
    am.content='**Generation paused** at `'+failed.path+'`: '+failed.error+'\n\n'+(qSummary(am)?'Saved so far:\n'+qSummary(am)+'\n\n':'')+'Remaining files were not started. Send "continue" to retry from this file.';}
   else{p.pendingRun=null;
