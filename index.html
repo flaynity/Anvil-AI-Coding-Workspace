@@ -1517,7 +1517,7 @@ function extractNeeds(content,included,p){const needs=[];const re=/(?:^|\n)NEED:
 const MAX_QUEUE=25;
 const pErr=m=>Object.assign(new Error(m),{pipeline:true});
 const PLAN_SYS=`You are the planning stage of Flay AI, a sequential project coding agent. Analyze the request and the provided project, then output ONLY one JSON object (no prose, no code): {"root_cause":"build errors only: the exact earliest cause in 1-2 sentences","summary":"one short sentence","answer":"","read":["existing paths worth reading while writing files"],"files":[{"path":"relative/path","action":"create|modify|delete|folder","reason":"short"}]}
-Rules: list only files that truly must change, in dependency order (models/resources/base classes before their users; for build errors the root-cause file first). Never include a file that needs no change. Existing paths must match the tree exactly. Max ${MAX_QUEUE} files. Never include file contents. If the request is a question, or needs no file change, or information needed for a safe fix is missing, return files:[] and put the reply in "answer". For BUILD ERROR FIX: the attached build log is authoritative. Identify the earliest actionable Gradle/compiler error, distinguish it from later cascading errors, and return every existing project file that must change to remove that root cause. Do not return files:[] merely because the exact fix is uncertain; inspect the supplied project files and choose the smallest evidence-based fix.`;
+Rules: list only files that truly must change, in dependency order (models/resources/base classes before their users; for build errors the root-cause file first). Never include a file that needs no change. Existing paths must match the tree exactly. Max ${MAX_QUEUE} files. Never include file contents. If the request is a question, or needs no file change, or information needed for a safe fix is missing, return files:[] and put the reply in "answer". For BUILD ERROR FIX: the attached build log is authoritative. Identify the earliest actionable Gradle/compiler error, distinguish it from later cascading errors, and return every existing project file that must change to remove that root cause. If the failure is infrastructure/toolchain/runner setup (for example sdkmanager unavailable, Android SDK setup failure, missing GitHub runner tools, Java/Gradle executable unavailable before the project build starts), DO NOT modify project files: return files:[] and explain in "answer" that the build server/workflow must be fixed. Do not return files:[] merely because a real project Gradle/compiler/resource error is uncertain; inspect the supplied project files and choose the smallest evidence-based fix.`;
 const FILE_SYS=`You are Flay AI writing exactly ONE project file. Output ONLY the complete file content inside a single fenced block tagged flayfile. No explanations, no other text. Use only packages, classes, methods, R.id, R.layout and resources that exist in the provided project files (saved files from earlier queue steps are included); never invent identifiers. When modifying, preserve existing behavior and make the smallest correct change. For BUILD ERROR FIX, use the real build log as authoritative evidence, fix the earliest root cause rather than a later cascade, and make a concrete source/configuration change when the supplied project proves one is required. Do not merely explain the error or leave the file unchanged.`;
 async function llm(am,msgs){let buf='';
  await providerChat({provider:activeProvider(),messages:msgs,signal:S.agentAbort.signal,
@@ -1601,6 +1601,11 @@ function qUpdate(am){const mel=$('#agentMsgs').querySelector(`[data-mid="${am.id
  const old=mel.querySelector('.card.queue');
  if(old)old.replaceWith(nw);else(mel.querySelector('.ai-st')||mel.querySelector('.msg-body')).before(nw);
  updateLive(am,'#agentMsgs');}
+function isInfrastructureBuildError(log){
+ const s=String(log||'').toLowerCase();
+ return /sdkmanager is not available|android sdk.*(not available|setup|provision)|prepare android sdk|setup android sdk|runner.*(tool|sdk)|hosted runner|github actions.*(runner|environment)|command not found.*(sdkmanager|gradle|java)|gradle wrapper and system gradle are both unavailable/.test(s)
+   && !/what went wrong|execution failed|compilation error|unresolved reference|cannot find symbol|aapt2|resource .* not found|duplicate class|could not resolve/.test(s);
+}
 function extractBuildErrors(log){
  const L=String(log||'').split('\n'),keep=new Set();
  L.forEach((l,i)=>{if(/(^e: |error:|Unresolved reference|AAPT|FAILURE:|What went wrong|Execution failed|cannot find symbol|does not exist|Could not resolve|Duplicate|\bFAILED\b)/i.test(l))
@@ -1637,7 +1642,7 @@ async function planStep(p,am,history,text,atts,mode,errText){
   am._genCurrent='analyzing the error and planning fixes';updateLive(am,'#agentMsgs');
   const raw=await llm(am,[{role:'system',content:PLAN_SYS},...history,{role:'user',content:task+'\n\nPROJECT TREE:\n'+pc.tree+'\nFILES PROVIDED:'+pc.blocks+fb}]);
   const k=parseJsonObj(raw);
-  if(k&&mode==='buildfix'&&!(k.files||[]).length&&t===0){fb='\n\nYour previous reply listed no files. A build error is fixed by changing real project files: return the JSON with the files that must change. Use "answer" only if a required file/information is truly missing. Never put code in "answer".';continue;}
+  if(k&&mode==='buildfix'&&!(k.files||[]).length&&t===0&&!isInfrastructureBuildError(errText)){fb='\n\nYour previous reply listed no files. A real project build error is fixed by changing project files: return the JSON with the files that must change. Use "answer" only if a required file/information is truly missing. Never put code in "answer".';continue;}
   if(k)j=k;else fb='\n\nYour previous reply was not a valid JSON object. Reply with ONLY the JSON object.';}
  am._genCurrent=null;
  if(!j)throw pErr('The AI did not return a valid file plan. Nothing was changed.');
@@ -1673,7 +1678,8 @@ async function sendAgent(){if(S.agentStreaming)return;
    if(!am.queue.length){am.content=String(r.j.answer||r.j.summary||'No file changes were needed.').replace(/\`\`\`[\s\S]*?\`\`\`/g,'(code omitted — code is only written to project files)');am.status='done';}
   qUpdate(am);
   const snap=resume&&p.lastSnapshot?p.lastSnapshot.files:JSON.parse(JSON.stringify(p.files));
-  let failed=await runQueue(p,am,ctx,snap);
+  let failed=null;
+  if(am.queue.length) failed=await runQueue(p,am,ctx,snap);
   if(!failed){
    const issues=crossCheck(p);
    if(issues.length){
@@ -1952,7 +1958,9 @@ function buildFixFromTerminal(){
  goBack();if($('.screen.active').id!=='screen-project')return;
  const evidence='[BUILD ERROR]\nBuild ID: '+(S._buildJobId||'n/a')+'\nStatus: FAILED\n\n'+err;
  S.agentAttachments=[{kind:'builderror',path:'[BUILD ERROR]',name:'build-error.log',size:evidence.length,content:evidence}];
- setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value='Fix the BUILD ERROR above. Analyze the earliest real Gradle/compiler cause, modify the required project files, save each file sequentially, then verify the project references. Do not just explain the error.';autoGrow(inp);inp.focus();
+ setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=isInfrastructureBuildError(err)
+  ? 'Analyze the BUILD ERROR above. If this is a GitHub Actions/Android build-server infrastructure failure, do not modify project files; explain the exact server/workflow component that must be fixed. If it is a real project Gradle/compiler/resource error, modify the required project files sequentially and verify the references.'
+  : 'Fix the BUILD ERROR above. Analyze the earliest real Gradle/compiler cause, modify the required project files, save each file sequentially, then verify the project references. Do not just explain the error.';autoGrow(inp);inp.focus();
 }
 
 $('#btBack').onclick=goBack;
