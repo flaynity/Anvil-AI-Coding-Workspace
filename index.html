@@ -1660,7 +1660,10 @@ async function planStep(p,am,history,text,atts,mode,errText){
   am._genCurrent='analyzing the error and planning fixes';updateLive(am,'#agentMsgs');
   const raw=await llm(am,[{role:'system',content:PLAN_SYS},...history,{role:'user',content:task+'\n\nPROJECT TREE:\n'+pc.tree+'\nFILES PROVIDED:'+pc.blocks+fb}]);
   const k=parseJsonObj(raw);
-  if(k&&mode==='buildfix'&&!(k.files||[]).length&&t===0&&!isInfrastructureBuildError(errText)){fb='\n\nYour previous reply listed no files. A real project build error is fixed by changing project files: return the JSON with the files that must change. Use "answer" only if a required file/information is truly missing. Never put code in "answer".';continue;}
+  if(k&&mode==='buildfix'&&!(k.files||[]).length&&!isInfrastructureBuildError(errText)){
+  if(targetedFiles.length&&t===0){fb='\n\nA real project build error is attached. Do not repeat or summarize the BUILD FAILED message. Return the smallest existing source/config file that must be modified to fix the earliest compiler/Gradle error. Start with the exact error file; add another file only when a concrete dependency/reference requires it. Never use "answer" for a real project error.';continue;}
+  if(t===0){fb='\n\nDo not return the build error as the answer. This is a real project build failure, not an explanation request. Identify the earliest actionable compiler/Gradle error and return the existing file(s) that must be changed. Never put the BUILD FAILED text in "answer".';continue;}
+ }
   if(k)j=k;else fb='\n\nYour previous reply was not a valid JSON object. Reply with ONLY the JSON object.';}
  am._genCurrent=null;
  if(!j)throw pErr('The AI did not return a valid file plan. Nothing was changed.');
@@ -1990,7 +1993,7 @@ function buildFixFromTerminal(){
  if(infrastructure){
   inp.value='Build server timeout detected. Do not send this infrastructure message to the AI provider. Show a single clean infrastructure-failure result and do not modify project files.';
  }else{
-  inp.value='Fix the BUILD ERROR above. Analyze the earliest real Gradle/compiler cause, modify the required project files sequentially, save each file sequentially, then verify the project references. Do not just explain the error.';
+  inp.value='Fix the attached BUILD ERROR. Do not repeat, quote, or return the build error as the answer. Find the earliest actionable Gradle/compiler cause, modify the required project files sequentially, save each file, and verify the references. Only report the files actually changed.';
  }
  autoGrow(inp);inp.focus();
 }
