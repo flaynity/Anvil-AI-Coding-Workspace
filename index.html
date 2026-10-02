@@ -1614,7 +1614,7 @@ function qUpdate(am){const mel=$('#agentMsgs').querySelector(`[data-mid="${am.id
  updateLive(am,'#agentMsgs');}
 function isInfrastructureBuildError(log){
  const s=String(log||'').toLowerCase();
- return /sdkmanager is not available|android sdk.*(not available|setup|provision)|prepare android sdk|setup android sdk|runner.*(tool|sdk)|hosted runner|github actions.*(runner|environment)|command not found.*(sdkmanager|gradle|java)|gradle wrapper and system gradle are both unavailable/.test(s)
+ return /build server request timed out|build timed out|request timed out|timeout while waiting for the build server|sdkmanager is not available|android sdk.*(not available|setup|provision)|prepare android sdk|setup android sdk|runner.*(tool|sdk)|hosted runner|github actions.*(runner|environment)|command not found.*(sdkmanager|gradle|java)|gradle wrapper and system gradle are both unavailable/.test(s)
    && !/what went wrong|execution failed|compilation error|unresolved reference|cannot find symbol|aapt2|resource .* not found|duplicate class|could not resolve/.test(s);
 }
 function extractBuildErrors(log){
@@ -1658,7 +1658,9 @@ async function planStep(p,am,history,text,atts,mode,errText){
  am._genCurrent=null;
  if(!j)throw pErr('The AI did not return a valid file plan. Nothing was changed.');
  if(j.root_cause){am.activity.push({icon:'brain',label:'Root cause: '+String(j.root_cause).slice(0,300),status:'done'});am._actDirty=true;}
- return{j,queue:normPlan(p,j),ctx:{mode,errText,task,read:(j.read||[]).map(normPath).filter(x=>p.files[x]),summary:String(j.summary||'')}};}
+ const infrastructure=mode==='buildfix'&&isInfrastructureBuildError(errText);
+ if(infrastructure){j.files=[];j.read=[];j.answer=String(j.answer||j.summary||'Build server infrastructure failure. No project files were modified.');}
+ return{j,queue:infrastructure?[]:normPlan(p,j),ctx:{mode,errText,task,read:infrastructure?[]:(j.read||[]).map(normPath).filter(x=>p.files[x]),summary:String(j.summary||''),infrastructure}};}
 
 function setPending(p,am,ctx){p.pendingRun={mode:ctx.mode,errText:ctx.errText,task:ctx.task,read:ctx.read,
  items:am.queue.filter(q=>q.status!=='completed').map(q=>({path:q.path,action:q.action,reason:q.reason}))};}
@@ -1691,7 +1693,7 @@ async function sendAgent(){if(S.agentStreaming)return;
   const snap=resume&&p.lastSnapshot?p.lastSnapshot.files:JSON.parse(JSON.stringify(p.files));
   let failed=null;
   if(am.queue.length) failed=await runQueue(p,am,ctx,snap);
-  if(!failed){
+  if(!failed&&!ctx.infrastructure){
    const issues=crossCheck(p);
    if(issues.length){
     am.activity.push({icon:'search',label:'Project check found '+issues.length+' reference problem(s) — repairing before you rebuild',status:'warn'});am._actDirty=true;
@@ -1703,7 +1705,11 @@ async function sendAgent(){if(S.agentStreaming)return;
   else{p.pendingRun=null;
    const bad=(p.tech==='imported'?[]:validateProject(p)).filter(x=>!x.ok);
    if(bad.length)am.activity.push({icon:'warn',label:'Project check: '+bad.map(b=>b.label).join('; '),status:'warn'});
-   am.content=(ctx.summary?ctx.summary+'\n\n':'')+(am.mode==='buildfix'?'Applied build fixes directly to the project files. Run a new build to verify.':'Changes were applied directly to the project files.')+'\n\n'+qSummary(am);
+   if(ctx.infrastructure){
+    am.content='**Build server infrastructure failure**\n\n'+String(ctx.summary||'Build server request timed out. No project files were modified. Please retry the build or fix the build server/workflow timeout.');
+   }else{
+    am.content=(ctx.summary?ctx.summary+'\n\n':'')+(am.mode==='buildfix'?'Applied build fixes directly to the project files. Run a new build to verify.':'Changes were applied directly to the project files.')+'\n\n'+qSummary(am);
+   }
    am.status='done';}}}
  catch(e){
   if(ctx&&am.queue.some(q=>q.status!=='completed'))setPending(p,am,ctx);
