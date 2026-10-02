@@ -1532,7 +1532,7 @@ function normPlan(p,j){const out=[],seen=new Set();
   if(a==='delete'){if(!ex)continue;}else if(a!=='folder')a=ex?'modify':'create';
   seen.add(path);out.push({path,action:a,reason:String(f.reason||'').slice(0,160),status:'queued'});}
  return out.slice(0,MAX_QUEUE);}
-function errorFiles(p,log){const out=new Set(['app/build.gradle','build.gradle','settings.gradle','app/src/main/AndroidManifest.xml']);
+function errorFiles(p,log){const out=new Set(['app/build.gradle','build.gradle','settings.gradle','gradle.properties','app/src/main/AndroidManifest.xml']);
  const names=new Set((String(log).match(/[\w\-./]+\.(?:kt|java|xml|gradle|kts|properties)/g)||[]).map(s=>s.split('/').pop()));
  for(const path of Object.keys(p.files))if(names.has(path.split('/').pop()))out.add(path);
  return [...out].filter(x=>p.files[x]).slice(0,25);}
@@ -1859,7 +1859,7 @@ function terminalRender(logs, state) {
  for (let i = termRenderedLines; i < lines.length; i++) {
   let line = lines[i];
   if (!line.trim()) continue;
-  line = line.replace(/GitHub Actions/ig, 'Remote Builder'); // Obfuscate GA
+  /* Keep GitHub Actions log text exact so the terminal mirrors GitHub. */
 
   let cls = '';
   if (line.includes('[OK]') || line.includes('SUCCESS') || line.includes('BUILD SUCCESSFUL')) cls = 'ok';
@@ -1867,7 +1867,7 @@ function terminalRender(logs, state) {
   else if (line.startsWith('$') || line.includes('[BUILD]') || line.includes('Task :')) cls = 'cmd';
   else if (line.includes('[INFO]') || line.includes('[QUEUE]')) cls = 'dim';
 
-  terminalQueueLine(line, cls, true, '#btLog');
+  terminalQueueLine(line, cls, false, '#btLog');
  }
  termRenderedLines = lines.length;
  terminalSet(state, S._buildJobId || '');
@@ -1904,7 +1904,7 @@ async function startBuildTerminal(){
   
   const started=Date.now(),maxWait=30*60*1000;let lastStatus='';
   while(Date.now()-started<maxWait){
-   await new Promise(r=>setTimeout(r,lastStatus?'2500':'1200'));
+   await new Promise(r=>setTimeout(r,lastStatus?'700':'500'));
    const sr=await fetch(statusUrl,{method:'GET',headers:{Accept:'application/json'},signal:withTimeout(30000)});
    const sct=sr.headers.get('content-type')||'';let s=null;if(sct.includes('json')){try{s=await sr.json()}catch(_){}}
    if(!sr.ok)throw new Error(describeHttp(sr.status,s?JSON.stringify(s):''));
@@ -1950,9 +1950,9 @@ async function startBuildTerminal(){
 function buildFixFromTerminal(){
  const p=S.project,err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
  goBack();if($('.screen.active').id!=='screen-project')return;
- S.agentAttachments=[{kind:'builderror',path:'[BUILD ERROR]',name:'build-error.log',size:err.length,
-  content:'[BUILD ERROR]\nBuild ID: '+(S._buildJobId||'n/a')+'\nStatus: FAILED\n\n'+err}];
- setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value='Fix';autoGrow(inp);inp.focus();
+ const evidence='[BUILD ERROR]\nBuild ID: '+(S._buildJobId||'n/a')+'\nStatus: FAILED\n\n'+err;
+ S.agentAttachments=[{kind:'builderror',path:'[BUILD ERROR]',name:'build-error.log',size:evidence.length,content:evidence}];
+ setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value='Fix the BUILD ERROR above. Analyze the earliest real Gradle/compiler cause, modify the required project files, save each file sequentially, then verify the project references. Do not just explain the error.';autoGrow(inp);inp.focus();
 }
 
 $('#btBack').onclick=goBack;
