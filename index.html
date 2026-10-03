@@ -1847,7 +1847,8 @@ function buildFixFromTerminal(){
  S.agentAttachments=[{kind:'doc',path:'build-error.log',name:'build-error.log',size:err.length,content:err}];
  S.agentMode='buildfix';S.fixForce=force;
  const prompt='Fix the Android build failure using the exact attached logs. First explain the confirmed cause internally, then read only the named error files and directly related dependencies. If another project file is needed, output NEED: exact/path and stop. Make the smallest necessary patch, one file at a time. If the log indicates infrastructure/network/quota failure rather than project code, do not modify files. Do not print source code in chat; save actual changes to Code Tab and return a short summary.';
- const backId=$('.screen.active')?.id;goBack();if(backId!=='screen-project')return;
+ if($('.screen.active')?.id!=='screen-project')goBack();
+ if($('.screen.active')?.id!=='screen-project')openProject(p);
  setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=prompt;autoGrow(inp);persistProject(p);
  setTimeout(()=>sendAgent(),120);
 }
