@@ -1899,5 +1899,88 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
  attachTermScroll('#vtLog');
  if(typeof JSZip==='undefined')toast('JSZip could not load (offline?). ZIP import/export is unavailable.','warn');})();
 </script>
+
+<!-- FLAY AI UPDATE: paste this whole block into index.html just before the closing body tag, after the existing script. No other edits needed. -->
+<style>
+.bt-info{flex:none;max-height:36%;overflow:auto;padding:10px 14px;border-bottom:1px solid #262626;background:#050505;font-size:11.5px;line-height:1.55;color:#C8C8C8;font-family:ui-monospace,Menlo,Consolas,monospace}
+.bt-info span{color:#858585}.bt-info .j{margin-top:6px;color:#fff}.bt-info .st{padding-left:14px;color:#9a9a9a}
+.card.queue .genrow .btn{margin-left:6px}
+</style>
+<script>
+(function(){
+const BASE='https://flay-ai.flaynity.workers.dev';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const pk=(o,...k)=>{for(const x of k)if(o&&o[x]!=null&&o[x]!=='')return o[x];};
+const dur=(a,b)=>{const x=Date.parse(a),y=Date.parse(b);if(!x||!y||y<x)return '';const s=Math.round((y-x)/1000);return s>=60?Math.floor(s/60)+'m '+(s%60)+'s':s+'s';};
+const capLog=(t,n)=>t.length>n?t.slice(0,Math.floor(n*.1))+'\n...[omitted]...\n'+t.slice(-Math.floor(n*.9)):t;
+function normBuild(s){const r=s.run||s.workflowRun||s.workflow_run||{},w=s.workflow||{};
+ const run={workflowName:pk(w,'name')||pk(s,'workflowName')||pk(r,'name'),workflowId:pk(w,'id')||pk(r,'workflow_id','workflowId')||pk(s,'workflowId'),id:pk(r,'id','runId')||pk(s,'runId'),number:pk(r,'run_number','runNumber')||pk(s,'runNumber'),ref:pk(r,'head_branch','branch','ref')||pk(s,'branch','ref'),sha:pk(r,'head_sha','sha','commit')||pk(s,'sha','commit'),status:pk(r,'status')||pk(s,'runStatus'),conclusion:pk(r,'conclusion')||pk(s,'conclusion'),started:pk(r,'run_started_at','startedAt','created_at')||pk(s,'startedAt'),completed:pk(r,'completed_at','completedAt')||pk(s,'completedAt'),url:pk(r,'html_url')||pk(s,'htmlUrl')};
+ const jobs=(s.jobs||r.jobs||[]).map(j=>({id:j.id,name:j.name,status:j.status,conclusion:j.conclusion,started:pk(j,'started_at','startedAt'),completed:pk(j,'completed_at','completedAt'),runner:pk(j,'runner_name','runnerName','runner'),logs:j.logs,steps:(j.steps||[]).map(t=>({n:t.number,name:t.name,status:t.status,conclusion:t.conclusion}))}));
+ return{run,jobs};}
+function infoEl(){let el=$('#btInfo');if(!el){el=document.createElement('div');el.id='btInfo';el.className='bt-info hidden';$('#screen-build-terminal .bt-head').after(el);}return el;}
+function renderInfo(b){const el=infoEl(),r=b.run,rows=[];
+ const kv=(k,v)=>{if(v!==undefined&&v!==null&&v!=='')rows.push('<div><span>'+k+':</span> '+esc(v)+'</div>');};
+ kv('Workflow',r.workflowName);kv('Workflow ID',r.workflowId);kv('Run ID',r.id);kv('Run #',r.number);kv('Ref',r.ref);kv('SHA',r.sha&&String(r.sha).slice(0,10));kv('Run status',r.status);kv('Conclusion',r.conclusion);kv('Started',r.started);kv('Completed',r.completed);kv('Duration',r.completed?dur(r.started,r.completed):'');
+ b.jobs.forEach(j=>rows.push('<div class="j"><b>'+esc(j.name||'job')+'</b> · ID '+esc(j.id)+' · '+esc(j.status||'')+(j.conclusion?' / '+esc(j.conclusion):'')+(j.runner?' · '+esc(j.runner):'')+(j.completed?' · '+dur(j.started,j.completed):'')+j.steps.map(t=>'<div class="st">'+esc((t.n||'')+' '+t.name+' — '+(t.conclusion||t.status||''))+'</div>').join('')+'</div>'));
+ el.innerHTML=rows.join('');el.classList.toggle('hidden',!rows.length);}
+const logCls=l=>/\[OK\]|BUILD SUCCESSFUL/.test(l)?'ok':/##\[error\]|\bERROR\b|FAILED|FAILURE:|error:|^e: /.test(l)?'err':/^\$|Task :|##\[group\]|^Run /.test(l)?'cmd':'';
+function clientLine(t,c){const h=$('#btLog');const s=document.createElement('span');s.className='bt-line '+(c||'');s.textContent=t+'\n';h.appendChild(s);h.scrollTop=h.scrollHeight;}
+function syncLog(text){const h=$('#btLog');text=String(text||'');const prev=S._logShown||'';if(text===prev)return;
+ let chunk=text;if(prev&&text.startsWith(prev))chunk=text.slice(prev.length);else h.querySelectorAll('.bt-real').forEach(n=>n.remove());
+ (chunk.match(/[^\n]*\n|[^\n]+$/g)||[]).forEach(l=>{const s=document.createElement('span');s.className='bt-line bt-real '+logCls(l);s.textContent=l;h.appendChild(s);});
+ S._logShown=text;if(termScrollLock)h.scrollTop=h.scrollHeight;}
+function btSet(state,jobId,label){$('#btDot').className='bt-dot '+(state==='running'?'run':state==='success'?'ok':state==='failed'?'fail':'');
+ $('#btStatus').textContent=label||(state==='running'?'Build running...':state==='success'?'Build completed successfully.':state==='failed'?'Build failed.':'Preparing...');
+ $('#btFix').classList.toggle('hidden',state!=='failed');if(jobId)$('#btJob').textContent='Job ID: '+jobId;}
+async function startBuild(){const p=S.project;if(!p)return;
+ S._lastBuild=null;S._buildJobId='';S._logShown='';S._apkUrl='';termScrollLock=true;
+ infoEl().classList.add('hidden');$('#btLog').innerHTML='';$('#btOpenActions').classList.add('hidden');$('#btJob').textContent='Packaging project...';btSet('running','','Packaging...');
+ clientLine('$ package project '+p.name,'cmd');let jobId='',b={run:{},jobs:[]};
+ try{
+  const blob=await zipProject(p);clientLine('Project packaged: '+fmtBytes(blob.size),'ok');
+  const b64=await new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).slice(String(fr.result).indexOf(',')+1));fr.onerror=j;fr.readAsDataURL(blob);});
+  clientLine('$ POST '+BASE+'/build','cmd');
+  const res=await fetch(BASE+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(180000)});
+  const raw=await res.text();let j=null;try{j=JSON.parse(raw)}catch(_){}
+  if(!res.ok){const e=new Error(describeHttp(res.status,raw));e.raw=raw;throw e;}
+  if(!j||!j.ok||!j.jobId)throw new Error('Invalid build response: '+raw.slice(0,300));
+  jobId=String(j.jobId);S._buildJobId=jobId;const statusUrl=String(j.statusUrl||BASE+'/build/status/'+encodeURIComponent(jobId));
+  clientLine('Build job created: '+jobId,'ok');btSet('running',jobId,'Waiting for GitHub Actions...');
+  const t0=Date.now();
+  while(Date.now()-t0<30*60*1000){
+   await sleep(2500);
+   const sr=await fetch(statusUrl,{headers:{Accept:'application/json'},signal:withTimeout(30000)});const sraw=await sr.text();let s=null;try{s=JSON.parse(sraw)}catch(_){}
+   if(!sr.ok){const e=new Error(describeHttp(sr.status,sraw));e.raw=sraw;throw e;}
+   if(!s||!s.status)throw new Error('Invalid status response: '+sraw.slice(0,300));
+   b=normBuild(s);renderInfo(b);
+   let logs=typeof s.logs==='string'?s.logs:Array.isArray(s.logs)?s.logs.join('\n'):'';
+   if(!logs)logs=b.jobs.filter(x=>x.logs).map(x=>'===== JOB '+x.name+' (ID '+x.id+') =====\n'+(Array.isArray(x.logs)?x.logs.join('\n'):x.logs)).join('\n');
+   syncLog(logs);
+   const state=s.status==='success'?'success':s.status==='failed'?'failed':'running';
+   S._lastBuild={b,logs,jobId,state,error:s.error?String(s.error):''};
+   const url=s.htmlUrl||b.run.url;if(url){$('#btOpenActions').classList.remove('hidden');$('#btOpenActions').onclick=()=>window.open(url,'_blank','noopener');}
+   btSet(state,jobId,state==='running'?'Status: '+s.status+(b.run.status?' · run '+b.run.status:''):'');
+   if(state==='success'){S._apkUrl=String(s.apkUrl||BASE+'/build/download/'+encodeURIComponent(jobId));p.builds.unshift({at:Date.now(),ok:true,msg:'APK build succeeded (job '+jobId+(b.run.number?', run #'+b.run.number:'')+').'});return;}
+   if(state==='failed'){p.builds.unshift({at:Date.now(),ok:false,msg:(S._lastBuild.error||'GitHub Actions build failed')+' (job '+jobId+')'});return;}
+  }
+  throw new Error('Timed out waiting for the build server.');
+ }catch(e){
+  const msg=(e.name==='AbortError'?'Build server request timed out.':String(e.message||e))+(e.raw?'\n'+String(e.raw).slice(0,4000):'');
+  if(!S._lastBuild||S._lastBuild.state!=='failed')S._lastBuild={b,logs:S._logShown||'',jobId,state:'failed',error:msg};
+  clientLine('Error: '+msg,'err');p.builds.unshift({at:Date.now(),ok:false,msg:msg.split('\n')[0]});btSet('failed',jobId);
+ }finally{persistProject(p);}}
+function failureReport(){const L=S._lastBuild;if(!L||L.state!=='failed')return '';const r=L.b.run,v=x=>x===undefined||x===''?'n/a':x;
+ const o=['GITHUB ACTIONS BUILD FAILURE','Workflow: '+v(r.workflowName)+' (ID '+v(r.workflowId)+')','Run ID: '+v(r.id)+' | Run #'+v(r.number),'Ref: '+v(r.ref)+' | SHA: '+v(r.sha),'Run status: '+v(r.status)+' | Conclusion: '+v(r.conclusion),'Build job: '+L.jobId,''];
+ L.b.jobs.forEach(j=>{o.push('JOB '+j.name+' (ID '+j.id+') status='+j.status+' conclusion='+j.conclusion);j.steps.forEach(t=>o.push('  step '+t.n+' '+t.name+': '+(t.conclusion||t.status)+(t.conclusion==='failure'?'   <-- FAILED STEP':'')));});
+ if(L.error)o.push('','ERROR: '+L.error);if(L.logs)o.push('','===== COMPLETE GITHUB ACTIONS LOG =====',L.logs);return o.join('\n');}
+function buildFix(){const p=S.project,L=S._lastBuild;
+ if(!p||!L||L.state!=='failed'){toast('No failed build is available to fix.','warn');return;}
+ if(!L.logs&&!L.error){toast('The GitHub Actions failure log could not be retrieved, so there is nothing real to send to the Agent.','err');return;}
+ const rep=failureReport();S.agentAttachments=[{kind:'doc',path:'build-failed.log',name:'build-failed.log',size:rep.length,content:rep}];S._fixPending=true;
+ const backId=$('.screen.active')?.id;goBack();if(backId!=='screen-project')return;
+ setTab('agent');renderAgentAtts();const inp=$('#agentInput');
+ inp.value='Fix the real Android build failure in the attached build-failed.log (GitHub Actions). Identify the exact failing file from the error, read only that file (a referenced dependency only if the fix truly needs it), make the smallest safe change, and save it. Do not rewrite unrelated code.';
+ autoGrow(inp);setTimeout(()=>sendAgent(),120);}
+window.startBuildTerminal=startBuild;$('#btFix').onclick=buildFix;
 </body>
 </html>
