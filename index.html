@@ -1729,8 +1729,7 @@ function terminalRender(logs, state) {
  for (let i = termRenderedLines; i < lines.length; i++) {
   let line = lines[i];
   if (!line.trim()) continue;
-  line = line.replace(/GitHub Actions/ig, 'Remote Builder'); // Obfuscate GA
-
+  
   let cls = '';
   if (line.includes('[OK]') || line.includes('SUCCESS') || line.includes('BUILD SUCCESSFUL')) cls = 'ok';
   else if (line.includes('[FAILED]') || line.includes('ERROR') || line.includes('FAILED') || line.includes('FAILURE:')) cls = 'err';
@@ -1904,7 +1903,7 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
 (function(){
 const FX_fetch=window.fetch;
 window.fetch=async function(u){const r=await FX_fetch.apply(this,arguments);if(/\/build\/status\//.test(String(u))){try{S._st=await r.clone().json();}catch(e){}}return r;};
-function realBuildLog(st,logs){st=st||{};const o=[];const wf=st.workflow||st.workflowName||(st.run&&st.run.name),rid=st.runId||st.run_id||(st.run&&st.run.id);if(wf)o.push("===== GitHub Actions Workflow: "+wf+" =====");if(rid)o.push("Run ID: "+rid+" | status: "+(st.status||"unknown")+(st.conclusion?" | conclusion: "+st.conclusion:""));const jobs=Array.isArray(st.jobs)?st.jobs:[];for(const j of jobs){o.push("");o.push("===== GitHub Actions Job: "+(j.name||j.id||"unknown")+" ("+[j.status,j.conclusion].filter(Boolean).join("/")+") =====");for(const s of(Array.isArray(j.steps)?j.steps:[]))o.push("  step "+(s.number||"")+" "+(s.name||"")+" : "+[s.status,s.conclusion].filter(Boolean).join("/");if(j.logs)o.push(String(j.logs));}if(!jobs.some(j=>j.logs)&&logs)o.push(String(logs));return o.join("\n");}
+function realBuildLog(st,logs){st=st||{};const o=[];const wf=st.workflow||st.workflowName||(st.run&&st.run.name),rid=st.runId||st.run_id||(st.run&&st.run.id);if(wf)o.push("===== GitHub Actions Workflow: "+wf+" =====");if(rid)o.push("Run ID: "+rid+" | status: "+(st.status||"unknown")+(st.conclusion?" | conclusion: "+st.conclusion:""));const jobs=Array.isArray(st.jobs)?st.jobs:[];for(const j of jobs){o.push("");o.push("===== GitHub Actions Job: "+(j.name||j.id||"unknown")+" ("+[j.status,j.conclusion].filter(Boolean).join("/")+") =====");for(const s of(Array.isArray(j.steps)?j.steps:[]))o.push("  step "+(s.number||"")+" "+(s.name||"")+" : "+[s.status,s.conclusion].filter(Boolean).join("/"));if(j.logs)o.push(String(j.logs));}if(!jobs.some(j=>j.logs)&&logs)o.push(String(logs));return o.join("\n");}
 const FX_ts=terminalSet;terminalSet=function(state,jobId){FX_ts(state,jobId);if(state==="failed"&&S._buildInfrastructureFailure)$("#btFix").classList.add("hidden");};
 terminalRender=function(logs,state){const lines=realBuildLog(S._st,logs).split("\n");for(let i=termRenderedLines;i<lines.length;i++){const line=lines[i];if(!line.trim())continue;let cls="";if(/\[OK\]|SUCCESS|BUILD SUCCESSFUL/.test(line))cls="ok";else if(/\[FAILED\]|ERROR|FAILED|FAILURE:/.test(line))cls="err";else if(line.startsWith("$")||/\[BUILD\]|Task :|=====/.test(line))cls="cmd";else if(/\[INFO\]|\[QUEUE\]/.test(line))cls="dim";terminalQueueLine(line,cls,true,"#btLog");}termRenderedLines=lines.length;terminalSet(state,S._buildJobId||"");};
 const FX_start=startBuildTerminal;startBuildTerminal=function(){S._st=null;S._buildInfrastructureFailure=false;return FX_start.apply(this,arguments);};
