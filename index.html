@@ -1476,18 +1476,18 @@ function agentSystem(p){
 '- After the flayfiles block, output ONLY a short, concise summary of the changes made.\n'+
 '- If you need a file that was not provided, output "NEED: <exact path>" (one per line) and stop.\n'+
 '- Do not provide long explanations of the code unless specifically asked to explain (and not modify) it.';}
-function buildProjectContext(p,request,force=[]){const paths=Object.keys(p.files).sort();
+function buildProjectContext(p,request,force=[],only=false){const paths=Object.keys(p.files).sort();
  const treeRoot=buildTree(paths);
  let tree='';const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/\n';walk(sub,depth+1);}
   for(const f of node.files){const sz=p.files[f.path].binary?fmtBytes((p.files[f.path].content||'').length*0.75):fmtBytes((p.files[f.path].content||'').length);tree+='  '.repeat(depth)+f.name+'  ('+sz+')\n';}};
  walk(treeRoot,0);
  const words=(request||'').toLowerCase().match(/[a-z0-9_\-\.]+/g)||[];
  const score=path=>{const lp=path.toLowerCase();let s=0;words.forEach(w=>{if(w.length>2&&lp.includes(w))s+=3;});if(/\.(xml|gradle|kt|java)$/.test(lp))s+=1;return s;};
- const budget=48000;let used=0;const included=new Set();
+ const budget=only?24000:32000;let used=0;const included=new Set();
  const pick=path=>{const f=p.files[path];if(!f||f.binary||included.has(path))return false;const c=f.content||'';
   if(used+c.length+path.length>budget)return false;used+=c.length;included.add(path);return true;};
  force.forEach(pick);
- for(const path of[...paths].sort((a,b)=>score(b)-score(a))){if(included.size>=60)break;pick(path);}
+ if(!only)for(const path of[...paths].sort((a,b)=>score(b)-score(a))){if(included.size>=12)break;if(included.size>=3&&score(path)<3)break;pick(path);}
  let blocks='';
  for(const path of included){blocks+='\n### FILE: '+path+'\n'+(p.files[path].content||'')+'\n### END FILE\n';}
  return{tree,blocks,included,total:paths.length,chars:used};}
@@ -1497,17 +1497,20 @@ function parseOps(content){const m=(content||'').match(/```flayfiles\s*([\s\S]*?
  try{const ops=JSON.parse(raw);if(Array.isArray(ops))return{ops};}catch(e){}
  try{const ops=JSON.parse(raw.replace(/,\s*([}\]])/g,'$1'));if(Array.isArray(ops))return{ops};}catch(e){}
  return{ops:null,error:'The flayfiles block contains invalid JSON — no changes were applied.'};}
-function applyOps(p,ops){const snapshot=JSON.parse(JSON.stringify(p.files));const results=[];
- for(const op of ops){const rawPath=op&&op.path;const path=normPath(rawPath);
-  if(isUnsafe(path)){results.push({path:String(rawPath||''),action:String(op&&op.action||'?'),ok:false,error:'unsafe or invalid path rejected'});continue;}
-  const action=String(op&&op.action||'').toLowerCase();
-  if(action==='folder'){const base=path.replace(/\/+$/,'');const kp=base+'/.gitkeep';
-   if(!p.files[kp])p.files[kp]={content:''};
-   results.push({path:base+'/',action:'folder',ok:true});continue;}
-  if(action==='delete'){if(p.files[path]){delete p.files[path];results.push({path,action,ok:true});}else results.push({path,action,ok:false,error:'file not found'});continue;}
-  if(action!=='create'&&action!=='modify'){results.push({path,action:String(action||'?'),ok:false,error:'unsupported action'});continue;}
-  if(typeof(op&&op.content)!=='string'){results.push({path,action,ok:false,error:'missing content'});continue;}
-  const existed=!!p.files[path];p.files[path]={content:op.content};results.push({path,action:existed?'modify':'create',ok:true});}
+async function applyOps(p,ops){const snapshot=JSON.parse(JSON.stringify(p.files));const results=[];
+ for(const op of ops){const rawPath=op&&op.path,path=normPath(rawPath),action=String(op&&op.action||'').toLowerCase();let prev;
+  const fail=e=>results.push({path:path||String(rawPath||''),action:action||'?',ok:false,error:e});
+  if(isUnsafe(path)){fail('unsafe or invalid path rejected');continue;}
+  if(action==='folder'){const base=path.replace(/\\/+$/,''),kp=base+'/.gitkeep';if(!p.files[kp])p.files[kp]={content:''};}
+  else if(action==='delete'){if(!p.files[path]){fail('file not found');continue;}prev=p.files[path];delete p.files[path];}
+  else if(action==='patch'){const cur=p.files[path];if(!cur||cur.binary){fail('file not found for patch');continue;}let next=String(cur.content||''),bad='';const edits=Array.isArray(op.edits)?op.edits:[];if(!edits.length)bad='no edits given';
+   for(const ed of edits){if(bad)break;const a=ed&&ed.find,b=ed&&ed.replace;if(typeof a!=='string'||!a||typeof b!=='string'){bad='malformed edit';break;}const count=next.split(a).length-1;if(count!==1){bad=count?'patch anchor is ambiguous ('+count+' matches)':'patch anchor not found';break;}next=next.replace(a,()=>b);}
+   if(bad){fail(bad);continue;}prev=cur;p.files[path]={content:next};
+  }else if(action==='create'||action==='modify'){if(typeof(op&&op.content)!=='string'){fail('missing content');continue;}prev=p.files[path];p.files[path]={content:op.content};}
+  else{fail('unsupported action');continue;}
+  try{await persistProject(p);}catch(e){if(prev)p.files[path]=prev;else if(action==='folder')delete p.files[path];else delete p.files[path];fail('save failed: '+String(e&&e.message||e));continue;}
+  results.push({path:action==='folder'?path.replace(/\\/+$/,'')+'/':path,action:action==='folder'?'folder':action==='patch'?(prev?'modify':'create'):action,ok:true});
+ }
  return{results,snapshot};}
 function extractNeeds(content,included,p){const needs=[];const re=/(?:^|\n)NEED:\s*([^\n]+)/g;let m;
  while((m=re.exec(content))){const path=normPath(m[1].trim());if(isUnsafe(path))continue;
@@ -1520,17 +1523,17 @@ async function sendAgent(){if(S.agentStreaming)return;
  if(!activeProvider()){toast('Set up an AI provider first (Menu > Set Up AI).','warn');renderProviders();openScreen('screen-providers');return;}
  if(!activeProvider().model){toast('No model selected. Use the Model button in the composer.','warn');openModelModal();return;}
  p.agent.push({id:uid(),role:'user',content:text||'(selected files)',attachments:atts.map(a=>({name:a.path||a.name,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
- S.agentAttachments=[];inp.value='';if(agentDraftKey())localStorage.removeItem(agentDraftKey);autoGrow(inp);
+ S.agentAttachments=[];inp.value='';if(agentDraftKey())localStorage.removeItem(agentDraftKey());autoGrow(inp);
  renderThread('#agentMsgs',p.agent);S.pinned=true;pinScroll(true);
  const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[]};
  p.agent.push(am);renderThread('#agentMsgs',p.agent);pinScroll(true);
  S.agentStreaming=true;S.agentAbort=new AbortController();updateSendBtn();
  try{
   let round=0,need=[];
-  const baseMsgs=[{role:'system',content:agentSystem(p)}];
+  const fixMode=S.agentMode==='buildfix'||S.agentMode==='retry',fixForce=(S.fixForce||[]).slice();S.agentMode=null;S.fixForce=null;\n  const baseMsgs=[{role:'system',content:agentSystem(p)+(fixMode?'\\n\\nTARGETED BUILD FIX MODE: Use the exact error as evidence. Read only files supplied and directly related dependencies. If another file is required, output NEED: exact/path and stop. Change only what is required, one file at a time. If this is infrastructure/network/quota rather than project code, change no files. Never claim an edit unless it is delivered in flayfiles.':'')}];
   const history=p.agent.filter(m=>m!==am&&m.status==='done').slice(-8).filter(m=>m.content).map(m=>({role:m.role,content:stripFences(m.content)}));
   do{round++;
-   const ctx=buildProjectContext(p,text+(need.length?' '+need.join(' '):''),need);
+   const ctx=buildProjectContext(p,text+(need.length?' '+need.join(' '):''),fixMode?[...new Set([...fixForce,...need])]:need,fixMode);
    if(round===1)am.activity.push({icon:'folder',label:'Project context prepared — '+ctx.included.size+'/'+ctx.total+' files, '+fmtBytes(ctx.chars)+' of project content included',status:'done'});
    else am.activity.push({icon:'download',label:'Retrieved '+need.length+' additional file(s): '+need.slice(0,4).join(', ')+(need.length>4?' ...':''),status:'done'});
    if(atts.length)am.activity.push({icon:'clip',label:'Selected files attached: '+atts.map(a=>a.path||a.name).join(', '),status:'done'});
@@ -1543,13 +1546,13 @@ async function sendAgent(){if(S.agentStreaming)return;
    await providerChat({provider:activeProvider(),messages:msgs,signal:S.agentAbort.signal,
     onDelta:d=>{am.content+=d;syncGenFiles(am);updateLive(am,'#agentMsgs');},
     onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#agentMsgs');}});
-   need=extractNeeds(am.content,buildProjectContext(p,text).included,p);
+   need=extractNeeds(am.content,ctx.included,p);
   }while(need.length&&round<2);
   const parsed=parseOps(am.content);
   if(parsed.error){am.activity.push({icon:'warn',label:parsed.error,status:'fail'});}
   else if(parsed.ops){
    am.activity.push({icon:'xml',label:'Parsed '+parsed.ops.length+' structured file operation(s)',status:'done'});
-   const{results,snapshot}=applyOps(p,parsed.ops);
+   const{results,snapshot}=await applyOps(p,parsed.ops);
    for(const r of results){am.activity.push({icon:r.ok?(r.action==='folder'?'folder':r.action==='create'?'fileplus':r.action==='delete'?'trash':'edit'):'alert',
     label:(r.action==='folder'?'Created folder ':r.action==='create'?'Created ':r.action==='modify'?'Modified ':'Deleted ')+r.path+(r.ok?'':' — '+r.error),
     status:r.ok?'done':'fail'});}
