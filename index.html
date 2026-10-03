@@ -1821,9 +1821,16 @@ async function startBuildTerminal(){
 }
 
 function buildFixFromTerminal(){
- const p=S.project;const err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
+ const p=S.project,err=String(S._buildFailure||S._buildLogs||'').trim();
+ if(!p||!err){toast('No build error is available to fix.','warn');return;}
+ const paths=Object.keys(p.files||{}),force=[];
+ const rx=/((?:app\\/)?(?:src\\/[^\\s:]+|[^\\s:]+)\\.(?:kt|java|xml|gradle|kts|properties|json))/g;let m;
+ while((m=rx.exec(err))&&force.length<10){const raw=normPath(m[1]);let hit=paths.find(x=>x===raw||raw.endsWith('/'+x));if(!hit){const b=raw.split('/').pop(),same=paths.filter(x=>x.split('/').pop()===b);if(same.length===1)hit=same[0];}if(hit&&!force.includes(hit))force.push(hit);}
+ if(/Could not (resolve|find)|Duplicate class|dependency/i.test(err))['app/build.gradle','build.gradle','build.gradle.kts'].forEach(x=>{if(p.files[x]&&!force.includes(x))force.push(x);});
+ if(/Manifest merger|AndroidManifest/i.test(err)){const x='app/src/main/AndroidManifest.xml';if(p.files[x]&&!force.includes(x))force.push(x);}
  S.agentAttachments=[{kind:'doc',path:'build-error.log',name:'build-error.log',size:err.length,content:err}];
- const prompt='CRITICAL: Fix the real Android build failure shown in the attached build-error.log. Analyze the project files, identify the exact cause, and MODIFY the required files using the flayfiles block. DO NOT print the full code in your chat response. Make the smallest safe fix and output ONLY a short summary of what was changed in the project files.';
+ S.agentMode='buildfix';S.fixForce=force;
+ const prompt='Fix the Android build failure using the exact attached logs. First explain the confirmed cause internally, then read only the named error files and directly related dependencies. If another project file is needed, output NEED: exact/path and stop. Make the smallest necessary patch, one file at a time. If the log indicates infrastructure/network/quota failure rather than project code, do not modify files. Do not print source code in chat; save actual changes to Code Tab and return a short summary.';
  const backId=$('.screen.active')?.id;goBack();if(backId!=='screen-project')return;
  setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=prompt;autoGrow(inp);persistProject(p);
  setTimeout(()=>sendAgent(),120);
