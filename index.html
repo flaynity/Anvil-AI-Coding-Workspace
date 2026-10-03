@@ -1682,10 +1682,10 @@ async function sendAgent(){if(S.agentStreaming)return;
    am.activity.push({icon:'history',label:'Resuming paused queue — '+am.queue.length+' file(s) remaining',status:'done'});}
   else{
    /* Build fixes use the actual report, not a long history of unrelated messages. */
-   const be=atts.find(a=>a.kind==='builderror'),mode=be?'buildfix':'edit',errText=be?be.content:'';
-   const history=mode==='buildfix'?[]:p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-4,-1).map(m=>({role:m.role,content:stripFences(m.content).slice(0,3000)}));
+   const be=atts.find(a=>a.kind==='builderror'),isChat=!be&&!atts.length&&!/\b(fix|update|modify|change|create|build|debug|implement|add|remove|delete|rewrite|refactor|design|generate|code|file|project)\b/i.test(text)&&!/(কোড|ফিক্স|আপডেট|পরিবর্তন|তৈরি|বানাও|লিখে|বিল্ড|এরর|সমস্যা)/i.test(text),mode=be?'buildfix':(isChat?'chat':'edit'),errText=be?be.content:'';
+   const history=mode==='buildfix'?[]:p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-6,-1).map(m=>({role:m.role,content:stripFences(m.content).slice(0,2500)}));
    am.mode=mode;
-   const r=await planStep(p,am,history,text,atts,mode,be?be.content:'');
+   const r=mode==='chat'?{j:{answer:await llm(am,[{role:'system',content:'You are Flay AI, a friendly and accurate assistant. Answer the user directly in the language they used. For greetings, confirmations, and simple questions, respond naturally and briefly. Do not discuss project files or claim changes unless actually made.'},...history,{role:'user',content:text}]),summary:''},queue:[],ctx:{mode:'chat',errText:'',task:text,read:[],summary:''}}:await planStep(p,am,history,text,atts,mode,be?be.content:'');
    ctx=r.ctx;am.queue=r.queue;
    if(!am.queue.length){am.content=String(r.j.answer||r.j.summary||'No file changes were needed.').replace(/\`\`\`[\s\S]*?\`\`\`/g,'(code omitted — code is only written to project files)');am.status='done';}
   qUpdate(am);
@@ -1704,7 +1704,7 @@ async function sendAgent(){if(S.agentStreaming)return;
   else{p.pendingRun=null;
    const bad=(p.tech==='imported'?[]:validateProject(p)).filter(x=>!x.ok);
    if(bad.length)am.activity.push({icon:'warn',label:'Project check: '+bad.map(b=>b.label).join('; '),status:'warn'});
-   am.content=(ctx.summary?ctx.summary+'\n\n':'')+(am.mode==='buildfix'?'Applied build fixes directly to the project files. Run a new build to verify.':'Changes were applied directly to the project files.')+'\n\n'+qSummary(am);
+   if(am.mode!=='chat')am.content=(ctx.summary?ctx.summary+'\n\n':'')+(am.mode==='buildfix'?'Applied build fixes directly to the project files. Run a new build to verify.':'Changes were applied directly to the project files.')+'\n\n'+qSummary(am);
    am.status='done';}}}
  catch(e){
   if(ctx&&am.queue.some(q=>q.status!=='completed'))setPending(p,am,ctx);
