@@ -867,7 +867,7 @@ function msgHtml(m){
  const pill=m.status==='streaming'?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>':deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
  return `<div class="msg ai" data-mid="${m.id}">
   ${thinkCard(m)}
-  ${genCard(m)}
+  ${genCard(m)}${queueCard(m)}
   ${pill?`<div class="ai-st">${pill}</div>`:''}
   <div class="msg-body">${m.content?md(m.content):''}${m.status==='streaming'?'<span class="caret"></span>':''}</div>
   ${m.activity&&m.activity.length?activityCard(m):''}
@@ -1041,6 +1041,7 @@ function threadClick(sel){return e=>{
  const more=e.target.closest('[data-more]');if(more){const b=more.closest('.msg').querySelector('.bubble');const o=b.classList.toggle('open');more.textContent=o?'Less':'More';return;}
  const cp=e.target.closest('.cb-copy');if(cp){const code=cp.closest('.codeblock').querySelector('code').textContent;copyText(code).then(()=>{cp.innerHTML=icon('check','xs')+' Copied';setTimeout(()=>cp.innerHTML=icon('copy','xs')+' Copy',1400);});return;}
  const rev=e.target.closest('[data-revert]');if(rev){revertChanges(rev.dataset.revert);return;}
+ const rtf=e.target.closest('[data-retry-file]');if(rtf){retryFailedFile();return;}
  const gr=e.target.closest('[data-gen]');if(gr){const mid=gr.closest('[data-mid]').dataset.mid;
   const msg=(sel==='#agentMsgs'?(S.project?S.project.agent:[]):(S.chat?S.chat.messages:[])).find(x=>x.id===mid);
   const g=msg&&msg.generatedFiles&&msg.generatedFiles[+gr.dataset.gen];
@@ -1476,18 +1477,19 @@ function agentSystem(p){
 '- After the flayfiles block, output ONLY a short, concise summary of the changes made.\n'+
 '- If you need a file that was not provided, output "NEED: <exact path>" (one per line) and stop.\n'+
 '- Do not provide long explanations of the code unless specifically asked to explain (and not modify) it.';}
-function buildProjectContext(p,request,force=[]){const paths=Object.keys(p.files).sort();
+function buildProjectContext(p,request,force=[],only=false){const paths=Object.keys(p.files).sort();
  const treeRoot=buildTree(paths);
  let tree='';const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/\n';walk(sub,depth+1);}
   for(const f of node.files){const sz=p.files[f.path].binary?fmtBytes((p.files[f.path].content||'').length*0.75):fmtBytes((p.files[f.path].content||'').length);tree+='  '.repeat(depth)+f.name+'  ('+sz+')\n';}};
  walk(treeRoot,0);
  const words=(request||'').toLowerCase().match(/[a-z0-9_\-\.]+/g)||[];
- const score=path=>{const lp=path.toLowerCase();let s=0;words.forEach(w=>{if(w.length>2&&lp.includes(w))s+=3;});if(/\.(xml|gradle|kt|java)$/.test(lp))s+=1;return s;};
+ const score=path=>{const lp=path.toLowerCase();let s=0;words.forEach(w=>{if(w.length>2&&lp.includes(w))s+=3;});if(s&&/\.(xml|gradle|kt|java)$/.test(lp))s+=1;return s;};
  const budget=48000;let used=0;const included=new Set();
  const pick=path=>{const f=p.files[path];if(!f||f.binary||included.has(path))return false;const c=f.content||'';
   if(used+c.length+path.length>budget)return false;used+=c.length;included.add(path);return true;};
  force.forEach(pick);
- for(const path of[...paths].sort((a,b)=>score(b)-score(a))){if(included.size>=60)break;pick(path);}
+ /* targeted reads only: never preload the project; fill with a few keyword-matched files only when nothing exact was forced */
+ if(!(only&&included.size)){let extra=0;for(const path of[...paths].sort((a,b)=>score(b)-score(a))){if(extra>=6||score(path)<=0)break;if(pick(path))extra++;}}
  let blocks='';
  for(const path of included){blocks+='\n### FILE: '+path+'\n'+(p.files[path].content||'')+'\n### END FILE\n';}
  return{tree,blocks,included,total:paths.length,chars:used};}
@@ -1513,59 +1515,200 @@ function extractNeeds(content,included,p){const needs=[];const re=/(?:^|\n)NEED:
  while((m=re.exec(content))){const path=normPath(m[1].trim());if(isUnsafe(path))continue;
   if(p.files[path]&&!p.files[path].binary&&!included.has(path)&&!needs.includes(path))needs.push(path);}
  return needs.slice(0,8);}
+/* ===== SEQUENTIAL AGENT PIPELINE ===== */
+const MAX_QUEUE=25;
+const pErr=m=>Object.assign(new Error(m),{pipeline:true});
+const PLAN_SYS=`You are the planning stage of Flay AI, a sequential project coding agent. Analyze the request and the provided project, then output ONLY one JSON object (no prose, no code): {"root_cause":"build errors only: the exact earliest cause in 1-2 sentences","summary":"one short sentence","answer":"","read":["existing paths worth reading while writing files"],"files":[{"path":"relative/path","action":"create|modify|delete|folder","reason":"short"}]}
+Rules: list only files that truly must change, in dependency order (models/resources/base classes before their users; for build errors the root-cause file first). Never include a file that needs no change. Existing paths must match the tree exactly. Max ${MAX_QUEUE} files. Never include file contents. If the request is a question, or needs no file change, or information needed for a safe fix is missing, return files:[] and put the reply in "answer". For BUILD ERROR FIX: the attached build log is authoritative. Identify the earliest actionable Gradle/compiler error, distinguish it from later cascading errors, and return every existing project file that must change to remove that root cause. If the failure is infrastructure/toolchain/runner setup (for example sdkmanager unavailable, Android SDK setup failure, missing GitHub runner tools, Java/Gradle executable unavailable before the project build starts), DO NOT modify project files: return files:[] and explain in "answer" that the build server/workflow must be fixed. Do not return files:[] merely because a real project Gradle/compiler/resource error is uncertain; inspect the supplied project files and choose the smallest evidence-based fix.`;
+const FILE_SYS=`You are Flay AI writing exactly ONE project file. Output ONLY the complete file content inside a single fenced block tagged flayfile. No explanations, no other text. Use only packages, classes, methods, R.id, R.layout and resources that exist in the provided project files (saved files from earlier queue steps are included); never invent identifiers. When modifying, preserve existing behavior and make the smallest correct change. For BUILD ERROR FIX, use the real build log as authoritative evidence, fix the earliest root cause rather than a later cascade, and make a concrete source/configuration change when the supplied project proves one is required. Do not merely explain the error or leave the file unchanged.`;
+async function llm(am,msgs){let buf='';
+ await providerChat({provider:activeProvider(),messages:msgs,signal:S.agentAbort.signal,
+  onDelta:d=>{buf+=d;},
+  onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#agentMsgs');}});
+ return buf;}
+function parseJsonObj(t){const s=t.indexOf('{'),e=t.lastIndexOf('}');if(s<0||e<=s)return null;const raw=t.slice(s,e+1);
+ try{return JSON.parse(raw);}catch(_){try{return JSON.parse(raw.replace(/,\s*([}\]])/g,'$1'));}catch(__){return null;}}}
+function normPlan(p,j){const out=[],seen=new Set();
+ for(const f of (j&&j.files)||[]){const path=normPath(f&&f.path).replace(/\/+$/,'');if(isUnsafe(path)||seen.has(path))continue;
+  let a=String(f.action||'').toLowerCase();const ex=!!p.files[path];
+  if(a==='delete'){if(!ex)continue;}else if(a!=='folder')a=ex?'modify':'create';
+  seen.add(path);out.push({path,action:a,reason:String(f.reason||'').slice(0,160),status:'queued'});}
+ return out.slice(0,MAX_QUEUE);}
+function errorFiles(p,log){/* only files the compiler/Gradle actually names - exact path first, basename as fallback */
+ const out=new Set();const mentioned=(String(log).match(/[\w\-./\\]+\.(?:kt|java|xml|gradle|kts|properties)/g)||[]).map(s=>s.replace(/\\/g,'/'));
+ for(const path of Object.keys(p.files))if(mentioned.some(m=>m===path||m.endsWith('/'+path)))out.add(path);
+ if(!out.size){const names=new Set(mentioned.map(s=>s.split('/').pop()));for(const path of Object.keys(p.files))if(names.has(path.split('/').pop()))out.add(path);}
+ return [...out].filter(x=>p.files[x]&&!p.files[x].binary).slice(0,8);}
+function extractFile(t){const s=t.match(/\`\`\`[\w+-]*[ \t]*\r?\n/);if(!s)return{error:'no fenced flayfile block found'};
+ const from=s.index+s[0].length,end=t.lastIndexOf('\`\`\`');
+ if(end<from)return{error:'file block was not closed (output truncated)'};
+ return{content:t.slice(from,end).replace(/\r?\n$/,'')+'\n'};}
+function checkFile(path,c){if(!c.trim())return 'file is empty';
+ const ext=(path.split('.').pop()||'').toLowerCase();
+ if(ext==='xml'){if(new DOMParser().parseFromString(c,'application/xml').querySelector('parsererror'))return 'XML is not well-formed';}
+ else if(ext==='json'){try{JSON.parse(c)}catch(e){return 'invalid JSON'}}
+ else if(/^(kt|java|kts|gradle)$/.test(ext)){
+  const s=c.replace(/\/\*[\s\S]*?\*\//g,'').replace(/"""[\s\S]*?"""/g,'""').replace(/"(?:\\.|[^"\\\n])*"/g,'""').replace(/\/\/.*$/gm,'').replace(/'(?:\\.|[^'\\\n])*'/g,"''");
+  for(const[o,cl]of[['{','}'],['(',')']])if(s.split(o).length!==s.split(cl).length)return 'unbalanced '+o+cl;
+  const pm=c.match(/^\s*package\s+([\w.]+)/m),dm=path.match(/(?:^|\/)(?:java|kotlin)\/(.+)\/[^/]+$/);
+  if(pm&&dm&&pm[1]!==dm[1].replace(/\//g,'.'))return 'package '+pm[1]+' does not match its path';}
+ return null;}
+function saveOne(p,it,content){const path=it.path;
+ if(it.action==='folder'){const kp=path+'/.gitkeep';if(!p.files[kp])p.files[kp]={content:''};return{path:path+'/',action:'folder',ok:true};}
+ if(it.action==='delete'){delete p.files[path];return{path,action:'delete',ok:true};}
+ const ex=!!p.files[path];p.files[path]={content};return{path,action:ex?'modify':'create',ok:true};}
+async function genOne(p,am,it,i,ctx,done){let feedback='';
+ for(let attempt=0;attempt<2;attempt++){
+  const force=[it.path,...done.slice(-4),...ctx.read.slice(0,4),...(ctx.mode==='buildfix'?errorFiles(p,ctx.errText).slice(0,4):[])].filter(x=>p.files[x]);
+  const c=buildProjectContext(p,ctx.task.slice(0,2000)+' '+it.path+' '+it.reason,force,true);
+  const list=am.queue.map((q,k)=>(k+1)+'. '+q.action+' '+q.path+' ['+q.status+']'+(q.reason?' - '+q.reason:'')).join('\n');
+  let prompt=ctx.task+'\n\nFILE QUEUE (sequential; completed files are already saved and shown below in their saved state):\n'+list+
+   '\n\nNOW WRITE ONLY file '+(i+1)+'/'+am.queue.length+': '+it.path+' ('+it.action+')'+(it.reason?'\nPurpose: '+it.reason:'')+
+   '\n\nPROJECT TREE:\n'+c.tree+'\nFILES PROVIDED:'+c.blocks;
+  if(feedback)prompt+='\n\nYour previous output for this file was rejected: '+feedback+'. Output the complete corrected file.';
+  const out=await llm(am,[{role:'system',content:FILE_SYS},{role:'user',content:prompt}]);
+  const ex=extractFile(out),err=ex.error||checkFile(it.path,ex.content);
+  if(!err)return ex.content;
+  feedback=err;}
+ throw pErr(feedback);}
+async function runQueue(p,am,ctx,snap){
+ const ops=am.ops||(am.ops={results:[],diffs:{}});const results=ops.results,diffs=ops.diffs,done=[];
+ for(let i=0;i<am.queue.length;i++){const it=am.queue[i];
+  if(it.status==='completed'){done.push(it.path);continue;}
+  if(S.fileLock)throw pErr('Another file operation is still running.');
+  S.fileLock=it.path;
+  try{
+   it.status='generating';it.error='';am._genCurrent=it.path;qUpdate(am);
+   const content=(it.action==='create'||it.action==='modify')?await genOne(p,am,it,i,ctx,done):null;
+   it.status='saving';am._genCurrent=null;qUpdate(am);
+   const r=saveOne(p,it,content);results.push(r);Object.assign(diffs,buildDiffs(snap,p,[r]));
+   p.lastSnapshot={messageId:am.id,files:snap};p.updatedAt=Date.now();
+   const parts=it.path.split('/');let acc='';for(let k=0;k<parts.length-1;k++){acc+=(k?'/':'')+parts[k];S.expanded.add(acc);}
+   p.expanded=[...S.expanded];
+   await persistProject(p);renderExplorer();renderBuildPane();
+   it.status='completed';done.push(it.path);
+  }catch(e){
+   if(e.name==='AbortError'){it.status='queued';throw e;}
+   it.status='failed';it.error=String(e.message||e);return it;
+  }finally{S.fileLock=null;am._genCurrent=null;qUpdate(am);}}
+ return null;}
+function queueCard(m){if(!m.queue||!m.queue.length)return '';
+ const n=m.queue.length,done=m.queue.filter(q=>q.status==='completed').length;
+ const st={queued:icon('info','sm muted')+'<span class="gst">Queued</span>',generating:'<span class="spin"></span><span class="gst">Generating</span>',
+  saving:'<span class="spin"></span><span class="gst">Saving</span>',completed:icon('check','sm st-done')+'<span class="gst ok">Saved</span>',failed:icon('alert','sm st-fail')+'<span class="gst bad">Failed</span>'};
+ const rows=m.queue.map((q,i)=>{const ext=(q.path.split('.').pop()||'').toLowerCase();
+  return `<div class="genrow">${icon(EXT_ICON[ext]||'file','sm '+(EXT_COLOR[ext]||'fc-gen'))}<span class="gpath" title="${esc(q.path)}">${i+1}/${n} ${esc(q.path)}</span>${st[q.status]||''}</div>${q.error?`<div class="generr">${icon('alert','xs')}<span>${esc(q.error)}</span>${q.status==='failed'&&S.project&&S.project.pendingRun?'<button class="btn sm" style="margin-left:auto" data-retry-file="'+i+'">Retry</button>':''}</div>`:''}`;}).join('');
+ return `<div class="card queue"><div class="card-head">${icon('fileplus','sm')}<b>${m.mode==='buildfix'?'Build error fix':'Project files'}</b><span class="muted small">${done}/${n}</span>${icon('chev-d','sm')}</div>${rows}</div>`;}
+function qUpdate(am){const mel=$('#agentMsgs').querySelector(`[data-mid="${am.id}"]`);if(!mel)return;
+ const w=document.createElement('div');w.innerHTML=queueCard(am);const nw=w.firstElementChild;if(!nw)return;
+ const old=mel.querySelector('.card.queue');
+ if(old)old.replaceWith(nw);else(mel.querySelector('.ai-st')||mel.querySelector('.msg-body')).before(nw);
+ updateLive(am,'#agentMsgs');}
+function isInfrastructureBuildError(log){
+ const cm=String(log||'').match(/^Failure Classification: (infrastructure|project|unknown)/m);if(cm&&cm[1]!=='unknown')return cm[1]==='infrastructure';
+ const s=String(log||'').toLowerCase();
+ return /sdkmanager is not available|android sdk.*(not available|setup|provision)|prepare android sdk|setup android sdk|runner.*(tool|sdk)|hosted runner|github actions.*(runner|environment)|command not found.*(sdkmanager|gradle|java)|gradle wrapper and system gradle are both unavailable/.test(s)
+   && !/what went wrong|execution failed|compilation error|unresolved reference|cannot find symbol|aapt2|resource .* not found|duplicate class|could not resolve/.test(s);
+}
+function extractBuildErrors(log){
+ const L=String(log||'').split('\n'),keep=new Set();
+ L.forEach((l,i)=>{if(/(^e: |error:|Unresolved reference|AAPT|FAILURE:|What went wrong|Execution failed|cannot find symbol|does not exist|Could not resolve|Duplicate|\bFAILED\b)/i.test(l))
+  for(let k=Math.max(0,i-1);k<=Math.min(L.length-1,i+3);k++)keep.add(k);});
+ const body=[...keep].sort((a,b)=>a-b).map(i=>L[i]).join('\n');
+ return ('KEY ERROR LINES:\n'+body.slice(0,12000)+'\n\nLOG TAIL:\n'+L.slice(-40).join('\n')).slice(0,16000);}
+function crossCheck(p){const F=p.files,ids=new Set(),lay=new Set(),drw=new Set(),str=new Set(),decl=new Set(),out=[],seen=new Set();
+ const add=(path,msg)=>{const k=path+msg;if(!seen.has(k)&&out.length<30){seen.add(k);out.push({path,msg});}};
+ for(const[path,f]of Object.entries(F)){let m;
+  if((m=path.match(/\/res\/layout[^/]*\/(\w+)\.xml$/)))lay.add(m[1]);
+  if((m=path.match(/\/res\/(?:drawable|mipmap)[^/]*\/(\w+)\./)))drw.add(m[1]);
+  if(f.binary)continue;const c=f.content||'';
+  if(path.endsWith('.xml')){for(const x of c.matchAll(/@\+id\/(\w+)/g))ids.add(x[1]);for(const x of c.matchAll(/<string\s+name="(\w+)"/g))str.add(x[1]);}
+  if(/\.(kt|java)$/.test(path))for(const x of c.matchAll(/\b(?:class|object|interface|typealias)\s+(\w+)/g))decl.add(x[1]);}
+ for(const[path,f]of Object.entries(F)){if(f.binary)continue;const c=f.content||'';
+  if(/\.(kt|java)$/.test(path)){
+   for(const x of c.matchAll(/(?<![\w.])R\.id\.(\w+)/g))if(!ids.has(x[1]))add(path,'R.id.'+x[1]+' is not defined in any layout');
+   for(const x of c.matchAll(/(?<![\w.])R\.layout\.(\w+)/g))if(!lay.has(x[1]))add(path,'R.layout.'+x[1]+' does not exist');
+   for(const x of c.matchAll(/(?<![\w.])R\.string\.(\w+)/g))if(!str.has(x[1]))add(path,'R.string.'+x[1]+' is not defined');
+   for(const x of c.matchAll(/(?<![\w.])R\.(?:drawable|mipmap)\.(\w+)/g))if(!drw.has(x[1]))add(path,'drawable '+x[1]+' does not exist');
+   if(p.package)for(const x of c.matchAll(/^import\s+([\w.]+)\.([A-Z]\w*)\s*$/gm))
+    if(x[1].startsWith(p.package)&&!/databinding/.test(x[1])&&!['R','BuildConfig'].includes(x[2])&&!decl.has(x[2]))add(path,'import '+x[1]+'.'+x[2]+' - class not found in project');}
+  if(path.endsWith('AndroidManifest.xml'))for(const x of c.matchAll(/<(?:activity|service|receiver|provider)\b[^>]*?android:name="([^"]+)"/g)){
+   const n=x[1].split('.').pop();if((x[1].startsWith('.')||(p.package&&x[1].startsWith(p.package)))&&!decl.has(n))add(path,'manifest component '+x[1]+' has no class');}}
+ return out;}
+async function planStep(p,am,history,text,atts,mode,errText){
+ const pc=buildProjectContext(p,mode==='buildfix'?text:text+' '+errText.slice(0,3000),mode==='buildfix'?errorFiles(p,errText):[],mode==='buildfix');
+ am.activity.push({icon:'folder',label:(mode==='buildfix'?'Read exact error file(s): ':'Read targeted file(s): ')+(pc.included.size?[...pc.included].slice(0,4).join(', ')+(pc.included.size>4?' +'+(pc.included.size-4)+' more':''):'none yet (project tree only)'),status:'done'});
+ let task='USER REQUEST:\n'+(text||'Work with the attached files.');
+ if(mode==='buildfix')task+='\n\nMODE: BUILD ERROR FIX. Think through the WHOLE error, find the earliest root cause from the real project files, fix only what is required so the next build passes.\n\n'+extractBuildErrors(errText);
+ for(const a of atts)if(a.kind!=='builderror')task+='\n\n### ATTACHED: '+(a.path||a.name)+'\n'+(a.content||'')+'\n### END ATTACHED';
+ let j=null,fb='';
+ for(let t=0;t<2&&!j;t++){
+  am._genCurrent='analyzing the error and planning fixes';updateLive(am,'#agentMsgs');
+  const raw=await llm(am,[{role:'system',content:PLAN_SYS},...history,{role:'user',content:task+'\n\nPROJECT TREE:\n'+pc.tree+'\nFILES PROVIDED:'+pc.blocks+fb}]);
+  const k=parseJsonObj(raw);
+  if(k&&mode==='buildfix'&&!(k.files||[]).length&&t===0&&!isInfrastructureBuildError(errText)){fb='\n\nYour previous reply listed no files. A real project build error is fixed by changing project files: return the JSON with the files that must change. Use "answer" only if a required file/information is truly missing. Never put code in "answer".';continue;}
+  if(k)j=k;else fb='\n\nYour previous reply was not a valid JSON object. Reply with ONLY the JSON object.';}
+ am._genCurrent=null;
+ if(!j)throw pErr('The AI did not return a valid file plan. Nothing was changed.');
+ if(j.root_cause){am.activity.push({icon:'brain',label:'Root cause: '+String(j.root_cause).slice(0,300),status:'done'});am._actDirty=true;}
+ return{j,queue:normPlan(p,j),ctx:{mode,errText,task,read:(j.read||[]).map(normPath).filter(x=>p.files[x]),summary:String(j.summary||'')}};}
+
+function setPending(p,am,ctx){p.pendingRun={mode:ctx.mode,errText:ctx.errText,task:ctx.task,read:ctx.read,
+ items:am.queue.filter(q=>q.status!=='completed').map(q=>({path:q.path,action:q.action,reason:q.reason}))};}
+function qSummary(am){const L={create:'Created',modify:'Updated',delete:'Deleted',folder:'Created folder'};
+ return am.queue.filter(q=>q.status==='completed').map(q=>'- '+L[q.action]+' `'+q.path+'`').join('\n');}
+function retryFailedFile(){/* resumes the saved queue at the failed file only; completed files stay saved and are never regenerated */
+ if(S.agentStreaming)return;const p=S.project;if(!p||!p.pendingRun){toast('Nothing to retry.','warn');return;}
+ const inp=$('#agentInput');inp.value='continue';sendAgent();}
 async function sendAgent(){if(S.agentStreaming)return;
  const p=S.project;if(!p)return;
- const inp=$('#agentInput');const text=inp.value.trim();const atts=S.agentAttachments.slice();
+ const inp=$('#agentInput'),text=inp.value.trim(),atts=S.agentAttachments.slice();
  if(!text&&!atts.length)return;
  if(!activeProvider()){toast('Set up an AI provider first (Menu > Set Up AI).','warn');renderProviders();openScreen('screen-providers');return;}
  if(!activeProvider().model){toast('No model selected. Use the Model button in the composer.','warn');openModelModal();return;}
  p.agent.push({id:uid(),role:'user',content:text||'(selected files)',attachments:atts.map(a=>({name:a.path||a.name,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
- S.agentAttachments=[];inp.value='';if(agentDraftKey())localStorage.removeItem(agentDraftKey);autoGrow(inp);
- renderThread('#agentMsgs',p.agent);S.pinned=true;pinScroll(true);
- const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[]};
- p.agent.push(am);renderThread('#agentMsgs',p.agent);pinScroll(true);
+ S.agentAttachments=[];inp.value='';if(agentDraftKey())localStorage.removeItem(agentDraftKey());autoGrow(inp);renderAgentAtts();
+ const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[],queue:[]};
+ p.agent.push(am);renderThread('#agentMsgs',p.agent);S.pinned=true;pinScroll(true);
  S.agentStreaming=true;S.agentAbort=new AbortController();updateSendBtn();
+ let ctx=null;
  try{
-  let round=0,need=[];
-  const baseMsgs=[{role:'system',content:agentSystem(p)}];
-  const history=p.agent.filter(m=>m!==am&&m.status==='done').slice(-8).filter(m=>m.content).map(m=>({role:m.role,content:stripFences(m.content)}));
-  do{round++;
-   const ctx=buildProjectContext(p,text+(need.length?' '+need.join(' '):''),need);
-   if(round===1)am.activity.push({icon:'folder',label:'Project context prepared — '+ctx.included.size+'/'+ctx.total+' files, '+fmtBytes(ctx.chars)+' of project content included',status:'done'});
-   else am.activity.push({icon:'download',label:'Retrieved '+need.length+' additional file(s): '+need.slice(0,4).join(', ')+(need.length>4?' ...':''),status:'done'});
-   if(atts.length)am.activity.push({icon:'clip',label:'Selected files attached: '+atts.map(a=>a.path||a.name).join(', '),status:'done'});
-   am._actDirty=true;updateLive(am,'#agentMsgs');
-   let prompt=(text||'Work with the attached project files.')+'\n\nPROJECT TREE:\n'+ctx.tree+'\nFILES PROVIDED:'+ctx.blocks;
-   if(atts.length){prompt+='\nSELECTED FILE CONTENTS:';for(const a of atts){prompt+='\n### FILE: '+(a.path||a.name)+'\n'+(a.content||'')+'\n### END FILE\n';}}
-   if(need.length){prompt+='\nThese are the additional files you requested via NEED. Continue the task and output the final result (and the flayfiles block if files change).';}
-   const msgs=round===1?[...baseMsgs,...history,{role:'user',content:prompt}]
-    :[...baseMsgs,...history,{role:'user',content:stripFences(text)||'Work with the attached project files.'},{role:'assistant',content:stripFences(am.content)},{role:'user',content:prompt}];
-   await providerChat({provider:activeProvider(),messages:msgs,signal:S.agentAbort.signal,
-    onDelta:d=>{am.content+=d;syncGenFiles(am);updateLive(am,'#agentMsgs');},
-    onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#agentMsgs');}});
-   need=extractNeeds(am.content,ctx.included,p);
-  }while(need.length&&round<12);
-  const parsed=parseOps(am.content);
-  if(parsed.error){am.activity.push({icon:'warn',label:parsed.error,status:'fail'});}
-  else if(parsed.ops){
-   am.activity.push({icon:'xml',label:'Parsed '+parsed.ops.length+' structured file operation(s)',status:'done'});
-   const{results,snapshot}=applyOps(p,parsed.ops);
-   for(const r of results){am.activity.push({icon:r.ok?(r.action==='folder'?'folder':r.action==='create'?'fileplus':r.action==='delete'?'trash':'edit'):'alert',
-    label:(r.action==='folder'?'Created folder ':r.action==='create'?'Created ':r.action==='modify'?'Modified ':'Deleted ')+r.path+(r.ok?'':' — '+r.error),
-    status:r.ok?'done':'fail'});}
-   const applied=results.filter(r=>r.ok);
-   if(applied.length){p.lastSnapshot={messageId:am.id,files:snapshot};
-    am.ops={results,diffs:buildDiffs(snapshot,p,results)};
-    const fails=results.filter(r=>!r.ok).length;
-    am.activity.push({icon:fails?'warn':'ok',label:'Applied '+applied.length+' change(s) to the project'+(fails?', '+fails+' operation(s) failed':''),status:fails?'warn':'done'});}}
-  else{am.activity.push({icon:'info',label:'No structured file changes were requested — answered directly.',status:'done'});}
-  am.status='done';}
- catch(e){if(e.name==='AbortError'){am.status='stopped';am.activity.push({icon:'stop',label:'Stopped by user — partial response preserved.',status:'warn'});}
-  else{am.status='error';console.error('Flay AI agent request failed:',e);am.activity.push({icon:'alert',label:'Unable to get a response. Please try again.',status:'fail'});}}
- finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;finishGen(am);
-  if(am._genErr)am.activity.push({icon:'warn',label:am._genErr,status:'fail'});
-  S.agentStreaming=false;S.agentAbort=null;p.updatedAt=Date.now();p.expanded=[...S.expanded];persistProject(p);
+  const resume=p.pendingRun&&/^(continue|resume|retry)\b/i.test(text);
+  if(resume){ctx=p.pendingRun;p.pendingRun=null;am.mode=ctx.mode;am.queue=ctx.items.map(i=>({...i,status:'queued'}));
+   am.activity.push({icon:'history',label:'Resuming paused queue — '+am.queue.length+' file(s) remaining',status:'done'});}
+  else{
+   const history=p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-9,-1).map(m=>({role:m.role,content:stripFences(m.content)}));
+   const be=atts.find(a=>a.kind==='builderror'),mode=be?'buildfix':'edit',errText=be?be.content:'';
+   am.mode=mode;
+   const r=await planStep(p,am,history,text,atts,mode,be?be.content:'');
+   ctx=r.ctx;am.queue=r.queue;
+   if(!am.queue.length){am.content=String(r.j.answer||r.j.summary||'No file changes were needed.').replace(/\`\`\`[\s\S]*?\`\`\`/g,'(code omitted — code is only written to project files)');am.status='done';}
+  qUpdate(am);
+  const snap=resume&&p.lastSnapshot?p.lastSnapshot.files:JSON.parse(JSON.stringify(p.files));
+  let failed=null;
+  if(am.queue.length) failed=await runQueue(p,am,ctx,snap);
+  if(!failed){
+   const issues=crossCheck(p);
+   if(issues.length){
+    am.activity.push({icon:'search',label:'Project check found '+issues.length+' reference problem(s) — repairing before you rebuild',status:'warn'});am._actDirty=true;
+    const txt='[PROJECT CHECK]\\n'+issues.map(i=>i.path+': '+i.msg).join('\\n');
+    const r2=await planStep(p,am,[],ctx.task.slice(0,1500),[],'buildfix',txt);
+    if(r2.queue.length){am.queue.push(...r2.queue);ctx.task=r2.ctx.task;ctx.errText+='\\n'+txt;qUpdate(am);failed=await runQueue(p,am,ctx,snap);}}}
+  if(failed){setPending(p,am,ctx);am.status='error';
+   am.content='**Generation paused** at `'+failed.path+'`: '+failed.error+'\n\n'+(qSummary(am)?'Saved so far:\n'+qSummary(am)+'\n\n':'')+'Remaining files were not started. Press Retry on the failed file (or send "continue") - completed files are kept and only this file and the ones after it will run.';}
+  else{p.pendingRun=null;
+   const bad=(p.tech==='imported'?[]:validateProject(p)).filter(x=>!x.ok);
+   if(bad.length)am.activity.push({icon:'warn',label:'Project check: '+bad.map(b=>b.label).join('; '),status:'warn'});
+   am.content=(ctx.summary?ctx.summary+'\n\n':'')+(am.mode==='buildfix'?'Applied build fixes directly to the project files. Run a new build to verify.':'Changes were applied directly to the project files.')+'\n\n'+qSummary(am);
+   am.status='done';}}}
+ catch(e){
+  if(ctx&&am.queue.some(q=>q.status!=='completed'))setPending(p,am,ctx);
+  if(e.name==='AbortError'){am.status='stopped';am.activity.push({icon:'stop',label:'Stopped — completed files are saved. Send "continue" to resume.',status:'warn'});}
+  else{am.status='error';console.error('Flay AI agent failed:',e);am.activity.push({icon:'alert',label:e.pipeline?e.message:'Unable to get a response. Please try again.',status:'fail'});}}
+ finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;
+  S.agentStreaming=false;S.agentAbort=null;S.fileLock=null;p.updatedAt=Date.now();p.expanded=[...S.expanded];persistProject(p);
   renderThread('#agentMsgs',p.agent);pinScroll(true);updateSendBtn();}}
+
 function buildDiffs(snapshot,p,results){const diffs={};
  for(const r of results){if(!r.ok)continue;
   if(r.action==='folder'){diffs[r.path]={ops:[],plus:0,minus:0};continue;}
@@ -1729,24 +1872,54 @@ function terminalRender(logs, state) {
  for (let i = termRenderedLines; i < lines.length; i++) {
   let line = lines[i];
   if (!line.trim()) continue;
-  
+  /* Keep GitHub Actions log text exact so the terminal mirrors GitHub. */
+
   let cls = '';
   if (line.includes('[OK]') || line.includes('SUCCESS') || line.includes('BUILD SUCCESSFUL')) cls = 'ok';
   else if (line.includes('[FAILED]') || line.includes('ERROR') || line.includes('FAILED') || line.includes('FAILURE:')) cls = 'err';
   else if (line.startsWith('$') || line.includes('[BUILD]') || line.includes('Task :')) cls = 'cmd';
   else if (line.includes('[INFO]') || line.includes('[QUEUE]')) cls = 'dim';
 
-  terminalQueueLine(line, cls, true, '#btLog');
+  terminalQueueLine(line, cls, false, '#btLog');
  }
  termRenderedLines = lines.length;
  terminalSet(state, S._buildJobId || '');
 }
 
+function buildFailureReport(s,detail,logs){
+ s=s||{};const run=s.run||{},wf=s.workflow||{},jobs=Array.isArray(s.jobs)?s.jobs:[];
+ const v=x=>(x===undefined||x===null||x==='')?'unavailable':String(x);
+ const failedStep=jobs.flatMap(j=>j.steps||[]).find(x=>x.conclusion==='failure');
+ const infra=failedStep?/^(set up job|download project archive|extract project|find android gradle project|setup java|prepare android sdk|upload apk)/i.test(failedStep.name):null;
+ const rawLogs=String(logs||'')+' '+String(detail||'');
+ const hasProjectError=/FAILURE: Build failed|What went wrong|Execution failed for task|Compilation error|Unresolved reference|cannot find symbol|AAPT|resource .* not found|Could not resolve|BUILD FAILED/i.test(rawLogs);
+ const cls=failedStep?(infra?'infrastructure':'project'):(jobs.length?'unknown':hasProjectError?'project':'unknown');
+ const L=['BUILD FAILED','','Workflow:','  Name: '+v(wf.name||run.name),'  File: '+v(wf.file),'',
+  'Workflow Run:','  Title: '+v(run.display_title),'  Number: '+v(run.number),'  Status: '+v(run.status),'  Conclusion: '+v(run.conclusion),'  URL: '+v(s.htmlUrl),'',
+  'Run ID:','  '+v(run.id),'  Build job ID: '+v(S._buildJobId),'','Jobs:'];
+ if(!jobs.length)L.push('  unavailable');
+ jobs.forEach(j=>L.push('  - '+v(j.name)+' (job id '+v(j.id)+')'));
+ L.push('','Job Status:');
+ if(!jobs.length)L.push('  unavailable');
+ jobs.forEach(j=>L.push('  - '+v(j.name)+': status='+v(j.status)+' conclusion='+v(j.conclusion)));
+ L.push('','Job Steps:');
+ if(!jobs.length)L.push('  unavailable');
+ jobs.forEach(j=>{L.push('  '+v(j.name)+':');(j.steps||[]).forEach(st=>L.push('    '+st.number+'. '+st.name+' - status='+v(st.status)+' conclusion='+v(st.conclusion)));});
+ L.push('','Complete Logs:',String(logs||'').trim()||'unavailable','','Failure:','  '+v(detail),'  Failed step: '+v(failedStep&&failedStep.name),'Failure Classification: '+cls);
+ return L.join('\n');}
+function terminalRunHeader(s){const r=s.run,w=s.workflow||{};if(!r)return;
+ ['===== GitHub Actions Workflow Run =====','Workflow: '+(w.name||r.name||'unavailable'),'Run ID: '+r.id+(r.number?'  (run #'+r.number+')':''),'Event: '+(r.event||'unavailable')+'  Branch: '+(r.head_branch||'unavailable')]
+  .forEach((t,i)=>terminalQueueLine(t,'cmd',false,'#btLog'));}
+function terminalJobsSummary(s){const jobs=Array.isArray(s.jobs)?s.jobs:[];if(!jobs.length)return;
+ terminalQueueLine('===== GitHub Actions Jobs =====','cmd',false,'#btLog');
+ const r=s.run||{};terminalQueueLine('Run status: '+(r.status||'unavailable')+'  conclusion: '+(r.conclusion||'none'),'dim',false,'#btLog');
+ jobs.forEach(j=>{terminalQueueLine('Job: '+j.name+'  status: '+j.status+'  conclusion: '+(j.conclusion||'none'),(j.conclusion==='failure'?'err':j.conclusion==='success'?'ok':'dim'),false,'#btLog');
+  (j.steps||[]).forEach(st=>terminalQueueLine('  '+st.number+'. '+st.name+'  ['+st.status+(st.conclusion?' / '+st.conclusion:'')+']',(st.conclusion==='failure'?'err':'dim'),false,'#btLog'));});}
 async function startBuildTerminal(){
  const p=S.project;if(!p)return;
  const base='https://flay-ai.flaynity.workers.dev';
  const out=$('#btLog');
- S._buildFailure='';S._buildJobId='';S._buildLogs='';
+ S._buildFailure='';S._buildJobId='';S._buildLogs='';S._buildMeta=null;S._runHeader=false;
  termQueue = []; termTyping = false; termRenderedLines = 0; termScrollLock = true;
  
  $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';
@@ -1758,49 +1931,70 @@ async function startBuildTerminal(){
   terminalQueueLine('[OK] Project packaged: '+fmtBytes(blob.size), 'ok', true, '#btLog');
   const b64=await new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).slice(String(fr.result).indexOf(',')+1));fr.onerror=j;fr.readAsDataURL(blob);});
   terminalQueueLine('$ POST /build', 'cmd', true, '#btLog');
-  const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(180000)});
+  const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(20*60*1000)});
   
-  const ct=res.headers.get('content-type')||'';let j=null;if(ct.includes('json')){try{j=await res.json()}catch(_){}}
-  if(!res.ok)throw new Error(describeHttp(res.status,j?JSON.stringify(j):''));
-  if(!j||!j.ok||!j.jobId)throw new Error('Build server returned an invalid build response.');
+  const ct=res.headers.get('content-type')||'';let j=null;
+  if(ct.includes('json')){try{j=await res.json()}catch(_){j=null;}}
+  if(!res.ok){
+   const detail=String(j&&(j.error||j.message)||describeHttp(res.status,j?JSON.stringify(j):''));
+   S._buildLogs=String(j&&(j.log||j.logs||j.details)||'');
+   S._buildMeta={status:'failed',error:detail,logs:S._buildLogs};
+   throw new Error(detail+(S._buildLogs?'\\n'+S._buildLogs.slice(-12000):''));
+  }
+  /* Support both Worker job/status responses and servers that return the APK binary directly. */
+  if(!ct.includes('json')){
+   const apkBlob=await res.blob();
+   if(!apkBlob.size)throw new Error('Build server returned an empty APK response.');
+   const apkUrl=URL.createObjectURL(apkBlob);S._apkUrl=apkUrl;
+   p.builds.unshift({at:Date.now(),ok:true,msg:'APK build completed successfully.'});
+   terminalQueueLine('[SUCCESS] APK build completed successfully.','ok',true,'#btLog');
+   terminalQueueLine('[APK] Ready to download ('+fmtBytes(apkBlob.size)+')','ok',true,'#btLog');
+   terminalSet('success','');
+   persistProject(p);renderBuildPane();return;
+  }
+  if(!j||!j.ok||!j.jobId){
+   const detail=String(j&&(j.error||j.message)||'Build server returned an invalid build response.');
+   S._buildLogs=String(j&&(j.log||j.logs||j.details)||'');
+   S._buildMeta={status:'failed',error:detail,logs:S._buildLogs};
+   throw new Error(detail+(S._buildLogs?'\\n'+S._buildLogs.slice(-12000):''));
+  }
   
   const jobId=String(j.jobId);S._buildJobId=jobId;
   const statusUrl=String(j.statusUrl||base+'/build/status/'+encodeURIComponent(jobId));
   $('#btJob').textContent='Job ID: '+jobId;
   terminalQueueLine('[OK] Build job created: '+jobId, 'ok', true, '#btLog');
-  terminalQueueLine('[INFO] Waiting for remote builder...', 'dim', true, '#btLog');
+  terminalQueueLine('[INFO] Build job queued. Waiting for the GitHub Actions workflow run...', 'dim', true, '#btLog');
   terminalSet('running',jobId);
   
   const started=Date.now(),maxWait=30*60*1000;let lastStatus='';
   while(Date.now()-started<maxWait){
-   await new Promise(r=>setTimeout(r,lastStatus?'2500':'1200'));
+   await new Promise(r=>setTimeout(r,lastStatus?2500:1500));
    const sr=await fetch(statusUrl,{method:'GET',headers:{Accept:'application/json'},signal:withTimeout(30000)});
    const sct=sr.headers.get('content-type')||'';let s=null;if(sct.includes('json')){try{s=await sr.json()}catch(_){}}
    if(!sr.ok)throw new Error(describeHttp(sr.status,s?JSON.stringify(s):''));
    if(!s||!s.status)throw new Error('Build server returned an invalid status response.');
    
    lastStatus=String(s.status);
-   S._buildLogs=String(s.logs||'');
+   S._buildLogs=String(s.logs||'');S._buildMeta=s;
+   if(s.run&&!S._runHeader){S._runHeader=true;terminalRunHeader(s);}
    if(s.htmlUrl){S._buildActionsUrl=s.htmlUrl;$('#btOpenActions').classList.remove('hidden');$('#btOpenActions').onclick=()=>window.open(s.htmlUrl,'_blank','noopener');}
    
    terminalRender(S._buildLogs, s.status==='failed'?'failed':s.status==='success'?'success':'running');
-   
-   if(!S._buildLogs){
-    if(s.status==='queued')terminalQueueLine('[QUEUE] Build queued — waiting for GitHub Actions...', 'dim', true, '#btLog');
-    else if(s.status==='building')terminalQueueLine('[BUILD] GitHub Actions is running...', 'cmd', true, '#btLog');
-   }
+   if(s.run&&s.run.status&&s.status!=='success'&&s.status!=='failed')$('#btStatus').textContent='GitHub Actions: '+s.run.status.replace(/_/g,' ');
    
    if(s.status==='success'){
     const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));S._apkUrl=apkUrl;
     p.builds.unshift({at:Date.now(),ok:true,msg:'Real APK build completed successfully.'});
+    terminalJobsSummary(s);
     terminalQueueLine('[SUCCESS] Real APK build completed successfully.', 'ok', true, '#btLog');
     terminalQueueLine('[APK] '+apkUrl, 'ok', true, '#btLog');
     terminalSet('success',jobId);return;
    }
    
    if(s.status==='failed'){
-    const detail=String(s.error||'Remote builder Android build failed.');
-    S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+detail;
+    const detail=String(s.error||'GitHub Actions Android build failed.');
+    S._buildFailure=buildFailureReport(s,detail,S._buildLogs);
+    terminalJobsSummary(s);
     p.builds.unshift({at:Date.now(),ok:false,msg:detail});
     terminalQueueLine('[FAILED] '+detail, 'err', true, '#btLog');
     terminalSet('failed',jobId);return;
@@ -1809,7 +2003,7 @@ async function startBuildTerminal(){
   throw new Error('Build timed out while waiting for the build server.');
  }catch(e){
   const msg=e.name==='AbortError'?'Build server request timed out.':String(e.message||e);
-  S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+msg;
+  S._buildFailure=buildFailureReport(S._buildMeta,msg,S._buildLogs);
   p.builds.unshift({at:Date.now(),ok:false,msg:msg});
   terminalQueueLine('[FAILED] '+msg, 'err', true, '#btLog');
   terminalSet('failed',S._buildJobId||''); 
@@ -1817,12 +2011,13 @@ async function startBuildTerminal(){
 }
 
 function buildFixFromTerminal(){
- const p=S.project;const err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
- S.agentAttachments=[{kind:'doc',path:'build-error.log',name:'build-error.log',size:err.length,content:err}];
- const prompt='CRITICAL: Fix the real Android build failure shown in the attached build-error.log. Analyze the project files, identify the exact cause, and MODIFY the required files using the flayfiles block. DO NOT print the full code in your chat response. Make the smallest safe fix and output ONLY a short summary of what was changed in the project files.';
- const backId=$('.screen.active')?.id;goBack();if(backId!=='screen-project')return;
- setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=prompt;autoGrow(inp);persistProject(p);
- setTimeout(()=>sendAgent(),120);
+ const p=S.project,err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
+ goBack();if($('.screen.active').id!=='screen-project')return;
+ const evidence=err;/* the full real report: workflow, run, jobs, steps, complete logs, failure */
+ S.agentAttachments=[{kind:'builderror',path:'[BUILD ERROR]',name:'build-error.log',size:evidence.length,content:evidence}];
+ setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=isInfrastructureBuildError(err)
+  ? 'Analyze the BUILD ERROR above. If this is a build-server/Worker/runner infrastructure failure, explain the exact server component that must be fixed. If it is a real project Gradle/compiler/resource error, modify the required project files sequentially and verify the references.'
+  : 'Fix the BUILD ERROR above using the complete attached report and logs. Identify the earliest actionable root cause, read the exact named project file(s), apply and save a concrete minimal fix, and explain any infrastructure issue that cannot be fixed in project files. Do not merely repeat the error.';autoGrow(inp);sendAgent();
 }
 
 $('#btBack').onclick=goBack;
@@ -1897,22 +2092,6 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;
  attachTermScroll('#btLog');
  attachTermScroll('#vtLog');
  if(typeof JSZip==='undefined')toast('JSZip could not load (offline?). ZIP import/export is unavailable.','warn');})();
-</script>
-<script>
-<script>
-(function(){
-const FX_fetch=window.fetch;
-window.fetch=async function(u){const r=await FX_fetch.apply(this,arguments);if(/\/build\/status\//.test(String(u))){try{S._st=await r.clone().json();}catch(e){}}return r;};
-function realBuildLog(st,logs){st=st||{};const o=[];const wf=st.workflow||st.workflowName||(st.run&&st.run.name),rid=st.runId||st.run_id||(st.run&&st.run.id);if(wf)o.push("===== GitHub Actions Workflow: "+wf+" =====");if(rid)o.push("Run ID: "+rid+" | status: "+(st.status||"unknown")+(st.conclusion?" | conclusion: "+st.conclusion:""));const jobs=Array.isArray(st.jobs)?st.jobs:[];for(const j of jobs){o.push("");o.push("===== GitHub Actions Job: "+(j.name||j.id||"unknown")+" ("+[j.status,j.conclusion].filter(Boolean).join("/")+") =====");for(const s of(Array.isArray(j.steps)?j.steps:[]))o.push("  step "+(s.number||"")+" "+(s.name||"")+" : "+[s.status,s.conclusion].filter(Boolean).join("/"));if(j.logs)o.push(String(j.logs));}if(!jobs.some(j=>j.logs)&&logs)o.push(String(logs));return o.join("\n");}
-const FX_ts=terminalSet;terminalSet=function(state,jobId){FX_ts(state,jobId);if(state==="failed"&&S._buildInfrastructureFailure)$("#btFix").classList.add("hidden");};
-terminalRender=function(logs,state){const lines=realBuildLog(S._st,logs).split("\n");for(let i=termRenderedLines;i<lines.length;i++){const line=lines[i];if(!line.trim())continue;let cls="";if(/\[OK\]|SUCCESS|BUILD SUCCESSFUL/.test(line))cls="ok";else if(/\[FAILED\]|ERROR|FAILED|FAILURE:/.test(line))cls="err";else if(line.startsWith("$")||/\[BUILD\]|Task :|=====/.test(line))cls="cmd";else if(/\[INFO\]|\[QUEUE\]/.test(line))cls="dim";terminalQueueLine(line,cls,true,"#btLog");}termRenderedLines=lines.length;terminalSet(state,S._buildJobId||"");};
-const FX_start=startBuildTerminal;startBuildTerminal=function(){S._st=null;S._buildInfrastructureFailure=false;return FX_start.apply(this,arguments);};
-const FX_fix=buildFixFromTerminal;buildFixFromTerminal=function(){const p=S.project,st=S._st,logs=String(S._buildLogs||""),fail=String(S._buildFailure||"");if(!p||!st||!logs.trim()){toast("No real GitHub build evidence is available to attach.","warn");return;}const infra=/timed out|timeout|HTTP (5\d\d|401|403|429)|Network error|Failed to fetch|invalid (build|status) response|SDK (provision|install)|resolve host|no runner|runner (is|has) (unavailable|failed)/i.test(fail)&&!/\b(error:|e: |Execution failed for task|AAPT|Unresolved reference|Compilation|Duplicate class|Manifest merger|Could not (find|resolve) (com|org|androidx)\.)/i.test(fail);if(infra){S._buildInfrastructureFailure=true;toast("This is a build-server or GitHub infrastructure failure. Project files were not modified.","warn");return;}const wf=st.workflow||st.workflowName||(st.run&&st.run.name)||"not reported",rid=st.runId||st.run_id||(st.run&&st.run.id)||S._buildJobId||"not reported";const evidence=["REAL ANDROID BUILD FAILURE","","Workflow: "+wf,"Workflow Run / Run ID: "+rid,"Status: "+(st.status||"unknown"),st.conclusion?"Conclusion: "+st.conclusion:"","Jobs, steps and logs:",realBuildLog(st,logs),"","Failure:",st.error||fail].filter(Boolean).join("\n");S.agentAttachments=[{kind:"doc",path:"build-error.log",name:"build-error.log",size:evidence.length,content:evidence}];const hits=[];for(const path of Object.keys(p.files)){if(path!=="build-error.log"&&evidence.indexOf(path)>=0)hits.push(path);}S._only=hits.slice(0,3);const prompt="Fix the real Android build failure in the attached build-error.log. This is a project-edit task, not a question. Inspect the project source of truth, retrieve every additional file you need, and continue until you can make the smallest correct fix. Do not stop with NEED when the requested file exists in the project. Modify the actual project files with a flayfiles block. Preserve unrelated code. Do not claim success unless you actually provide the file changes.";const backId=$(".screen.active")?.id;goBack();if(backId!=="screen-project")return;setTab("agent");renderAgentAtts();const inp=$("#agentInput");inp.value=prompt;autoGrow(inp);setTimeout(()=>sendAgent().finally(()=>{S._only=null;}),120);};
-$("#btFix").onclick=buildFixFromTerminal;
-const FX_ctx=buildProjectContext;buildProjectContext=function(p,request,force){if(!Array.isArray(S._only)||!S._only.length)return FX_ctx(p,request,force||[]);const wanted=[...new Set([...S._only,...(force||[])])].filter(x=>p.files[x]&&!p.files[x].binary);const tree=buildTree(Object.keys(p.files).sort());let treeText="";const walk=(node,depth)=>{for(const [d,sub] of node.dirs){treeText+="  ".repeat(depth)+d+"/\n";walk(sub,depth+1);}for(const f of node.files)treeText+="  ".repeat(depth)+f.name+"  ("+fmtBytes((p.files[f.path].content||"").length)+")\n";};walk(tree,0);let blocks="",chars=0;for(const path of wanted){const content=p.files[path].content||"";blocks+="\n### FILE: "+path+"\n"+content+"\n### END FILE\n";chars+=content.length;}return{tree:treeText,blocks,included:new Set(wanted),total:Object.keys(p.files).length,chars};};
-extractNeeds=function(content,included,p){const seen=new Set(),needs=[];const re=/(?:^|\n)\s*NEED\s*:\s*([^\n\r]+)/gi;let m;while((m=re.exec(String(content||"")))){const path=normPath(m[1].trim().replace(/^["']+|["']+$/g,""));if(!path||isUnsafe(path)||!p.files[path]||p.files[path].binary)continue;if(!included.has(path)&&!seen.has(path)){seen.add(path);needs.push(path);}}return needs.slice(0,8);};
-const FX_agentSystem=agentSystem;agentSystem=function(p){return FX_agentSystem(p)+"\n\nBUILD/FIX MODE RULES:\n- For a request to fix all errors or make the Android project build successfully, you must edit the project, not merely explain errors.\n- The complete project tree is authoritative. If a required file is not in the current context, request it with NEED: <exact path> and continue when it is supplied.\n- Never stop after a NEED request while retrieval rounds remain.\n- Do not output NEED for a file already present in the supplied FILE blocks.\n- Do not return No structured file changes for a code-fix request unless no safe change is actually possible.\n- After receiving additional files, re-check the build dependency chain and then output the actual flayfiles modifications.";};
-})();
 </script>
 </body>
 </html>
