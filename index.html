@@ -1982,5 +1982,109 @@ function buildFix(){const p=S.project,L=S._lastBuild;
  inp.value='Fix the real Android build failure in the attached build-failed.log (GitHub Actions). Identify the exact failing file from the error, read only that file (a referenced dependency only if the fix truly needs it), make the smallest safe change, and save it. Do not rewrite unrelated code.';
  autoGrow(inp);setTimeout(()=>sendAgent(),120);}
 window.startBuildTerminal=startBuild;$('#btFix').onclick=buildFix;
+
+const AG_SYS='You are Flay AI, a precise Android/web coding agent. Make the smallest safe change. Never print project source code in prose.';
+function resolvePath(p,tok){const t=normPath(tok),ps=Object.keys(p.files);
+ const ex=ps.filter(x=>t===x||t.endsWith('/'+x));if(ex.length)return[ex.sort((a,b)=>b.length-a.length)[0]];
+ const sf=ps.filter(x=>x.endsWith('/'+t));if(sf.length)return sf.slice(0,2);
+ return t.includes('/')?[]:ps.filter(x=>x.split('/').pop()===t).slice(0,2);}
+function filesInText(p,text,errOnly){let t=String(text||'');
+ if(errOnly){const L=t.split('\n'),keep=[];L.forEach((l,i)=>{if(/error|(^|\s)e: |FAILED|went wrong|Could not|cannot find|unresolved|Exception/i.test(l))for(let k=i;k<Math.min(L.length,i+3);k++)keep.push(L[k]);});if(keep.length)t=keep.join('\n');}
+ const out=[];(t.match(/[\w\-.\/\\]+\.(?:kt|java|xml|gradle|kts|properties|html|js|css|json|pro)\b/g)||[]).forEach(k=>resolvePath(p,k).forEach(x=>{if(!out.includes(x))out.push(x);}));
+ if(!out.length){const ids=[...new Set(t.match(/\b[A-Z][A-Za-z0-9_]{3,}\b/g)||[])].slice(0,6),ks=Object.keys(p.files);
+  ids.forEach(id=>{const h=ks.find(x=>x.split('/').pop().replace(/\.\w+$/,'')===id);if(h&&!out.includes(h))out.push(h);});
+  if(!out.length)for(const id of ids){const h=Object.entries(p.files).find(([x,f])=>!f.binary&&new RegExp('\\b(class|object|interface)\\s+'+id+'\\b').test(f.content||''));if(h){out.push(h[0]);break;}}}
+ return out.slice(0,3);}
+const unfence=s=>String(s).replace(/^\s*\x60\x60\x60[\w+-]*\r?\n/,'').replace(/\r?\n\x60\x60\x60\s*$/,'');
+function applyEdits(src,out){const re=/<<<<<<< SEARCH\r?\n([\s\S]*?)\r?\n?=======\r?\n([\s\S]*?)\r?\n?>>>>>>> REPLACE/g;let m,n=0,res=src;
+ while((m=re.exec(out))){const s=m[1],i=res.indexOf(s);if(!s||i<0)throw new Error('Edit block did not match the current file. Retry re-reads the file and regenerates.');if(res.indexOf(s,i+1)>=0)throw new Error('Edit block matched more than once.');res=res.slice(0,i)+m[2]+res.slice(i+s.length);n++;}
+ if(!n)throw new Error('The model returned no edit blocks.');return res;}
+function queueCard(m){const q=m.queue||[];if(!q.length)return '';
+ const L={queued:'Queued',reading:'Reading',generating:'Generating',saving:'Saving',completed:'Completed',failed:'Failed',retrying:'Retrying'};
+ const rows=q.map(it=>{const s=it.status;return '<div class="genrow"><span class="gpath" title="'+esc(it.path)+'">'+esc(it.path)+'</span>'+(s==='completed'?icon('check','sm st-done'):s==='failed'?icon('alert','sm st-fail'):s==='queued'?icon('info','sm muted'):'<span class="spin"></span>')+'<span class="gst '+(s==='completed'?'ok':s==='failed'?'bad':'')+'">'+L[s]+'</span>'+(s==='failed'?'<button class="btn sm" data-retry="'+m.id+'">Retry</button>':'')+'</div>'+(it.error?'<div class="generr">'+icon('alert','xs')+'<span>'+esc(it.error)+'</span></div>':'');}).join('');
+ return '<div class="card queue"><div class="card-head">'+icon('fileplus','sm')+'<b>File queue</b><span class="muted small">'+q.filter(x=>x.status==='completed').length+'/'+q.length+'</span>'+icon('chev-d','sm')+'</div>'+rows+(m.fromBuild&&q.every(x=>x.status==='completed')?'<div class="card-foot"><button class="btn primary sm" data-rebuild>Rebuild</button></div>':'')+'</div>';}
+function swap(m,sel,html,before){const mel=$('#agentMsgs [data-mid="'+m.id+'"]');if(!mel||!html)return;const w=document.createElement('div');w.innerHTML=html;const n=w.firstElementChild,old=mel.querySelector(sel);
+ if(old)old.replaceWith(n);else{const t=before&&mel.querySelector(before);t?t.before(n):mel.appendChild(n);}schedulePinScroll(true);}
+const refreshQueue=m=>swap(m,'.card.queue',queueCard(m),'.ai-st,.msg-body');
+function agAct(m,label,ic,st){m.activity.push({icon:ic,label,status:st||'done'});swap(m,'.card.act',activityCard(m));}
+const think=(am)=>r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#agentMsgs');};
+async function genOne(am,it,before,refs){let buf='';
+ let u='TASK:\n'+am.task+'\n\nPLAN: '+(am.plan||'')+'\nFILE: '+it.path+' ('+it.action+') - '+(it.reason||'')+'\n';
+ if(am.errText)u+='\nBUILD ERROR:\n'+capLog(am.errText,9000)+'\n';
+ u+=it.action==='modify'?'\nCURRENT CONTENT OF '+it.path+':\n'+before+'\n'+refs+'\nOutput ONLY edit blocks, nothing else. Each block exactly:\n<<<<<<< SEARCH\n(exact existing lines, as short as possible but unique)\n=======\n(replacement lines)\n>>>>>>> REPLACE\nChange only what the task requires; leave everything else untouched.':refs+'\nOutput ONLY the complete content of the new file. No code fences, no explanation.';
+ await providerChat({provider:activeProvider(),messages:[{role:'system',content:AG_SYS},{role:'user',content:u}],signal:S.agentAbort.signal,onDelta:d=>{buf+=d;},onReasoning:think(am)});
+ return buf;}
+async function runQueue(am){const p=S.project;
+ for(const it of am.queue){if(it.status==='completed')continue;it.error='';
+  try{
+   it.status='reading';refreshQueue(am);
+   const cur=p.files[it.path],existed=!!cur;if(cur&&cur.binary)throw new Error('Binary file, cannot be edited as text.');
+   const before=existed?cur.content||'':'';let after=before;
+   if(it.action==='delete'){if(!existed)throw new Error('File not found.');}
+   else{if(it.action==='modify'&&!existed)throw new Error('File not found in project.');
+    let refs='';for(const r of it.refs||[]){const f=p.files[r];if(f&&!f.binary)refs+='\n### REFERENCE FILE: '+r+'\n'+(f.content||'').slice(0,12000)+'\n### END\n';}
+    if(existed)agAct(am,'Read '+it.path,'file');
+    it.status='generating';refreshQueue(am);
+    const out=await genOne(am,it,before,refs);
+    after=it.action==='create'?unfence(out):applyEdits(before,out);
+    if(it.action==='create'&&!after.trim())throw new Error('The model returned an empty file.');}
+   it.status='saving';refreshQueue(am);
+   if(it.action==='delete')delete p.files[it.path];else p.files[it.path]={content:after};
+   const kind=it.action==='delete'?'delete':existed?'modify':'create',a=after.split('\n'),b=before.split('\n');
+   am.ops.results=am.ops.results.filter(r=>r.path!==it.path);am.ops.results.push({path:it.path,action:kind,ok:true});
+   am.ops.diffs[it.path]=kind==='modify'?diffLines(before,after):kind==='create'?{ops:a.map(s=>({t:'+',s})),plus:a.length,minus:0}:{ops:b.map(s=>({t:'-',s})),plus:0,minus:b.length};
+   p.updatedAt=Date.now();await persistProject(p);renderExplorer();
+   it.status='completed';agAct(am,(kind==='create'?'Created ':kind==='delete'?'Deleted ':'Fixed ')+it.path+' - saved to Code Tab','check');refreshQueue(am);
+  }catch(e){const ab=e.name==='AbortError';it.status='failed';it.error=ab?'Stopped by user.':String(e.message||e);if(ab)am.stopped=true;refreshQueue(am);persistProject(p);return false;}}
+ return true;}
+function finishAgent(am){const p=S.project;if(am.thinkT0&&!am.thinkMs)am.thinkMs=Date.now()-am.thinkT0;
+ const q=am.queue||[];
+ if(q.length){const f=q.find(x=>x.status==='failed'),done=q.filter(x=>x.status==='completed').map(x=>(x.action==='create'?'Created':x.action==='delete'?'Deleted':'Fixed')+' \x60'+x.path+'\x60');
+  am.content=(am.plan?am.plan+'\n\n':'')+done.join('\n')+(done.length?'\n\nSaved to Code Tab.':'')+(f?'\n\nStopped at \x60'+f.path+'\x60: '+f.error+' Retry continues from this file.':'');
+  if(am.status==='streaming')am.status=am.stopped?'stopped':f?'error':'done';}
+ else if(am.status==='streaming')am.status='done';
+ S.agentStreaming=false;S.agentAbort=null;p.updatedAt=Date.now();p.expanded=[...S.expanded];persistProject(p);
+ renderThread('#agentMsgs',p.agent);pinScroll(true);updateSendBtn();}
+async function retryQueue(mid){if(S.agentStreaming)return;const p=S.project,am=p&&p.agent.find(x=>x.id===mid);if(!am||!am.queue)return;
+ S.agentStreaming=true;S.agentAbort=new AbortController();am.status='streaming';am.stopped=false;updateSendBtn();
+ const f=am.queue.find(x=>x.status==='failed');if(f)f.status='retrying';
+ try{await runQueue(am);}finally{finishAgent(am);}}
+async function sendAgent2(){if(S.agentStreaming)return;const p=S.project;if(!p)return;
+ const inp=$('#agentInput'),text=inp.value.trim(),atts=S.agentAttachments.slice();if(!text&&!atts.length)return;
+ if(!activeProvider()){toast('Set up an AI provider first (Menu > Set Up AI).','warn');renderProviders();openScreen('screen-providers');return;}
+ if(!activeProvider().model){toast('No model selected. Use the Model button in the composer.','warn');openModelModal();return;}
+ const errAtt=atts.find(a=>a.path==='build-failed.log'),fromBuild=!!(S._fixPending&&errAtt);S._fixPending=false;
+ p.agent.push({id:uid(),role:'user',content:text||'(selected files)',attachments:atts.map(a=>({name:a.path||a.name,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
+ S.agentAttachments=[];inp.value='';if(agentDraftKey())localStorage.removeItem(agentDraftKey());autoGrow(inp);renderAgentAtts();
+ const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[],queue:[],task:text||'Work with the attached files.',fromBuild,errText:errAtt?capLog(errAtt.content||'',40000):'',extra:atts.filter(a=>a!==errAtt&&typeof a.content==='string').map(a=>({path:a.path||a.name,content:a.content.slice(0,20000)}))};
+ p.agent.push(am);renderThread('#agentMsgs',p.agent);S.pinned=true;pinScroll(true);
+ S.agentStreaming=true;S.agentAbort=new AbortController();updateSendBtn();
+ try{
+  let hits=am.errText?filesInText(p,am.errText,true):[];filesInText(p,text,false).forEach(x=>{if(!hits.includes(x))hits.push(x);});
+  const given=new Set(am.extra.map(a=>a.path));hits=hits.filter(x=>!given.has(x)).slice(0,3);
+  let ctx='',used=0;const read=[];
+  for(const x of hits){const f=p.files[x];if(!f||f.binary)continue;const c=f.content||'';if(used+c.length>30000)continue;used+=c.length;read.push(x);ctx+='\n### FILE: '+x+'\n'+c+'\n### END FILE\n';}
+  agAct(am,read.length?'Read '+read.join(', ')+' (targeted)':'No specific file identified yet - planning from the file list only',read.length?'file':'info');
+  let up='TASK:\n'+am.task;if(am.errText)up+='\n\nREAL GITHUB ACTIONS FAILURE:\n'+capLog(am.errText,14000);
+  am.extra.forEach(a=>{up+='\n\nATTACHED FILE '+a.path+':\n'+a.content;});
+  up+='\n\nPROJECT FILE LIST (paths only, contents not loaded):\n'+Object.keys(p.files).sort().slice(0,400).join('\n')+'\n\nFILES ALREADY READ:'+(ctx||' none')+'\n\nReturn ONLY one JSON object: {"summary":"one short line","answer":"only if no file change is needed, else empty","files":[{"path":"relative/path","action":"modify|create|delete","reason":"short","refs":["existing paths this file truly depends on, usually empty"]}]}. List only files that must change, in dependency order. For a build error start with the file the error points to.';
+  const hist=p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(0,-1).slice(-6).map(m=>({role:m.role,content:m.content}));let raw='';
+  await providerChat({provider:activeProvider(),messages:[{role:'system',content:AG_SYS},...hist,{role:'user',content:up}],signal:S.agentAbort.signal,onDelta:d=>{raw+=d;},onReasoning:think(am)});
+  let plan;try{plan=JSON.parse((raw.match(/\{[\s\S]*\}/)||[''])[0]);}catch(_){throw new Error('The model did not return a valid plan. Try again.');}
+  const seen=new Set();
+  am.queue=(plan.files||[]).map(f=>({path:normPath(f&&f.path),action:String(f&&f.action||'modify').toLowerCase(),reason:String(f&&f.reason||''),refs:((f&&f.refs)||[]).map(normPath).filter(r=>p.files[r]).slice(0,2)})).filter(f=>f.path&&!isUnsafe(f.path)&&!seen.has(f.path)&&seen.add(f.path)).slice(0,12).map(f=>{if(f.action!=='delete')f.action=p.files[f.path]?'modify':'create';f.status='queued';return f;});
+  am.plan=String(plan.summary||'');
+  if(!am.queue.length){am.content=String(plan.answer||am.plan||'No file changes are needed.');am.status='done';return;}
+  agAct(am,'Plan: '+am.queue.length+' file(s), processed one at a time','tools');
+  p.lastSnapshot={messageId:am.id,files:JSON.parse(JSON.stringify(p.files))};am.ops={results:[],diffs:{}};
+  refreshQueue(am);await runQueue(am);
+ }catch(e){if(e.name==='AbortError'){am.status='stopped';am.stopped=true;}else{am.status='error';am.activity.push({icon:'alert',label:String(e.message||e),status:'fail'});}}
+ finally{finishAgent(am);}}
+window.sendAgent=sendAgent2;
+const oldMsg=window.msgHtml;
+window.msgHtml=function(m){let h=oldMsg(m);if(m.queue&&m.queue.length)h=h.replace(/<div class="ai-st">|<div class="msg-body">/,t=>queueCard(m)+t);return h.replace(/<span aria-hidden="true">\uD83D\uDC7E<\/span>/g,'');};
+$('#agentMsgs').addEventListener('click',e=>{const r=e.target.closest('[data-retry]');if(r){retryQueue(r.dataset.retry);return;}if(e.target.closest('[data-rebuild]')){openScreen('screen-build-terminal');startBuild();}});
+})();
+</script>
 </body>
 </html>
