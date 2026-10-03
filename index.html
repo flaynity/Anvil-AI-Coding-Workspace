@@ -1786,8 +1786,8 @@ async function startBuildTerminal(){
    terminalRender(S._buildLogs, s.status==='failed'?'failed':s.status==='success'?'success':'running');
    
    if(!S._buildLogs){
-    if(s.status==='queued')terminalQueueLine('[QUEUE] Build queued — waiting for remote builder...', 'dim', true, '#btLog');
-    else if(s.status==='building')terminalQueueLine('[BUILD] Remote Builder is running...', 'cmd', true, '#btLog');
+    if(s.status==='queued')terminalQueueLine('[QUEUE] Build queued — waiting for GitHub Actions...', 'dim', true, '#btLog');
+    else if(s.status==='building')terminalQueueLine('[BUILD] GitHub Actions is running...', 'cmd', true, '#btLog');
    }
    
    if(s.status==='success'){
