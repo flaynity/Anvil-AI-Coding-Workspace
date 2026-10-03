@@ -1682,8 +1682,8 @@ async function sendAgent(){if(S.agentStreaming)return;
    am.activity.push({icon:'history',label:'Resuming paused queue — '+am.queue.length+' file(s) remaining',status:'done'});}
   else{
    /* Build fixes use the actual report, not a long history of unrelated messages. */
-   const history=mode==='buildfix'?[]:p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-4,-1).map(m=>({role:m.role,content:stripFences(m.content).slice(0,3000)}));
    const be=atts.find(a=>a.kind==='builderror'),mode=be?'buildfix':'edit',errText=be?be.content:'';
+   const history=mode==='buildfix'?[]:p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-4,-1).map(m=>({role:m.role,content:stripFences(m.content).slice(0,3000)}));
    am.mode=mode;
    const r=await planStep(p,am,history,text,atts,mode,be?be.content:'');
    ctx=r.ctx;am.queue=r.queue;
