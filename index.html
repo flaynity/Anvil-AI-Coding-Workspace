@@ -779,12 +779,14 @@ function pickThinkIcon(t){const s=(t||'').toLowerCase();
  if(/edit|update|change|modify|refactor/.test(s))return 'edit';
  return 'spark';}
 function thinkLines(m){
+ /* Agent mode shows a clean Chat-like Thinking state, never raw provider reasoning. */
+ if(m.mode)return `<div class="tline processing">${icon('brain','xs')}<span>${m.status==='streaming'?'Thinking…':'Thought for '+((m.thinkMs||0)/1000).toFixed(1)+'s'}</span></div>`;
  const parts=(m.reasoning||'').split('\n');const rows=[];
  const start=Math.max(0,parts.length-140);
  if(start>0)rows.push(`<div class="tline muted">… ${start} earlier lines</div>`);
  for(let i=start;i<parts.length;i++){const t=parts[i].trim();if(!t)continue;
   rows.push(`<div class="tline">${icon(pickThinkIcon(t),'xs')}<span>${esc(t.length>240?t.slice(0,240)+'…':t)}</span></div>`);}
- if(!m.reasoning&&m.status==='streaming'&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Processing...</span></div>`);
+ if(!m.reasoning&&m.status==='streaming'&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Thinking…</span></div>`);
  if(m._genCurrent)rows.push(`<div class="tline genline"><span class="spin"></span><span>Generating <b>${esc(m._genCurrent)}</b>…</span></div>`);
  return rows.join('');}
 function thinkCard(m){
@@ -863,8 +865,8 @@ function msgHtml(m){
  if(m.role==='user'){const long=m.content.length>600||m.content.split('\n').length>10;
   const atts=(m.attachments||[]).map(a=>`<span class="att-chip">${icon(a.kind==='image'?'image':a.kind==='zip'?'zip':a.kind==='project'?'folder':fileIcon(a.name||'x'),'sm')}<span>${esc(a.name||a.path)}</span><em>${fmtBytes(a.size||0)}</em></span>`).join('');
   return `<div class="msg user" data-mid="${m.id}">${atts?`<div>${atts}</div>`:''}<div class="bubble ${long?'clamp':''}">${esc(m.content).replace(/\n/g,'<br>')}</div>${long?'<button class="more-btn" data-more>More</button>':''}</div>`;}
- const deep=deepThinkingText(m);
- const pill=m.status==='streaming'?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>':deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
+ const deep=m.mode?'':deepThinkingText(m);
+ const pill=m.status==='streaming'?'<span class="status-pill"><span aria-hidden="true">'+(m.mode?'🧠':'👾')+'</span><span>'+esc(m.mode?'Thinking…':(deep||'Processing...'))+'</span></span>':deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
  return `<div class="msg ai" data-mid="${m.id}">
   ${thinkCard(m)}
   ${genCard(m)}${queueCard(m)}
@@ -885,9 +887,9 @@ function updateLive(m,hostSel){
   if(body)body.innerHTML=(m.content?md(m.content):'')+(m.status==='streaming'?'<span class="caret"></span>':'');
   const st=mel.querySelector('.ai-st');
   if(st){
-   const deep=deepThinkingText(m);
+   const deep=m.mode?'':deepThinkingText(m);
    if(m.status==='streaming'||deep){
-    st.innerHTML='<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>';
+    st.innerHTML='<span class="status-pill"><span aria-hidden="true">'+(m.mode?'🧠':'👾')+'</span><span>'+esc(m.mode?'Thinking…':(deep||'Processing...'))+'</span></span>';
    }else if(m.status==='stopped'){
     st.innerHTML='<span class="status-pill stopped">stopped</span>';
    }else if(m.status==='error'){
