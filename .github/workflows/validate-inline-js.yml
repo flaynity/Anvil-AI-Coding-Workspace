@@ -19,7 +19,7 @@ jobs:
           import re
           from pathlib import Path
           html = Path("index.html").read_text(encoding="utf-8")
-          scripts = re.findall(r"<script(?:\\s[^>]*)?>([\\s\\S]*?)</script>", html, re.I)
+          scripts = re.findall(r"<script(?:\s[^>]*)?>([\s\S]*?)</script>", html, re.I)
           app = next((x for x in scripts if "'use strict'" in x), None)
           if app is None:
               raise SystemExit("Could not find the main inline app script")
