@@ -92,6 +92,8 @@ input,textarea,select{font:inherit;color:inherit}
 .gen-note{border:1px dashed var(--border);border-radius:12px;padding:9px 12px;margin:10px 0;color:var(--text2);font-size:13px;display:flex;gap:8px;align-items:center}
 .att-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);border-radius:10px;padding:5px 10px;font-size:12.5px;margin:4px 4px 0 0;background:var(--bg)}
 .att-chip em{font-style:normal;color:var(--text2)}
+.att-chip.err-chip{border-color:var(--err);color:var(--err);background:var(--accent-soft)}
+.att-chip.err-chip em{color:inherit;opacity:0.8}
 /* cards */
 .card{border:1px solid var(--border);border-radius:14px;margin:0 0 12px;background:var(--bg);overflow:hidden}
 .card-head{display:flex;align-items:center;gap:9px;padding:11px 12px;font-size:13px;cursor:pointer;user-select:none}
@@ -705,7 +707,7 @@ function md(src){
  if(inUl)out+='</ul>';
  h=out.replace(/<br><h3>/g,'<h3>').replace(/<\/h3><br>/g,'</h3>').replace(/(<\/ul>)<br>/g,'$1');
  h=h.replace(/@@\(FILE_OUTPUT_LIVE\)@@/,`<div class="gen-note">${icon('fileplus','sm')}<span>Preparing file output…</span></div>`);
- h=h.replace(/@@\(FILE_OUTPUT\)@@/,`<div class="gen-note">${icon('fileplus','sm')}<span>Code was delivered as generated files — open them from the card above.</span></div>`);
+ h=h.replace(/@@\(FILE_OUTPUT\)@@/,`<div class="gen-note">${icon('fileplus','sm')}<span>Code was delivered as generated files.</span></div>`);
  h=h.replace(/\u0001(\d+)\u0001/g,(m,i)=>{const b=blocks[+i];return `<div class="codeblock"><div class="cb-bar"><span>${esc(b.l||'code')}</span><button class="cb-copy" type="button">${icon('copy','xs')} Copy</button></div><pre><code>${esc(b.c)}</code></pre></div>`;});
  return h;}
 /* ---------- diff ---------- */
@@ -812,35 +814,116 @@ function deepThinkingText(m){
  const t=parts[parts.length-1];
  return t.length>300?t.slice(0,300)+'…':t;
 }
-/* ---------- generated-file watcher (real stream parsing) ---------- */
-function syncGenFiles(m){
- const c=m.content||'';const fm=c.match(/```flayfiles\n?([\s\S]*?)(```|$)/);
- if(!fm){m._genCurrent=null;return;}
- const body=fm[1];const closed=fm[2]==='```';
- const re=/"path"\s*:\s*"((?:[^"\\]|\\.)*)"/g;let mm;const found=[];
- while((mm=re.exec(body))){try{found.push(JSON.parse('"'+mm[1]+'"'));}catch(_){}}
- if(!m.generatedFiles)m.generatedFiles=[];
- found.forEach(p=>{if(!m.generatedFiles.some(g=>g.path===p))m.generatedFiles.push({path:p,name:p.split('/').pop(),status:'generating'});});
- m._genCurrent=(!closed&&found.length)?found[found.length-1]:null;}
-function finishGen(m){
- m._genCurrent=null;
- if(!/```flayfiles/.test(m.content||''))return;
- const gf=m.generatedFiles||(m.generatedFiles=[]);
- const parsed=parseOps(m.content);
- if(parsed.error){gf.forEach(g=>{if(g.status==='generating')g.status='failed';});m._genErr=parsed.error;return;}
- const byPath={};(parsed.ops||[]).forEach(o=>{byPath[normPath(o&&o.path)]=o;});
- Object.keys(byPath).forEach(p=>{if(p&&!gf.some(g=>g.path===p))gf.push({path:p,name:p.split('/').pop(),status:'generating'});});
- gf.forEach(g=>{const o=byPath[g.path];
-  if(!o){if(g.status==='generating')g.status='failed';return;}
-  if(o.action==='delete'){g.status='generated';g.content='';g.deleted=true;return;}
-  if(typeof o.content==='string'){g.status='generated';g.content=o.content;}
-  else{g.status='failed';}});}
+/* ---------- stream block parser (one file at a time live) ---------- */
+function processStreamBlocks(m, p) {
+ const c = m.content || '';
+ const blockRegex = /```flayfiles\n([\s\S]*?)\n```/g;
+ let match;
+ m._parsedBlocks = m._parsedBlocks || 0;
+ let currentIdx = 0;
+ m.generatedFiles = m.generatedFiles || [];
+
+ while ((match = blockRegex.exec(c)) !== null) {
+  if (currentIdx >= m._parsedBlocks) {
+   const body = match[1].trim();
+   try {
+    let ops = null;
+    if (body.startsWith('{')) ops = [JSON.parse(body)];
+    else ops = JSON.parse(body.replace(/,\s*([}\]])/g, '$1'));
+
+    if (Array.isArray(ops)) {
+     if (p) {
+      const {results, snapshot} = applyOps(p, ops);
+      if (results.length) {
+       if(!m.activity) m.activity = [];
+       for(const r of results) {
+        m.activity.push({
+         icon: r.ok ? (r.action==='folder'?'folder':r.action==='create'?'fileplus':r.action==='delete'?'trash':'edit') : 'alert',
+         label: (r.ok ? `Saved ` : `Failed to save `) + r.path + (r.ok ? '' : ` — ${r.error}`),
+         status: r.ok ? 'done' : 'fail'
+        });
+       }
+       ops.forEach(op => {
+        if(op.path) {
+         let gf = m.generatedFiles.find(g => g.path === op.path);
+         if(!gf) { gf = {path: op.path, name: op.path.split('/').pop()}; m.generatedFiles.push(gf); }
+         const res = results.find(r => r.path === op.path);
+         gf.status = (res && res.ok) ? 'generated' : 'failed';
+         if(res && res.ok && op.action === 'delete') gf.deleted = true;
+         else if(res && res.ok) gf.content = op.content;
+        }
+       });
+       
+       if(!m.ops) m.ops = {results: [], diffs: {}};
+       m.ops.results.push(...results);
+       Object.assign(m.ops.diffs, buildDiffs(snapshot, p, results));
+       
+       p.lastSnapshot = {messageId: m.id, files: snapshot};
+       p.updatedAt = Date.now();
+       persistProject(p);
+       renderExplorer();
+       renderBuildPane();
+       m._actDirty = true;
+      }
+     } else {
+      ops.forEach(op => {
+       if(op.path) {
+        let gf = m.generatedFiles.find(g => g.path === op.path);
+        if(!gf) { gf = {path: op.path, name: op.path.split('/').pop()}; m.generatedFiles.push(gf); }
+        gf.status = 'generated';
+        gf.content = op.content;
+       }
+      });
+     }
+    }
+   } catch (e) {
+    if (p) {
+     if(!m.activity) m.activity = [];
+     m.activity.push({icon:'warn', label: 'Invalid JSON in code block', status:'fail'});
+     m._actDirty = true;
+    }
+   }
+   m._parsedBlocks++;
+  }
+  currentIdx++;
+ }
+
+ const openMatch = c.match(/```flayfiles\n([\s\S]*)$/);
+ if (openMatch && !openMatch[0].includes('```', 13)) {
+  const body = openMatch[1];
+  const re = /"path"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  let mm; const found = [];
+  while ((mm = re.exec(body))) {
+   try { found.push(JSON.parse('"' + mm[1] + '"')); } catch (_) {}
+  }
+  found.forEach(pPath => {
+   if (!m.generatedFiles.some(g => g.path === pPath)) {
+    m.generatedFiles.push({path: pPath, name: pPath.split('/').pop(), status: 'generating'});
+   }
+  });
+  m._genCurrent = found.length ? found[found.length - 1] : null;
+ } else {
+  m._genCurrent = null;
+ }
+}
+function applyOps(p,ops){const snapshot=JSON.parse(JSON.stringify(p.files));const results=[];
+ for(const op of ops){const rawPath=op&&op.path;const path=normPath(rawPath);
+  if(isUnsafe(path)){results.push({path:String(rawPath||''),action:String(op&&op.action||'?'),ok:false,error:'unsafe or invalid path rejected'});continue;}
+  const action=String(op&&op.action||'').toLowerCase();
+  if(action==='folder'){const base=path.replace(/\/+$/,'');const kp=base+'/.gitkeep';
+   if(!p.files[kp])p.files[kp]={content:''};
+   results.push({path:base+'/',action:'folder',ok:true});continue;}
+  if(action==='delete'){if(p.files[path]){delete p.files[path];results.push({path,action,ok:true});}else results.push({path,action,ok:false,error:'file not found'});continue;}
+  if(action!=='create'&&action!=='modify'){results.push({path,action:String(action||'?'),ok:false,error:'unsupported action'});continue;}
+  if(typeof(op&&op.content)!=='string'){results.push({path,action,ok:false,error:'missing content'});continue;}
+  const existed=!!p.files[path];p.files[path]={content:op.content};results.push({path,action:existed?'modify':'create',ok:true});}
+ return{results,snapshot};}
 /* ---------- message cards ---------- */
 function activityCard(m){if(!m.activity||!m.activity.length)return '';
  const rows=m.activity.map(a=>`<div class="act-row">${a.icon?icon(a.icon,'sm '+(a.status==='fail'?'st-fail':a.status==='warn'?'st-warn':'muted')):''}<span class="lb">${esc(a.label)}</span>${statusIcon(a.status)}</div>`).join('');
  return `<div class="card act"><div class="card-head">${icon('tools','sm')}<b>Agent activity</b><span class="muted small">${m.activity.length}</span>${icon('chev-d','sm')}</div>${rows}</div>`;}
 function genCard(m){
- const gf=m.generatedFiles||[];if(!gf.length||m.ops)return '';
+ const gf=m.generatedFiles||[];if(!gf.length)return '';
  const rows=gf.map((g,i)=>{
   const st=g.status||'generating';
   const stEl=st==='generating'?'<span class="spin"></span><span class="gst">Generating</span>'
@@ -849,11 +932,30 @@ function genCard(m){
   const ext=(g.path.split('.').pop()||'').toLowerCase();
   return `<div class="genrow ${st==='generated'?'live':''}" data-gen="${i}">${icon(EXT_ICON[ext]||'file','sm '+(EXT_COLOR[ext]||'fc-gen'))}<span class="gpath" title="${esc(g.path)}">${esc(g.path)}</span>${stEl}</div>`;}).join('');
  return `<div class="card gen" data-gsig="${gf.map(g=>g.status).join('|')}"><div class="card-head">${icon('fileplus','sm')}<b>Generated files</b><span class="muted small">${gf.length}</span>${icon('chev-d','sm')}</div>${rows}${m._genErr?`<div class="generr">${icon('alert','xs')}<span>${esc(m._genErr)}</span></div>`:''}</div>`;}
+function agentQueueHtml(m) {
+ if (!m._queue || !m._queue.length) return '';
+ const rows = m._queue.map((q, i) => {
+  let stIcon = icon('info', 'sm muted');
+  let stText = 'Pending';
+  let stClass = '';
+  if (i < m._queueIdx) {
+   stIcon = q.failed ? icon('alert', 'sm st-fail') : icon('check', 'sm st-done');
+   stText = q.failed ? 'Failed' : 'Completed';
+   stClass = q.failed ? 'bad' : 'ok';
+  } else if (i === m._queueIdx && m.status === 'streaming') {
+   stIcon = '<span class="spin"></span>';
+   stText = 'Generating...';
+   stClass = 'live';
+  }
+  return `<div class="genrow ${stClass}">${stIcon}<span class="gpath" title="${esc(q.path)}">${esc(q.path)}</span><span class="gst ${stClass}">${stText}</span></div>`;
+ }).join('');
+ return `<div class="card gen" data-qsig="${m._queueIdx}-${m.status}"><div class="card-head">${icon('box','sm')}<b>File Generation Queue</b><span class="muted small">${m._queueIdx}/${m._queue.length}</span></div>${rows}</div>`;
+}
 function changesCard(m){if(!m.ops)return '';
  const rows=m.ops.results.filter(r=>r.ok).map(r=>{const d=m.ops.diffs[r.path]||{ops:[],plus:0,minus:0};
   return `<div class="chg-row" data-path="${esc(r.path)}"><span class="chg-badge ${r.action==='folder'?'create':r.action}">${r.action==='create'?'A':r.action==='modify'?'M':r.action==='folder'?'F':'D'}</span><span class="chg-path" title="${esc(r.path)}">${esc(r.path)}</span><span class="chg-count"><span class="p">${d.plus?'+'+d.plus:''}</span> <span class="m">${d.minus?'\u2212'+d.minus:''}</span></span></div><div class="hidden" data-diff="${esc(r.path)}">${diffHtml(d)}</div>`;}).join('');
  const canRevert=S.project&&S.project.lastSnapshot&&S.project.lastSnapshot.messageId===m.id;
- return `<div class="card act2"><div class="card-head">${icon('edit','sm')}<b>Changes applied to project</b><span class="muted small">${m.ops.results.filter(r=>r.ok).length} file(s)</span></div>${rows}
+ return `<div class="card act2" data-csig="${m.ops.results.length}"><div class="card-head">${icon('edit','sm')}<b>Changes applied to project</b><span class="muted small">${m.ops.results.filter(r=>r.ok).length} file(s)</span></div>${rows}
  ${canRevert?`<div class="card-foot"><button class="btn sm" data-revert="${m.id}">${icon('trash','sm')}Revert changes</button></div>`:''}</div>`;}
 function diffHtml(d){if(!d||!d.ops)return '<div class="muted small" style="padding:8px 12px">No textual diff available.</div>';
  const rows=d.ops.slice(0,800).map(o=>`<span class="dl ${o.t==='+'?'plus':o.t==='-'?'minus':'ctx'}">${o.t===' '?'  ':o.t}${esc(o.s)}</span>`).join('');
@@ -861,13 +963,13 @@ function diffHtml(d){if(!d||!d.ops)return '<div class="muted small" style="paddi
  return `<pre class="diff">${rows}</pre>${more}`;}
 function msgHtml(m){
  if(m.role==='user'){const long=m.content.length>600||m.content.split('\n').length>10;
-  const atts=(m.attachments||[]).map(a=>`<span class="att-chip">${icon(a.kind==='image'?'image':a.kind==='zip'?'zip':a.kind==='project'?'folder':fileIcon(a.name||'x'),'sm')}<span>${esc(a.name||a.path)}</span><em>${fmtBytes(a.size||0)}</em></span>`).join('');
+  const atts=(m.attachments||[]).map(a=>`<span class="att-chip ${a.kind==='error'?'err-chip':''}">${icon(a.kind==='error'?'alert':a.kind==='project'?'folder':a.kind==='image'?'image':a.kind==='zip'?'zip':fileIcon(a.name||'x'),'sm')}<span>${esc(a.name||a.path)}</span><em>${fmtBytes(a.size||0)}</em></span>`).join('');
   return `<div class="msg user" data-mid="${m.id}">${atts?`<div>${atts}</div>`:''}<div class="bubble ${long?'clamp':''}">${esc(m.content).replace(/\n/g,'<br>')}</div>${long?'<button class="more-btn" data-more>More</button>':''}</div>`;}
  const deep=deepThinkingText(m);
  const pill=m.status==='streaming'?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>':deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
  return `<div class="msg ai" data-mid="${m.id}">
   ${thinkCard(m)}
-  ${genCard(m)}${queueCard(m)}
+  ${m._queue ? agentQueueHtml(m) : genCard(m)}
   ${pill?`<div class="ai-st">${pill}</div>`:''}
   <div class="msg-body">${m.content?md(m.content):''}${m.status==='streaming'?'<span class="caret"></span>':''}</div>
   ${m.activity&&m.activity.length?activityCard(m):''}
@@ -901,9 +1003,40 @@ function updateLive(m,hostSel){
     m._thinkScrollAt=now;
     if(tb.scrollHeight>tb.clientHeight)tb.scrollTo({top:tb.scrollHeight,behavior:'smooth'});
    }}
-  if(m.generatedFiles&&m.generatedFiles.length&&!m.ops){const sig=m.generatedFiles.map(g=>g.status).join('|');let gc=mel.querySelector('.card.gen');
-   if(!gc){const w=document.createElement('div');w.innerHTML=genCard(m);body&&body.before(w.firstElementChild);}
-   else if(gc.dataset.gsig!==sig){const w=document.createElement('div');w.innerHTML=genCard(m);gc.replaceWith(w.firstElementChild);}}
+   
+  if (m._queue) {
+   const sig=`${m._queueIdx}-${m.status}`;
+   let qc=mel.querySelector('.card.gen');
+   if(!qc){
+    const w=document.createElement('div');w.innerHTML=agentQueueHtml(m);
+    body&&body.before(w.firstElementChild);
+   } else if(qc.dataset.qsig!==sig){
+    const w=document.createElement('div');w.innerHTML=agentQueueHtml(m);
+    qc.replaceWith(w.firstElementChild);
+   }
+  } else if(m.generatedFiles&&m.generatedFiles.length){
+   const sig=m.generatedFiles.map(g=>g.status).join('|');
+   let gc=mel.querySelector('.card.gen');
+   if(!gc){
+    const w=document.createElement('div');w.innerHTML=genCard(m);
+    body&&body.before(w.firstElementChild);
+   } else if(gc.dataset.gsig!==sig){
+    const w=document.createElement('div');w.innerHTML=genCard(m);
+    gc.replaceWith(w.firstElementChild);
+   }
+  }
+  
+  if(m.ops){
+   const sig = String(m.ops.results.length);
+   let cc=mel.querySelector('.card.act2');
+   if(!cc){
+    const w=document.createElement('div');w.innerHTML=changesCard(m);
+    mel.appendChild(w.firstElementChild);
+   } else if (cc.dataset.csig !== sig) {
+    const w=document.createElement('div');w.innerHTML=changesCard(m);
+    cc.replaceWith(w.firstElementChild);
+   }
+  }
   if(m._actDirty){m._actDirty=false;const old=mel.querySelector('.card.act');if(old){const w=document.createElement('div');w.innerHTML=activityCard(m);old.replaceWith(w.firstElementChild);}}
   schedulePinScroll(hostSel==='#agentMsgs');
  });}
@@ -971,10 +1104,11 @@ const SYS_CHAT=`You are Flay AI, a precise senior AI coding assistant for Androi
 
 Code delivery rules:
 - Very short snippets (roughly under 25 lines) may be shown inline in a normal code block.
-- For any complete file or longer code, DO NOT print the code in your reply text. Deliver it as generated files using exactly one fenced block tagged flayfiles containing a JSON array:
+- For any complete file or longer code, DO NOT print the code in your reply text. Deliver it as generated files using a fenced block tagged flayfiles containing a SINGLE JSON object (not an array):
 \`\`\`flayfiles
-[{"path":"index.html","action":"create","content":"<complete file content>"}]
+{"path":"index.html","action":"create","content":"<complete file content>"}
 \`\`\`
+- Use separate sequential flayfiles blocks if you need to provide multiple files.
 - "path" is a plain file name like MainActivity.kt or a relative path; never absolute, never "..". Use action create/modify/delete.
 - When you deliver files, your visible reply must be only a brief summary of what you created.
 - If the user asks to see the full code of an already generated file inside the chat, quote it VERBATIM from the GENERATED FILES section of the conversation into a normal code block. Never regenerate or alter it in that case.
@@ -1019,12 +1153,20 @@ async function sendChat(){if(S.streaming)return;
  S.chat.messages.push(am);renderThread('#msgs',S.chat.messages);pinScroll(false);
  S.streaming=true;S.abort=new AbortController();updateSendBtn();
  try{await providerChat({provider:activeProvider(),messages:buildChatMessages(S.chat),signal:S.abort.signal,
-  onDelta:d=>{am.content+=d;syncGenFiles(am);updateLive(am,'#msgs');},
+  onDelta:d=>{
+   am.content+=d;
+   processStreamBlocks(am, null);
+   updateLive(am,'#msgs');
+  },
   onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#msgs');}});
   am.status='done';}
  catch(e){if(e.name==='AbortError'){am.status='stopped';}
   else{am.status='error';console.error('Flay AI chat request failed:',e);am.content+=(am.content?'\n\n':'')+'**Unable to get a response.**\nPlease try again.';}}
- finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;finishGen(am);
+ finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;
+  if(am.content && am.content.includes('```flayfiles') && !am.content.endsWith('```')) {
+   am.content += '\n```'; processStreamBlocks(am, null);
+  }
+  if(am.generatedFiles) { am.generatedFiles.forEach(g => { if (g.status === 'generating') g.status = 'failed'; }); }
   S.streaming=false;S.abort=null;S.chat.updatedAt=Date.now();persistChat();
   renderThread('#msgs',S.chat.messages);pinScroll(false);updateSendBtn();}}
 /* chat events */
@@ -1041,7 +1183,6 @@ function threadClick(sel){return e=>{
  const more=e.target.closest('[data-more]');if(more){const b=more.closest('.msg').querySelector('.bubble');const o=b.classList.toggle('open');more.textContent=o?'Less':'More';return;}
  const cp=e.target.closest('.cb-copy');if(cp){const code=cp.closest('.codeblock').querySelector('code').textContent;copyText(code).then(()=>{cp.innerHTML=icon('check','xs')+' Copied';setTimeout(()=>cp.innerHTML=icon('copy','xs')+' Copy',1400);});return;}
  const rev=e.target.closest('[data-revert]');if(rev){revertChanges(rev.dataset.revert);return;}
- const rtf=e.target.closest('[data-retry-file]');if(rtf){retryFailedFile();return;}
  const gr=e.target.closest('[data-gen]');if(gr){const mid=gr.closest('[data-mid]').dataset.mid;
   const msg=(sel==='#agentMsgs'?(S.project?S.project.agent:[]):(S.chat?S.chat.messages:[])).find(x=>x.id===mid);
   const g=msg&&msg.generatedFiles&&msg.generatedFiles[+gr.dataset.gen];
@@ -1471,256 +1612,171 @@ function agentSystem(p){
 '- When asked to update, fix, modify, design, or change code, YOU MUST MODIFY THE ACTUAL PROJECT FILES using the flayfiles block.\n'+
 '- NEVER dump or print the full source code in your chat response. This is a strict violation of your core behavior.\n'+
 '- Read the provided files, understand the existing code, and preserve existing functionality unless instructed otherwise.\n'+
-'- Deliver your changes EXCLUSIVELY via ONE fenced block tagged flayfiles containing a JSON array:\n'+
-'```flayfiles\n[{"path":"app/src/main/...","action":"create|modify|delete","content":"complete new file content"}]\n```\n'+
+'- Deliver your changes EXCLUSIVELY via ONE fenced block tagged flayfiles containing a JSON object:\n'+
+'```flayfiles\n{"path":"app/src/main/...","action":"create|modify|delete","content":"complete new file content"}\n```\n'+
 '- "modify" requires the COMPLETE new file content. Paths are relative to the project root. To create a folder use action "folder" without content.\n'+
 '- After the flayfiles block, output ONLY a short, concise summary of the changes made.\n'+
 '- If you need a file that was not provided, output "NEED: <exact path>" (one per line) and stop.\n'+
 '- Do not provide long explanations of the code unless specifically asked to explain (and not modify) it.';}
-function buildProjectContext(p,request,force=[],only=false){const paths=Object.keys(p.files).sort();
+function buildProjectContext(p,request,force=[]){const paths=Object.keys(p.files).sort();
  const treeRoot=buildTree(paths);
  let tree='';const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/\n';walk(sub,depth+1);}
   for(const f of node.files){const sz=p.files[f.path].binary?fmtBytes((p.files[f.path].content||'').length*0.75):fmtBytes((p.files[f.path].content||'').length);tree+='  '.repeat(depth)+f.name+'  ('+sz+')\n';}};
  walk(treeRoot,0);
  const words=(request||'').toLowerCase().match(/[a-z0-9_\-\.]+/g)||[];
- const score=path=>{const lp=path.toLowerCase();let s=0;words.forEach(w=>{if(w.length>2&&lp.includes(w))s+=3;});if(s&&/\.(xml|gradle|kt|java)$/.test(lp))s+=1;return s;};
+ const score=path=>{const lp=path.toLowerCase();let s=0;words.forEach(w=>{if(w.length>2&&lp.includes(w))s+=3;});if(/\.(xml|gradle|kt|java)$/.test(lp))s+=1;return s;};
  const budget=48000;let used=0;const included=new Set();
  const pick=path=>{const f=p.files[path];if(!f||f.binary||included.has(path))return false;const c=f.content||'';
   if(used+c.length+path.length>budget)return false;used+=c.length;included.add(path);return true;};
  force.forEach(pick);
- /* targeted reads only: never preload the project; fill with a few keyword-matched files only when nothing exact was forced */
- if(!(only&&included.size)){let extra=0;for(const path of[...paths].sort((a,b)=>score(b)-score(a))){if(extra>=6||score(path)<=0)break;if(pick(path))extra++;}}
+ for(const path of[...paths].sort((a,b)=>score(b)-score(a))){if(included.size>=60)break;pick(path);}
  let blocks='';
  for(const path of included){blocks+='\n### FILE: '+path+'\n'+(p.files[path].content||'')+'\n### END FILE\n';}
  return{tree,blocks,included,total:paths.length,chars:used};}
-function parseOps(content){const m=(content||'').match(/```flayfiles\s*([\s\S]*?)```/);
- if(!m)return{ops:null};
- const raw=m[1].trim();
- try{const ops=JSON.parse(raw);if(Array.isArray(ops))return{ops};}catch(e){}
- try{const ops=JSON.parse(raw.replace(/,\s*([}\]])/g,'$1'));if(Array.isArray(ops))return{ops};}catch(e){}
- return{ops:null,error:'The flayfiles block contains invalid JSON — no changes were applied.'};}
-function applyOps(p,ops){const snapshot=JSON.parse(JSON.stringify(p.files));const results=[];
- for(const op of ops){const rawPath=op&&op.path;const path=normPath(rawPath);
-  if(isUnsafe(path)){results.push({path:String(rawPath||''),action:String(op&&op.action||'?'),ok:false,error:'unsafe or invalid path rejected'});continue;}
-  const action=String(op&&op.action||'').toLowerCase();
-  if(action==='folder'){const base=path.replace(/\/+$/,'');const kp=base+'/.gitkeep';
-   if(!p.files[kp])p.files[kp]={content:''};
-   results.push({path:base+'/',action:'folder',ok:true});continue;}
-  if(action==='delete'){if(p.files[path]){delete p.files[path];results.push({path,action,ok:true});}else results.push({path,action,ok:false,error:'file not found'});continue;}
-  if(action!=='create'&&action!=='modify'){results.push({path,action:String(action||'?'),ok:false,error:'unsupported action'});continue;}
-  if(typeof(op&&op.content)!=='string'){results.push({path,action,ok:false,error:'missing content'});continue;}
-  const existed=!!p.files[path];p.files[path]={content:op.content};results.push({path,action:existed?'modify':'create',ok:true});}
- return{results,snapshot};}
-function extractNeeds(content,included,p){const needs=[];const re=/(?:^|\n)NEED:\s*([^\n]+)/g;let m;
- while((m=re.exec(content))){const path=normPath(m[1].trim());if(isUnsafe(path))continue;
-  if(p.files[path]&&!p.files[path].binary&&!included.has(path)&&!needs.includes(path))needs.push(path);}
- return needs.slice(0,8);}
-/* ===== SEQUENTIAL AGENT PIPELINE ===== */
-const MAX_QUEUE=25;
-const pErr=m=>Object.assign(new Error(m),{pipeline:true});
-const PLAN_SYS=`You are the planning stage of Flay AI, a sequential project coding agent. Analyze the request and the provided project, then output ONLY one JSON object (no prose, no code): {"root_cause":"build errors only: the exact earliest cause in 1-2 sentences","summary":"one short sentence","answer":"","read":["existing paths worth reading while writing files"],"files":[{"path":"relative/path","action":"create|modify|delete|folder","reason":"short"}]}
-Rules: list only files that truly must change, in dependency order (models/resources/base classes before their users; for build errors the root-cause file first). Never include a file that needs no change. Existing paths must match the tree exactly. Max ${MAX_QUEUE} files. Never include file contents. If the request is a question, or needs no file change, or information needed for a safe fix is missing, return files:[] and put the reply in "answer". For BUILD ERROR FIX: the attached build log is authoritative. Identify the earliest actionable Gradle/compiler error, distinguish it from later cascading errors, and return every existing project file that must change to remove that root cause. If the failure is infrastructure/toolchain/runner setup (for example sdkmanager unavailable, Android SDK setup failure, missing GitHub runner tools, Java/Gradle executable unavailable before the project build starts), DO NOT modify project files: return files:[] and explain in "answer" that the build server/workflow must be fixed. Do not return files:[] merely because a real project Gradle/compiler/resource error is uncertain; inspect the supplied project files and choose the smallest evidence-based fix.`;
-const FILE_SYS=`You are Flay AI writing exactly ONE project file. Output ONLY the complete file content inside a single fenced block tagged flayfile. No explanations, no other text. Use only packages, classes, methods, R.id, R.layout and resources that exist in the provided project files (saved files from earlier queue steps are included); never invent identifiers. When modifying, preserve existing behavior and make the smallest correct change. For BUILD ERROR FIX, use the real build log as authoritative evidence, fix the earliest root cause rather than a later cascade, and make a concrete source/configuration change when the supplied project proves one is required. Do not merely explain the error or leave the file unchanged.`;
-async function llm(am,msgs){let buf='';
- await providerChat({provider:activeProvider(),messages:msgs,signal:S.agentAbort.signal,
-  onDelta:d=>{buf+=d;},
-  onReasoning:r=>{if(!am.thinkT0)am.thinkT0=Date.now();am.reasoning=(am.reasoning||'')+r;updateLive(am,'#agentMsgs');}});
- return buf;}
-function parseJsonObj(t){const s=t.indexOf('{'),e=t.lastIndexOf('}');if(s<0||e<=s)return null;const raw=t.slice(s,e+1);
- try{return JSON.parse(raw);}catch(_){try{return JSON.parse(raw.replace(/,\s*([}\]])/g,'$1'));}catch(__){return null;}}}
-function normPlan(p,j){const out=[],seen=new Set();
- for(const f of (j&&j.files)||[]){const path=normPath(f&&f.path).replace(/\/+$/,'');if(isUnsafe(path)||seen.has(path))continue;
-  let a=String(f.action||'').toLowerCase();const ex=!!p.files[path];
-  if(a==='delete'){if(!ex)continue;}else if(a!=='folder')a=ex?'modify':'create';
-  seen.add(path);out.push({path,action:a,reason:String(f.reason||'').slice(0,160),status:'queued'});}
- return out.slice(0,MAX_QUEUE);}
-function errorFiles(p,log){/* only files the compiler/Gradle actually names - exact path first, basename as fallback */
- const out=new Set();const mentioned=(String(log).match(/[\w\-./\\]+\.(?:kt|java|xml|gradle|kts|properties)/g)||[]).map(s=>s.replace(/\\/g,'/'));
- for(const path of Object.keys(p.files))if(mentioned.some(m=>m===path||m.endsWith('/'+path)))out.add(path);
- if(!out.size){const names=new Set(mentioned.map(s=>s.split('/').pop()));for(const path of Object.keys(p.files))if(names.has(path.split('/').pop()))out.add(path);}
- return [...out].filter(x=>p.files[x]&&!p.files[x].binary).slice(0,8);}
-function extractFile(t){const s=t.match(/\`\`\`[\w+-]*[ \t]*\r?\n/);if(!s)return{error:'no fenced flayfile block found'};
- const from=s.index+s[0].length,end=t.lastIndexOf('\`\`\`');
- if(end<from)return{error:'file block was not closed (output truncated)'};
- return{content:t.slice(from,end).replace(/\r?\n$/,'')+'\n'};}
-function checkFile(path,c){if(!c.trim())return 'file is empty';
- const ext=(path.split('.').pop()||'').toLowerCase();
- if(ext==='xml'){if(new DOMParser().parseFromString(c,'application/xml').querySelector('parsererror'))return 'XML is not well-formed';}
- else if(ext==='json'){try{JSON.parse(c)}catch(e){return 'invalid JSON'}}
- else if(/^(kt|java|kts|gradle)$/.test(ext)){
-  const s=c.replace(/\/\*[\s\S]*?\*\//g,'').replace(/"""[\s\S]*?"""/g,'""').replace(/"(?:\\.|[^"\\\n])*"/g,'""').replace(/\/\/.*$/gm,'').replace(/'(?:\\.|[^'\\\n])*'/g,"''");
-  for(const[o,cl]of[['{','}'],['(',')']])if(s.split(o).length!==s.split(cl).length)return 'unbalanced '+o+cl;
-  const pm=c.match(/^\s*package\s+([\w.]+)/m),dm=path.match(/(?:^|\/)(?:java|kotlin)\/(.+)\/[^/]+$/);
-  if(pm&&dm&&pm[1]!==dm[1].replace(/\//g,'.'))return 'package '+pm[1]+' does not match its path';}
- return null;}
-function saveOne(p,it,content){const path=it.path;
- if(it.action==='folder'){const kp=path+'/.gitkeep';if(!p.files[kp])p.files[kp]={content:''};return{path:path+'/',action:'folder',ok:true};}
- if(it.action==='delete'){delete p.files[path];return{path,action:'delete',ok:true};}
- const ex=!!p.files[path];p.files[path]={content};return{path,action:ex?'modify':'create',ok:true};}
-async function genOne(p,am,it,i,ctx,done){let feedback='';
- for(let attempt=0;attempt<2;attempt++){
-  const force=[it.path,...done.slice(-4),...ctx.read.slice(0,4),...(ctx.mode==='buildfix'?errorFiles(p,ctx.errText).slice(0,4):[])].filter(x=>p.files[x]);
-  const c=buildProjectContext(p,ctx.task.slice(0,2000)+' '+it.path+' '+it.reason,force,true);
-  const list=am.queue.map((q,k)=>(k+1)+'. '+q.action+' '+q.path+' ['+q.status+']'+(q.reason?' - '+q.reason:'')).join('\n');
-  let prompt=ctx.task+'\n\nFILE QUEUE (sequential; completed files are already saved and shown below in their saved state):\n'+list+
-   '\n\nNOW WRITE ONLY file '+(i+1)+'/'+am.queue.length+': '+it.path+' ('+it.action+')'+(it.reason?'\nPurpose: '+it.reason:'')+
-   '\n\nPROJECT TREE:\n'+c.tree+'\nFILES PROVIDED:'+c.blocks;
-  if(feedback)prompt+='\n\nYour previous output for this file was rejected: '+feedback+'. Output the complete corrected file.';
-  const out=await llm(am,[{role:'system',content:FILE_SYS},{role:'user',content:prompt}]);
-  const ex=extractFile(out),err=ex.error||checkFile(it.path,ex.content);
-  if(!err)return ex.content;
-  feedback=err;}
- throw pErr(feedback);}
-async function runQueue(p,am,ctx,snap){
- const ops=am.ops||(am.ops={results:[],diffs:{}});const results=ops.results,diffs=ops.diffs,done=[];
- for(let i=0;i<am.queue.length;i++){const it=am.queue[i];
-  if(it.status==='completed'){done.push(it.path);continue;}
-  if(S.fileLock)throw pErr('Another file operation is still running.');
-  S.fileLock=it.path;
-  try{
-   it.status='generating';it.error='';am._genCurrent=it.path;qUpdate(am);
-   const content=(it.action==='create'||it.action==='modify')?await genOne(p,am,it,i,ctx,done):null;
-   it.status='saving';am._genCurrent=null;qUpdate(am);
-   const r=saveOne(p,it,content);results.push(r);Object.assign(diffs,buildDiffs(snap,p,[r]));
-   p.lastSnapshot={messageId:am.id,files:snap};p.updatedAt=Date.now();
-   const parts=it.path.split('/');let acc='';for(let k=0;k<parts.length-1;k++){acc+=(k?'/':'')+parts[k];S.expanded.add(acc);}
-   p.expanded=[...S.expanded];
-   await persistProject(p);renderExplorer();renderBuildPane();
-   it.status='completed';done.push(it.path);
-  }catch(e){
-   if(e.name==='AbortError'){it.status='queued';throw e;}
-   it.status='failed';it.error=String(e.message||e);return it;
-  }finally{S.fileLock=null;am._genCurrent=null;qUpdate(am);}}
- return null;}
-function queueCard(m){if(!m.queue||!m.queue.length)return '';
- const n=m.queue.length,done=m.queue.filter(q=>q.status==='completed').length;
- const st={queued:icon('info','sm muted')+'<span class="gst">Queued</span>',generating:'<span class="spin"></span><span class="gst">Generating</span>',
-  saving:'<span class="spin"></span><span class="gst">Saving</span>',completed:icon('check','sm st-done')+'<span class="gst ok">Saved</span>',failed:icon('alert','sm st-fail')+'<span class="gst bad">Failed</span>'};
- const rows=m.queue.map((q,i)=>{const ext=(q.path.split('.').pop()||'').toLowerCase();
-  return `<div class="genrow">${icon(EXT_ICON[ext]||'file','sm '+(EXT_COLOR[ext]||'fc-gen'))}<span class="gpath" title="${esc(q.path)}">${i+1}/${n} ${esc(q.path)}</span>${st[q.status]||''}</div>${q.error?`<div class="generr">${icon('alert','xs')}<span>${esc(q.error)}</span>${q.status==='failed'&&S.project&&S.project.pendingRun?'<button class="btn sm" style="margin-left:auto" data-retry-file="'+i+'">Retry</button>':''}</div>`:''}`;}).join('');
- return `<div class="card queue"><div class="card-head">${icon('fileplus','sm')}<b>${m.mode==='buildfix'?'Build error fix':'Project files'}</b><span class="muted small">${done}/${n}</span>${icon('chev-d','sm')}</div>${rows}</div>`;}
-function qUpdate(am){const mel=$('#agentMsgs').querySelector(`[data-mid="${am.id}"]`);if(!mel)return;
- const w=document.createElement('div');w.innerHTML=queueCard(am);const nw=w.firstElementChild;if(!nw)return;
- const old=mel.querySelector('.card.queue');
- if(old)old.replaceWith(nw);else(mel.querySelector('.ai-st')||mel.querySelector('.msg-body')).before(nw);
- updateLive(am,'#agentMsgs');}
-function isInfrastructureBuildError(log){
- const cm=String(log||'').match(/^Failure Classification: (infrastructure|project|unknown)/m);if(cm&&cm[1]!=='unknown')return cm[1]==='infrastructure';
- const s=String(log||'').toLowerCase();
- return /sdkmanager is not available|android sdk.*(not available|setup|provision)|prepare android sdk|setup android sdk|runner.*(tool|sdk)|hosted runner|github actions.*(runner|environment)|command not found.*(sdkmanager|gradle|java)|gradle wrapper and system gradle are both unavailable/.test(s)
-   && !/what went wrong|execution failed|compilation error|unresolved reference|cannot find symbol|aapt2|resource .* not found|duplicate class|could not resolve/.test(s);
+
+/* -- NEW SEQUENTIAL QUEUE SEND AGENT -- */
+async function sendAgent() {
+ if (S.agentStreaming) return;
+ const p = S.project; if (!p) return;
+ const inp = $('#agentInput'); const text = inp.value.trim(); const atts = S.agentAttachments.slice();
+ if (!text && !atts.length) return;
+ if (!activeProvider()) { toast('Set up an AI provider first (Menu > Set Up AI).', 'warn'); renderProviders(); openScreen('screen-providers'); return; }
+ if (!activeProvider().model) { toast('No model selected. Use the Model button in the composer.', 'warn'); openModelModal(); return; }
+ 
+ const isBuildError = atts.some(a => a.kind === 'doc' && a.name === 'build-error.log');
+
+ p.agent.push({ id: uid(), role: 'user', content: text || '(selected files)', attachments: atts.map(a => ({ name: a.path || a.name, size: a.size, kind: a.kind })), createdAt: Date.now(), status: 'done' });
+ S.agentAttachments = []; inp.value = ''; if (agentDraftKey()) localStorage.removeItem(agentDraftKey()); autoGrow(inp);
+ renderThread('#agentMsgs', p.agent); S.pinned = true; pinScroll(true);
+ 
+ const am = { id: uid(), role: 'assistant', content: '', createdAt: Date.now(), status: 'streaming', activity: [], _queue: [], _queueIdx: 0, ops: { results: [], diffs: {} } };
+ p.agent.push(am); renderThread('#agentMsgs', p.agent); pinScroll(true);
+ S.agentStreaming = true; S.agentAbort = new AbortController(); updateSendBtn();
+ 
+ try {
+  const baseMsgs = [{ role: 'system', content: agentSystem(p) }];
+  const history = p.agent.filter(m => m !== am && m.status === 'done').slice(-8).filter(m => m.content).map(m => ({ role: m.role, content: stripFences(m.content) }));
+  
+  /* -- PHASE 1: PLANNING -- */
+  const ctx = buildProjectContext(p, text);
+  let planPrompt = (text || 'Work with the attached project files.') + '\n\nPROJECT TREE:\n' + ctx.tree + '\nFILES PROVIDED:' + ctx.blocks;
+  if (atts.length) {
+   planPrompt += '\nSELECTED FILE CONTENTS:';
+   for (const a of atts) { planPrompt += '\n### FILE: ' + (a.path || a.name) + '\n' + (a.content || '') + '\n### END FILE\n'; }
+  }
+  if (isBuildError) {
+   planPrompt += `\n\n[BUILD ERROR FIX MODE]\nThe user reported a build error. Identify the root cause. Inspect the project architecture and determine which files MUST be modified to fix the issue. Make the minimal correct fix.`;
+  }
+  
+  planPrompt += `\n\nCRITICAL INSTRUCTION: First, return a JSON array of the exact files you need to create, modify, or delete. DO NOT write the file contents yet. Output strictly this JSON array inside a \`\`\`json block.
+Example:
+\`\`\`json
+[{"path": "app/src/.../MainActivity.kt", "action": "modify"}]
+\`\`\`
+If no files need changing, return [].`;
+
+  am.activity.push({ icon: 'brain', label: 'Analyzing project context and planning changes...', status: 'run' });
+  am._actDirty = true; updateLive(am, '#agentMsgs');
+
+  let planContent = '';
+  await providerChat({ provider: activeProvider(), messages: [...baseMsgs, ...history, { role: 'user', content: planPrompt }], signal: S.agentAbort.signal,
+   onDelta: d => { planContent += d; },
+   onReasoning: r => { if (!am.thinkT0) am.thinkT0 = Date.now(); am.reasoning = (am.reasoning || '') + r; updateLive(am, '#agentMsgs'); }
+  });
+
+  let queue = [];
+  const planMatch = planContent.match(/```json\n([\s\S]*?)\n```/) || planContent.match(/\[\s*\{[\s\S]*\}\s*\]/);
+  if (planMatch) { try { queue = JSON.parse(planMatch[1] || planMatch[0]); } catch (e) { } }
+  if (!Array.isArray(queue)) queue = [];
+  queue = queue.filter(q => q.path && ['modify', 'create', 'delete', 'folder'].includes(q.action));
+
+  am._queue = queue.map(q => ({ path: q.path, action: q.action, failed: false }));
+  am.activity[am.activity.length - 1].status = 'done';
+  am.activity[am.activity.length - 1].label = `Planned ${queue.length} file operation(s).`;
+  am._actDirty = true; updateLive(am, '#agentMsgs');
+
+  /* -- PHASE 2: SEQUENTIAL EXECUTION -- */
+  if (queue.length > 0) {
+   for (let i = 0; i < queue.length; i++) {
+    const q = queue[i];
+    am._queueIdx = i;
+    updateLive(am, '#agentMsgs');
+    
+    if (q.action === 'delete' || q.action === 'folder') {
+     const { results, snapshot } = applyOps(p, [q]);
+     if (results.length && results[0].ok) {
+      am.ops.results.push(results[0]);
+      Object.assign(am.ops.diffs, buildDiffs(snapshot, p, results));
+      p.lastSnapshot = { messageId: am.id, files: snapshot }; p.updatedAt = Date.now(); persistProject(p);
+      renderExplorer(); renderBuildPane();
+     } else { am._queue[i].failed = true; break; } // Pause queue on fail
+     continue;
+    }
+
+    let execPrompt = `Now execute step ${i + 1} of ${queue.length}: ${q.action.toUpperCase()} ${q.path}.\nOutput the COMPLETE new code for this file inside ONE \`\`\`flayfiles block. Example:\n\`\`\`flayfiles\n{"path":"${q.path}", "action":"${q.action}", "content":"<complete code here>"}\n\`\`\`\nDo not add extra conversational text.`;
+    
+    let fileContent = '';
+    try {
+     await providerChat({ provider: activeProvider(), messages: [...baseMsgs, ...history, { role: 'user', content: planPrompt }, { role: 'assistant', content: planContent }, { role: 'user', content: execPrompt }], signal: S.agentAbort.signal,
+      onDelta: d => { fileContent += d; },
+      onReasoning: r => { am.reasoning = (am.reasoning || '') + r; updateLive(am, '#agentMsgs'); }
+     });
+
+     const blockMatch = fileContent.match(/```flayfiles\n([\s\S]*?)\n```/);
+     if (blockMatch) {
+      let op;
+      try { 
+        const body = blockMatch[1].trim();
+        if(body.startsWith('{')) op = JSON.parse(body);
+        else if(body.startsWith('[')) op = JSON.parse(body)[0]; 
+      } catch (e) { }
+      
+      if (op && op.content) {
+       op.path = q.path; op.action = q.action;
+       const { results, snapshot } = applyOps(p, [op]);
+       if (results.length && results[0].ok) {
+        am.ops.results.push(results[0]);
+        Object.assign(am.ops.diffs, buildDiffs(snapshot, p, results));
+        p.lastSnapshot = { messageId: am.id, files: snapshot }; p.updatedAt = Date.now(); persistProject(p);
+        renderExplorer(); renderBuildPane();
+       } else { am._queue[i].failed = true; break; }
+      } else { am._queue[i].failed = true; break; }
+     } else { am._queue[i].failed = true; break; }
+    } catch (err) {
+     if (err.name === 'AbortError') throw err;
+     am._queue[i].failed = true;
+     am.activity.push({ icon: 'warn', label: `Failed to generate ${q.path}: ${err.message}`, status: 'fail' });
+     break;
+    }
+    updateLive(am, '#agentMsgs');
+   }
+   am._queueIdx = am._queue.length;
+  }
+
+  /* -- PHASE 3: SUMMARY -- */
+  am.activity.push({ icon: 'sparkles', label: 'Generating summary...', status: 'run' });
+  am._actDirty = true; updateLive(am, '#agentMsgs');
+
+  let summaryPrompt = `All file operations are complete. Provide a brief, plain-text summary of what was fixed or changed. DO NOT print any source code.`;
+  let summary = '';
+  await providerChat({ provider: activeProvider(), messages: [...baseMsgs, ...history, { role: 'user', content: planPrompt }, { role: 'assistant', content: planContent }, { role: 'user', content: summaryPrompt }], signal: S.agentAbort.signal,
+   onDelta: d => { summary += d; am.content = summary; updateLive(am, '#agentMsgs'); }
+  });
+
+  am.activity[am.activity.length - 1].status = 'done';
+  am.activity[am.activity.length - 1].label = 'Agent task completed.';
+  am.status = 'done';
+
+ } catch (e) {
+  if (e.name === 'AbortError') { am.status = 'stopped'; am.activity.push({ icon: 'stop', label: 'Stopped by user — partial response preserved.', status: 'warn' }); }
+  else { am.status = 'error'; console.error('Agent request failed:', e); am.activity.push({ icon: 'alert', label: 'Unable to get a response. Please try again.', status: 'fail' }); }
+ } finally {
+  if (am.thinkT0) am.thinkMs = Date.now() - am.thinkT0;
+  S.agentStreaming = false; S.agentAbort = null; p.updatedAt = Date.now(); p.expanded = [...S.expanded]; persistProject(p);
+  renderThread('#agentMsgs', p.agent); pinScroll(true); updateSendBtn();
+ }
 }
-function extractBuildErrors(log){
- const L=String(log||'').split('\n'),keep=new Set();
- L.forEach((l,i)=>{if(/(^e: |error:|Unresolved reference|AAPT|FAILURE:|What went wrong|Execution failed|cannot find symbol|does not exist|Could not resolve|Duplicate|\bFAILED\b)/i.test(l))
-  for(let k=Math.max(0,i-1);k<=Math.min(L.length-1,i+3);k++)keep.add(k);});
- const body=[...keep].sort((a,b)=>a-b).map(i=>L[i]).join('\n');
- return ('KEY ERROR LINES:\n'+body.slice(0,12000)+'\n\nLOG TAIL:\n'+L.slice(-40).join('\n')).slice(0,16000);}
-function crossCheck(p){const F=p.files,ids=new Set(),lay=new Set(),drw=new Set(),str=new Set(),decl=new Set(),out=[],seen=new Set();
- const add=(path,msg)=>{const k=path+msg;if(!seen.has(k)&&out.length<30){seen.add(k);out.push({path,msg});}};
- for(const[path,f]of Object.entries(F)){let m;
-  if((m=path.match(/\/res\/layout[^/]*\/(\w+)\.xml$/)))lay.add(m[1]);
-  if((m=path.match(/\/res\/(?:drawable|mipmap)[^/]*\/(\w+)\./)))drw.add(m[1]);
-  if(f.binary)continue;const c=f.content||'';
-  if(path.endsWith('.xml')){for(const x of c.matchAll(/@\+id\/(\w+)/g))ids.add(x[1]);for(const x of c.matchAll(/<string\s+name="(\w+)"/g))str.add(x[1]);}
-  if(/\.(kt|java)$/.test(path))for(const x of c.matchAll(/\b(?:class|object|interface|typealias)\s+(\w+)/g))decl.add(x[1]);}
- for(const[path,f]of Object.entries(F)){if(f.binary)continue;const c=f.content||'';
-  if(/\.(kt|java)$/.test(path)){
-   for(const x of c.matchAll(/(?<![\w.])R\.id\.(\w+)/g))if(!ids.has(x[1]))add(path,'R.id.'+x[1]+' is not defined in any layout');
-   for(const x of c.matchAll(/(?<![\w.])R\.layout\.(\w+)/g))if(!lay.has(x[1]))add(path,'R.layout.'+x[1]+' does not exist');
-   for(const x of c.matchAll(/(?<![\w.])R\.string\.(\w+)/g))if(!str.has(x[1]))add(path,'R.string.'+x[1]+' is not defined');
-   for(const x of c.matchAll(/(?<![\w.])R\.(?:drawable|mipmap)\.(\w+)/g))if(!drw.has(x[1]))add(path,'drawable '+x[1]+' does not exist');
-   if(p.package)for(const x of c.matchAll(/^import\s+([\w.]+)\.([A-Z]\w*)\s*$/gm))
-    if(x[1].startsWith(p.package)&&!/databinding/.test(x[1])&&!['R','BuildConfig'].includes(x[2])&&!decl.has(x[2]))add(path,'import '+x[1]+'.'+x[2]+' - class not found in project');}
-  if(path.endsWith('AndroidManifest.xml'))for(const x of c.matchAll(/<(?:activity|service|receiver|provider)\b[^>]*?android:name="([^"]+)"/g)){
-   const n=x[1].split('.').pop();if((x[1].startsWith('.')||(p.package&&x[1].startsWith(p.package)))&&!decl.has(n))add(path,'manifest component '+x[1]+' has no class');}}
- return out;}
-async function planStep(p,am,history,text,atts,mode,errText){
- const pc=buildProjectContext(p,mode==='buildfix'?text:text+' '+errText.slice(0,3000),mode==='buildfix'?errorFiles(p,errText):[],mode==='buildfix');
- am.activity.push({icon:'folder',label:(mode==='buildfix'?'Read exact error file(s): ':'Read targeted file(s): ')+(pc.included.size?[...pc.included].slice(0,4).join(', ')+(pc.included.size>4?' +'+(pc.included.size-4)+' more':''):'none yet (project tree only)'),status:'done'});
- let task='USER REQUEST:\n'+(text||'Work with the attached files.');
- if(mode==='buildfix')task+='\n\nMODE: BUILD ERROR FIX. Think through the WHOLE error, find the earliest root cause from the real project files, fix only what is required so the next build passes.\n\n'+extractBuildErrors(errText);
- for(const a of atts)if(a.kind!=='builderror')task+='\n\n### ATTACHED: '+(a.path||a.name)+'\n'+(a.content||'')+'\n### END ATTACHED';
- let j=null,fb='';
- for(let t=0;t<2&&!j;t++){
-  am._genCurrent='analyzing the error and planning fixes';updateLive(am,'#agentMsgs');
-  const raw=await llm(am,[{role:'system',content:PLAN_SYS},...history,{role:'user',content:task+'\n\nPROJECT TREE:\n'+pc.tree+'\nFILES PROVIDED:'+pc.blocks+fb}]);
-  const k=parseJsonObj(raw);
-  if(k&&mode==='buildfix'&&!(k.files||[]).length&&t===0&&!isInfrastructureBuildError(errText)){fb='\n\nYour previous reply listed no files. A real project build error is fixed by changing project files: return the JSON with the files that must change. Use "answer" only if a required file/information is truly missing. Never put code in "answer".';continue;}
-  if(k)j=k;else fb='\n\nYour previous reply was not a valid JSON object. Reply with ONLY the JSON object.';}
- am._genCurrent=null;
- if(!j)throw pErr('The AI did not return a valid file plan. Nothing was changed.');
- if(j.root_cause){am.activity.push({icon:'brain',label:'Root cause: '+String(j.root_cause).slice(0,300),status:'done'});am._actDirty=true;}
- return{j,queue:normPlan(p,j),ctx:{mode,errText,task,read:(j.read||[]).map(normPath).filter(x=>p.files[x]),summary:String(j.summary||'')}};}
 
-function setPending(p,am,ctx){p.pendingRun={mode:ctx.mode,errText:ctx.errText,task:ctx.task,read:ctx.read,
- items:am.queue.filter(q=>q.status!=='completed').map(q=>({path:q.path,action:q.action,reason:q.reason}))};}
-function qSummary(am){const L={create:'Created',modify:'Updated',delete:'Deleted',folder:'Created folder'};
- return am.queue.filter(q=>q.status==='completed').map(q=>'- '+L[q.action]+' `'+q.path+'`').join('\n');}
-function retryFailedFile(){/* resumes the saved queue at the failed file only; completed files stay saved and are never regenerated */
- if(S.agentStreaming)return;const p=S.project;if(!p||!p.pendingRun){toast('Nothing to retry.','warn');return;}
- const inp=$('#agentInput');inp.value='continue';sendAgent();}
-async function sendAgent(){if(S.agentStreaming)return;
- const p=S.project;if(!p)return;
- const inp=$('#agentInput'),text=inp.value.trim(),atts=S.agentAttachments.slice();
- if(!text&&!atts.length)return;
- if(!activeProvider()){toast('Set up an AI provider first (Menu > Set Up AI).','warn');renderProviders();openScreen('screen-providers');return;}
- if(!activeProvider().model){toast('No model selected. Use the Model button in the composer.','warn');openModelModal();return;}
- p.agent.push({id:uid(),role:'user',content:text||'(selected files)',attachments:atts.map(a=>({name:a.path||a.name,size:a.size,kind:a.kind})),createdAt:Date.now(),status:'done'});
- S.agentAttachments=[];inp.value='';if(agentDraftKey())localStorage.removeItem(agentDraftKey());autoGrow(inp);renderAgentAtts();
- const am={id:uid(),role:'assistant',content:'',createdAt:Date.now(),status:'streaming',activity:[],queue:[]};
- p.agent.push(am);renderThread('#agentMsgs',p.agent);S.pinned=true;pinScroll(true);
- S.agentStreaming=true;S.agentAbort=new AbortController();updateSendBtn();
- let ctx=null;
- try{
-  const resume=p.pendingRun&&/^(continue|resume|retry)\b/i.test(text);
-  if(resume){ctx=p.pendingRun;p.pendingRun=null;am.mode=ctx.mode;am.queue=ctx.items.map(i=>({...i,status:'queued'}));
-   am.activity.push({icon:'history',label:'Resuming paused queue — '+am.queue.length+' file(s) remaining',status:'done'});}
-  else{
-   const history=p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-9,-1).map(m=>({role:m.role,content:stripFences(m.content)}));
-   const be=atts.find(a=>a.kind==='builderror'),mode=be?'buildfix':'edit',errText=be?be.content:'';
-   am.mode=mode;
-   const r=await planStep(p,am,history,text,atts,mode,be?be.content:'');
-   ctx=r.ctx;am.queue=r.queue;
-   if(!am.queue.length){am.content=String(r.j.answer||r.j.summary||'No file changes were needed.').replace(/\`\`\`[\s\S]*?\`\`\`/g,'(code omitted — code is only written to project files)');am.status='done';}
-  qUpdate(am);
-  const snap=resume&&p.lastSnapshot?p.lastSnapshot.files:JSON.parse(JSON.stringify(p.files));
-  let failed=null;
-  if(am.queue.length) failed=await runQueue(p,am,ctx,snap);
-  if(!failed){
-   const issues=crossCheck(p);
-   if(issues.length){
-    am.activity.push({icon:'search',label:'Project check found '+issues.length+' reference problem(s) — repairing before you rebuild',status:'warn'});am._actDirty=true;
-    const txt='[PROJECT CHECK]\\n'+issues.map(i=>i.path+': '+i.msg).join('\\n');
-    const r2=await planStep(p,am,[],ctx.task.slice(0,1500),[],'buildfix',txt);
-    if(r2.queue.length){am.queue.push(...r2.queue);ctx.task=r2.ctx.task;ctx.errText+='\\n'+txt;qUpdate(am);failed=await runQueue(p,am,ctx,snap);}}}
-  if(failed){setPending(p,am,ctx);am.status='error';
-   am.content='**Generation paused** at `'+failed.path+'`: '+failed.error+'\n\n'+(qSummary(am)?'Saved so far:\n'+qSummary(am)+'\n\n':'')+'Remaining files were not started. Press Retry on the failed file (or send "continue") - completed files are kept and only this file and the ones after it will run.';}
-  else{p.pendingRun=null;
-   const bad=(p.tech==='imported'?[]:validateProject(p)).filter(x=>!x.ok);
-   if(bad.length)am.activity.push({icon:'warn',label:'Project check: '+bad.map(b=>b.label).join('; '),status:'warn'});
-   am.content=(ctx.summary?ctx.summary+'\n\n':'')+(am.mode==='buildfix'?'Applied build fixes directly to the project files. Run a new build to verify.':'Changes were applied directly to the project files.')+'\n\n'+qSummary(am);
-   am.status='done';}}}
- catch(e){
-  if(ctx&&am.queue.some(q=>q.status!=='completed'))setPending(p,am,ctx);
-  if(e.name==='AbortError'){am.status='stopped';am.activity.push({icon:'stop',label:'Stopped — completed files are saved. Send "continue" to resume.',status:'warn'});}
-  else{am.status='error';console.error('Flay AI agent failed:',e);am.activity.push({icon:'alert',label:e.pipeline?e.message:'Unable to get a response. Please try again.',status:'fail'});}}
- finally{if(am.thinkT0)am.thinkMs=Date.now()-am.thinkT0;
-  S.agentStreaming=false;S.agentAbort=null;S.fileLock=null;p.updatedAt=Date.now();p.expanded=[...S.expanded];persistProject(p);
-  renderThread('#agentMsgs',p.agent);pinScroll(true);updateSendBtn();}}
-
-function buildDiffs(snapshot,p,results){const diffs={};
- for(const r of results){if(!r.ok)continue;
-  if(r.action==='folder'){diffs[r.path]={ops:[],plus:0,minus:0};continue;}
-  const before=(snapshot[r.path]&&snapshot[r.path].content)||'';const after=(p.files[r.path]&&p.files[r.path].content)||'';
-  if(r.action==='modify')diffs[r.path]=diffLines(before,after);
-  else if(r.action==='create'){const ops=after.split('\n').map(s=>({t:'+',s}));diffs[r.path]={ops,plus:ops.length,minus:0};}
-  else{const ops=before.split('\n').map(s=>({t:'-',s}));diffs[r.path]={ops,plus:0,minus:ops.length};}}
- return diffs;}
-async function revertChanges(messageId){const p=S.project;if(!p||!p.lastSnapshot||p.lastSnapshot.messageId!==messageId)return;
- if(await confirmDlg({title:'Revert changes?',body:'The project files will be restored to the state before this agent run.',ok:'Revert'})){
-  p.files=p.lastSnapshot.files;p.lastSnapshot=null;p.updatedAt=Date.now();persistProject(p);
-  renderThread('#agentMsgs',p.agent);renderExplorer();renderBuildPane();toast('Changes reverted. Project restored.','ok');}}
 /* ---------- build tab ---------- */
 let termQueue=[];
 let termTyping=false;
@@ -1872,7 +1928,7 @@ function terminalRender(logs, state) {
  for (let i = termRenderedLines; i < lines.length; i++) {
   let line = lines[i];
   if (!line.trim()) continue;
-  /* Keep GitHub Actions log text exact so the terminal mirrors GitHub. */
+  line = line.replace(/GitHub Actions/ig, 'Remote Builder'); 
 
   let cls = '';
   if (line.includes('[OK]') || line.includes('SUCCESS') || line.includes('BUILD SUCCESSFUL')) cls = 'ok';
@@ -1880,46 +1936,17 @@ function terminalRender(logs, state) {
   else if (line.startsWith('$') || line.includes('[BUILD]') || line.includes('Task :')) cls = 'cmd';
   else if (line.includes('[INFO]') || line.includes('[QUEUE]')) cls = 'dim';
 
-  terminalQueueLine(line, cls, false, '#btLog');
+  terminalQueueLine(line, cls, true, '#btLog');
  }
  termRenderedLines = lines.length;
  terminalSet(state, S._buildJobId || '');
 }
 
-function buildFailureReport(s,detail,logs){
- s=s||{};const run=s.run||{},wf=s.workflow||{},jobs=Array.isArray(s.jobs)?s.jobs:[];
- const v=x=>(x===undefined||x===null||x==='')?'unavailable':String(x);
- const failedStep=jobs.flatMap(j=>j.steps||[]).find(x=>x.conclusion==='failure');
- const infra=failedStep?/^(set up job|download project archive|extract project|find android gradle project|setup java|prepare android sdk|upload apk)/i.test(failedStep.name):null;
- const rawLogs=String(logs||'')+' '+String(detail||'');
- const hasProjectError=/FAILURE: Build failed|What went wrong|Execution failed for task|Compilation error|Unresolved reference|cannot find symbol|AAPT|resource .* not found|Could not resolve|BUILD FAILED/i.test(rawLogs);
- const cls=failedStep?(infra?'infrastructure':'project'):(jobs.length?'unknown':hasProjectError?'project':'unknown');
- const L=['BUILD FAILED','','Workflow:','  Name: '+v(wf.name||run.name),'  File: '+v(wf.file),'',
-  'Workflow Run:','  Title: '+v(run.display_title),'  Number: '+v(run.number),'  Status: '+v(run.status),'  Conclusion: '+v(run.conclusion),'  URL: '+v(s.htmlUrl),'',
-  'Run ID:','  '+v(run.id),'  Build job ID: '+v(S._buildJobId),'','Jobs:'];
- if(!jobs.length)L.push('  unavailable');
- jobs.forEach(j=>L.push('  - '+v(j.name)+' (job id '+v(j.id)+')'));
- L.push('','Job Status:');
- if(!jobs.length)L.push('  unavailable');
- jobs.forEach(j=>L.push('  - '+v(j.name)+': status='+v(j.status)+' conclusion='+v(j.conclusion)));
- L.push('','Job Steps:');
- if(!jobs.length)L.push('  unavailable');
- jobs.forEach(j=>{L.push('  '+v(j.name)+':');(j.steps||[]).forEach(st=>L.push('    '+st.number+'. '+st.name+' - status='+v(st.status)+' conclusion='+v(st.conclusion)));});
- L.push('','Complete Logs:',String(logs||'').trim()||'unavailable','','Failure:','  '+v(detail),'  Failed step: '+v(failedStep&&failedStep.name),'Failure Classification: '+cls);
- return L.join('\n');}
-function terminalRunHeader(s){const r=s.run,w=s.workflow||{};if(!r)return;
- ['===== GitHub Actions Workflow Run =====','Workflow: '+(w.name||r.name||'unavailable'),'Run ID: '+r.id+(r.number?'  (run #'+r.number+')':''),'Event: '+(r.event||'unavailable')+'  Branch: '+(r.head_branch||'unavailable')]
-  .forEach((t,i)=>terminalQueueLine(t,'cmd',false,'#btLog'));}
-function terminalJobsSummary(s){const jobs=Array.isArray(s.jobs)?s.jobs:[];if(!jobs.length)return;
- terminalQueueLine('===== GitHub Actions Jobs =====','cmd',false,'#btLog');
- const r=s.run||{};terminalQueueLine('Run status: '+(r.status||'unavailable')+'  conclusion: '+(r.conclusion||'none'),'dim',false,'#btLog');
- jobs.forEach(j=>{terminalQueueLine('Job: '+j.name+'  status: '+j.status+'  conclusion: '+(j.conclusion||'none'),(j.conclusion==='failure'?'err':j.conclusion==='success'?'ok':'dim'),false,'#btLog');
-  (j.steps||[]).forEach(st=>terminalQueueLine('  '+st.number+'. '+st.name+'  ['+st.status+(st.conclusion?' / '+st.conclusion:'')+']',(st.conclusion==='failure'?'err':'dim'),false,'#btLog'));});}
 async function startBuildTerminal(){
  const p=S.project;if(!p)return;
  const base='https://flay-ai.flaynity.workers.dev';
  const out=$('#btLog');
- S._buildFailure='';S._buildJobId='';S._buildLogs='';S._buildMeta=null;S._runHeader=false;
+ S._buildFailure='';S._buildJobId='';S._buildLogs='';
  termQueue = []; termTyping = false; termRenderedLines = 0; termScrollLock = true;
  
  $('#btJob').textContent='Packaging project...';$('#btDot').className='bt-dot run';$('#btFix').classList.add('hidden');$('#btOpenActions').classList.add('hidden');$('#btStatus').textContent='Packaging...';out.innerHTML='';
@@ -1931,70 +1958,49 @@ async function startBuildTerminal(){
   terminalQueueLine('[OK] Project packaged: '+fmtBytes(blob.size), 'ok', true, '#btLog');
   const b64=await new Promise((r,j)=>{const fr=new FileReader();fr.onload=()=>r(String(fr.result).slice(String(fr.result).indexOf(',')+1));fr.onerror=j;fr.readAsDataURL(blob);});
   terminalQueueLine('$ POST /build', 'cmd', true, '#btLog');
-  const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(20*60*1000)});
+  const res=await fetch(base+'/build',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:p.name,package:p.package,technology:p.tech,archiveBase64:b64}),signal:withTimeout(180000)});
   
-  const ct=res.headers.get('content-type')||'';let j=null;
-  if(ct.includes('json')){try{j=await res.json()}catch(_){j=null;}}
-  if(!res.ok){
-   const detail=String(j&&(j.error||j.message)||describeHttp(res.status,j?JSON.stringify(j):''));
-   S._buildLogs=String(j&&(j.log||j.logs||j.details)||'');
-   S._buildMeta={status:'failed',error:detail,logs:S._buildLogs};
-   throw new Error(detail+(S._buildLogs?'\\n'+S._buildLogs.slice(-12000):''));
-  }
-  /* Support both Worker job/status responses and servers that return the APK binary directly. */
-  if(!ct.includes('json')){
-   const apkBlob=await res.blob();
-   if(!apkBlob.size)throw new Error('Build server returned an empty APK response.');
-   const apkUrl=URL.createObjectURL(apkBlob);S._apkUrl=apkUrl;
-   p.builds.unshift({at:Date.now(),ok:true,msg:'APK build completed successfully.'});
-   terminalQueueLine('[SUCCESS] APK build completed successfully.','ok',true,'#btLog');
-   terminalQueueLine('[APK] Ready to download ('+fmtBytes(apkBlob.size)+')','ok',true,'#btLog');
-   terminalSet('success','');
-   persistProject(p);renderBuildPane();return;
-  }
-  if(!j||!j.ok||!j.jobId){
-   const detail=String(j&&(j.error||j.message)||'Build server returned an invalid build response.');
-   S._buildLogs=String(j&&(j.log||j.logs||j.details)||'');
-   S._buildMeta={status:'failed',error:detail,logs:S._buildLogs};
-   throw new Error(detail+(S._buildLogs?'\\n'+S._buildLogs.slice(-12000):''));
-  }
+  const ct=res.headers.get('content-type')||'';let j=null;if(ct.includes('json')){try{j=await res.json()}catch(_){}}
+  if(!res.ok)throw new Error(describeHttp(res.status,j?JSON.stringify(j):''));
+  if(!j||!j.ok||!j.jobId)throw new Error('Build server returned an invalid build response.');
   
   const jobId=String(j.jobId);S._buildJobId=jobId;
   const statusUrl=String(j.statusUrl||base+'/build/status/'+encodeURIComponent(jobId));
   $('#btJob').textContent='Job ID: '+jobId;
   terminalQueueLine('[OK] Build job created: '+jobId, 'ok', true, '#btLog');
-  terminalQueueLine('[INFO] Build job queued. Waiting for the GitHub Actions workflow run...', 'dim', true, '#btLog');
+  terminalQueueLine('[INFO] Waiting for remote builder...', 'dim', true, '#btLog');
   terminalSet('running',jobId);
   
   const started=Date.now(),maxWait=30*60*1000;let lastStatus='';
   while(Date.now()-started<maxWait){
-   await new Promise(r=>setTimeout(r,lastStatus?2500:1500));
+   await new Promise(r=>setTimeout(r,lastStatus?'2500':'1200'));
    const sr=await fetch(statusUrl,{method:'GET',headers:{Accept:'application/json'},signal:withTimeout(30000)});
    const sct=sr.headers.get('content-type')||'';let s=null;if(sct.includes('json')){try{s=await sr.json()}catch(_){}}
    if(!sr.ok)throw new Error(describeHttp(sr.status,s?JSON.stringify(s):''));
    if(!s||!s.status)throw new Error('Build server returned an invalid status response.');
    
    lastStatus=String(s.status);
-   S._buildLogs=String(s.logs||'');S._buildMeta=s;
-   if(s.run&&!S._runHeader){S._runHeader=true;terminalRunHeader(s);}
+   S._buildLogs=String(s.logs||'');
    if(s.htmlUrl){S._buildActionsUrl=s.htmlUrl;$('#btOpenActions').classList.remove('hidden');$('#btOpenActions').onclick=()=>window.open(s.htmlUrl,'_blank','noopener');}
    
    terminalRender(S._buildLogs, s.status==='failed'?'failed':s.status==='success'?'success':'running');
-   if(s.run&&s.run.status&&s.status!=='success'&&s.status!=='failed')$('#btStatus').textContent='GitHub Actions: '+s.run.status.replace(/_/g,' ');
+   
+   if(!S._buildLogs){
+    if(s.status==='queued')terminalQueueLine('[QUEUE] Build queued — waiting for remote builder...', 'dim', true, '#btLog');
+    else if(s.status==='building')terminalQueueLine('[BUILD] Remote Builder is running...', 'cmd', true, '#btLog');
+   }
    
    if(s.status==='success'){
     const apkUrl=String(s.apkUrl||base+'/build/download/'+encodeURIComponent(jobId));S._apkUrl=apkUrl;
     p.builds.unshift({at:Date.now(),ok:true,msg:'Real APK build completed successfully.'});
-    terminalJobsSummary(s);
     terminalQueueLine('[SUCCESS] Real APK build completed successfully.', 'ok', true, '#btLog');
     terminalQueueLine('[APK] '+apkUrl, 'ok', true, '#btLog');
     terminalSet('success',jobId);return;
    }
    
    if(s.status==='failed'){
-    const detail=String(s.error||'GitHub Actions Android build failed.');
-    S._buildFailure=buildFailureReport(s,detail,S._buildLogs);
-    terminalJobsSummary(s);
+    const detail=String(s.error||'Remote builder Android build failed.');
+    S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+detail;
     p.builds.unshift({at:Date.now(),ok:false,msg:detail});
     terminalQueueLine('[FAILED] '+detail, 'err', true, '#btLog');
     terminalSet('failed',jobId);return;
@@ -2003,7 +2009,7 @@ async function startBuildTerminal(){
   throw new Error('Build timed out while waiting for the build server.');
  }catch(e){
   const msg=e.name==='AbortError'?'Build server request timed out.':String(e.message||e);
-  S._buildFailure=buildFailureReport(S._buildMeta,msg,S._buildLogs);
+  S._buildFailure=(S._buildLogs?S._buildLogs+'\n\n':'')+'BUILD FAILED: '+msg;
   p.builds.unshift({at:Date.now(),ok:false,msg:msg});
   terminalQueueLine('[FAILED] '+msg, 'err', true, '#btLog');
   terminalSet('failed',S._buildJobId||''); 
@@ -2011,13 +2017,12 @@ async function startBuildTerminal(){
 }
 
 function buildFixFromTerminal(){
- const p=S.project,err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
- goBack();if($('.screen.active').id!=='screen-project')return;
- const evidence=err;/* the full real report: workflow, run, jobs, steps, complete logs, failure */
- S.agentAttachments=[{kind:'builderror',path:'[BUILD ERROR]',name:'build-error.log',size:evidence.length,content:evidence}];
- setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=isInfrastructureBuildError(err)
-  ? 'Analyze the BUILD ERROR above. If this is a build-server/Worker/runner infrastructure failure, explain the exact server component that must be fixed. If it is a real project Gradle/compiler/resource error, modify the required project files sequentially and verify the references.'
-  : 'Fix the BUILD ERROR above using the complete attached report and logs. Identify the earliest actionable root cause, read the exact named project file(s), apply and save a concrete minimal fix, and explain any infrastructure issue that cannot be fixed in project files. Do not merely repeat the error.';autoGrow(inp);sendAgent();
+ const p=S.project;const err=String(S._buildFailure||'').trim();if(!p||!err){toast('No build error is available to fix.','warn');return;}
+ S.agentAttachments=[{kind:'doc',path:'build-error.log',name:'build-error.log',size:err.length,content:err}];
+ const prompt='CRITICAL: Fix the real Android build failure shown in the attached build-error.log. Analyze the project files, identify the exact cause, and MODIFY the required files using the flayfiles block. DO NOT print the full code in your chat response. Make the smallest safe fix and output ONLY a short summary of what was changed in the project files.';
+ const backId=$('.screen.active')?.id;goBack();if(backId!=='screen-project')return;
+ setTab('agent');renderAgentAtts();const inp=$('#agentInput');inp.value=prompt;autoGrow(inp);persistProject(p);
+ setTimeout(()=>sendAgent(),120);
 }
 
 $('#btBack').onclick=goBack;
