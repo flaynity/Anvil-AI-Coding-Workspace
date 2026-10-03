@@ -779,14 +779,12 @@ function pickThinkIcon(t){const s=(t||'').toLowerCase();
  if(/edit|update|change|modify|refactor/.test(s))return 'edit';
  return 'spark';}
 function thinkLines(m){
- /* Agent mode shows a clean Chat-like Thinking state, never raw provider reasoning. */
- if(m.mode)return `<div class="tline processing">${icon('brain','xs')}<span>${m.status==='streaming'?'Thinking…':'Thought for '+((m.thinkMs||0)/1000).toFixed(1)+'s'}</span></div>`;
  const parts=(m.reasoning||'').split('\n');const rows=[];
  const start=Math.max(0,parts.length-140);
  if(start>0)rows.push(`<div class="tline muted">… ${start} earlier lines</div>`);
  for(let i=start;i<parts.length;i++){const t=parts[i].trim();if(!t)continue;
   rows.push(`<div class="tline">${icon(pickThinkIcon(t),'xs')}<span>${esc(t.length>240?t.slice(0,240)+'…':t)}</span></div>`);}
- if(!m.reasoning&&m.status==='streaming'&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Thinking…</span></div>`);
+ if(!m.reasoning&&m.status==='streaming'&&!m._genCurrent)rows.push(`<div class="tline processing">${icon('brain','xs')}<span>Processing...</span></div>`);
  if(m._genCurrent)rows.push(`<div class="tline genline"><span class="spin"></span><span>Generating <b>${esc(m._genCurrent)}</b>…</span></div>`);
  return rows.join('');}
 function thinkCard(m){
@@ -865,8 +863,8 @@ function msgHtml(m){
  if(m.role==='user'){const long=m.content.length>600||m.content.split('\n').length>10;
   const atts=(m.attachments||[]).map(a=>`<span class="att-chip">${icon(a.kind==='image'?'image':a.kind==='zip'?'zip':a.kind==='project'?'folder':fileIcon(a.name||'x'),'sm')}<span>${esc(a.name||a.path)}</span><em>${fmtBytes(a.size||0)}</em></span>`).join('');
   return `<div class="msg user" data-mid="${m.id}">${atts?`<div>${atts}</div>`:''}<div class="bubble ${long?'clamp':''}">${esc(m.content).replace(/\n/g,'<br>')}</div>${long?'<button class="more-btn" data-more>More</button>':''}</div>`;}
- const deep=m.mode?'':deepThinkingText(m);
- const pill=m.status==='streaming'?'<span class="status-pill"><span aria-hidden="true">'+(m.mode?'🧠':'👾')+'</span><span>'+esc(m.mode?'Thinking…':(deep||'Processing...'))+'</span></span>':deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
+ const deep=deepThinkingText(m);
+ const pill=m.status==='streaming'?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>':deep?'<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep)+'</span></span>':m.status==='stopped'?'<span class="status-pill stopped">stopped</span>':m.status==='error'?'<span class="status-pill error">error</span>':'';
  return `<div class="msg ai" data-mid="${m.id}">
   ${thinkCard(m)}
   ${genCard(m)}${queueCard(m)}
@@ -887,9 +885,9 @@ function updateLive(m,hostSel){
   if(body)body.innerHTML=(m.content?md(m.content):'')+(m.status==='streaming'?'<span class="caret"></span>':'');
   const st=mel.querySelector('.ai-st');
   if(st){
-   const deep=m.mode?'':deepThinkingText(m);
+   const deep=deepThinkingText(m);
    if(m.status==='streaming'||deep){
-    st.innerHTML='<span class="status-pill"><span aria-hidden="true">'+(m.mode?'🧠':'👾')+'</span><span>'+esc(m.mode?'Thinking…':(deep||'Processing...'))+'</span></span>';
+    st.innerHTML='<span class="status-pill"><span aria-hidden="true">👾</span><span>'+esc(deep||'Processing...')+'</span></span>';
    }else if(m.status==='stopped'){
     st.innerHTML='<span class="status-pill stopped">stopped</span>';
    }else if(m.status==='error'){
@@ -1479,24 +1477,22 @@ function agentSystem(p){
 '- After the flayfiles block, output ONLY a short, concise summary of the changes made.\n'+
 '- If you need a file that was not provided, output "NEED: <exact path>" (one per line) and stop.\n'+
 '- Do not provide long explanations of the code unless specifically asked to explain (and not modify) it.';}
-function buildProjectContext(p,request,force=[],only=false){
- const paths=Object.keys(p.files).sort();
- /* The path index is metadata only; file contents are read strictly by explicit path. */
- const treeRoot=buildTree(paths);let tree='';
- const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/'+'\n';walk(sub,depth+1);}
-  for(const f of node.files)tree+='  '.repeat(depth)+f.name+'\n';};
+function buildProjectContext(p,request,force=[],only=false){const paths=Object.keys(p.files).sort();
+ const treeRoot=buildTree(paths);
+ let tree='';const walk=(node,depth)=>{for(const[d,sub]of node.dirs){tree+='  '.repeat(depth)+d+'/\n';walk(sub,depth+1);}
+  for(const f of node.files){const sz=p.files[f.path].binary?fmtBytes((p.files[f.path].content||'').length*0.75):fmtBytes((p.files[f.path].content||'').length);tree+='  '.repeat(depth)+f.name+'  ('+sz+')\n';}};
  walk(treeRoot,0);
+ const words=(request||'').toLowerCase().match(/[a-z0-9_\-\.]+/g)||[];
+ const score=path=>{const lp=path.toLowerCase();let s=0;words.forEach(w=>{if(w.length>2&&lp.includes(w))s+=3;});if(s&&/\.(xml|gradle|kt|java)$/.test(lp))s+=1;return s;};
  const budget=48000;let used=0;const included=new Set();
  const pick=path=>{const f=p.files[path];if(!f||f.binary||included.has(path))return false;const c=f.content||'';
   if(used+c.length+path.length>budget)return false;used+=c.length;included.add(path);return true;};
  force.forEach(pick);
- /* only=true means no keyword-based or broad fallback reads. */
- if(!only){const words=(request||'').toLowerCase().match(/[a-z0-9_\-\.]+/g)||[];
-  const score=path=>{const lp=path.toLowerCase();return words.reduce((n,w)=>n+(w.length>2&&lp.includes(w)?3:0),0);};
-  let extra=0;for(const path of paths.sort((a,b)=>score(b)-score(a))){if(extra>=2||score(path)<=0)break;if(pick(path))extra++;}}
- let blocks='';for(const path of included)blocks+='\n### FILE: '+path+'\n'+(p.files[path].content||'')+'\n### END FILE\n';
- return{tree,blocks,included,total:paths.length,chars:used};
-}
+ /* targeted reads only: never preload the project; fill with a few keyword-matched files only when nothing exact was forced */
+ if(!(only&&included.size)){let extra=0;for(const path of[...paths].sort((a,b)=>score(b)-score(a))){if(extra>=6||score(path)<=0)break;if(pick(path))extra++;}}
+ let blocks='';
+ for(const path of included){blocks+='\n### FILE: '+path+'\n'+(p.files[path].content||'')+'\n### END FILE\n';}
+ return{tree,blocks,included,total:paths.length,chars:used};}
 function parseOps(content){const m=(content||'').match(/```flayfiles\s*([\s\S]*?)```/);
  if(!m)return{ops:null};
  const raw=m[1].trim();
@@ -1523,7 +1519,7 @@ function extractNeeds(content,included,p){const needs=[];const re=/(?:^|\n)NEED:
 const MAX_QUEUE=25;
 const pErr=m=>Object.assign(new Error(m),{pipeline:true});
 const PLAN_SYS=`You are the planning stage of Flay AI, a sequential project coding agent. Analyze the request and the provided project, then output ONLY one JSON object (no prose, no code): {"root_cause":"build errors only: the exact earliest cause in 1-2 sentences","summary":"one short sentence","answer":"","read":["existing paths worth reading while writing files"],"files":[{"path":"relative/path","action":"create|modify|delete|folder","reason":"short"}]}
-Rules: list only files that truly must change, in dependency order (models/resources/base classes before their users; for build errors the root-cause file first). Never include a file that needs no change. Existing paths must match the tree exactly. Max ${MAX_QUEUE} files. Never include file contents. STRICT READ POLICY: do not pre-read the whole project. Start with the exact file named by the earliest actionable error. If the log names no source/config file, explain that the actual failing-step log is needed; do not guess a project file. Request only directly related dependency/reference paths when evidence requires them. The writer reads, fixes, and saves one queued file at a time. If the request is a question, or needs no file change, or information needed for a safe fix is missing, return files:[] and put the reply in "answer". For BUILD ERROR FIX: the attached build log is authoritative. Identify the earliest actionable Gradle/compiler error, distinguish it from later cascading errors, and return every existing project file that must change to remove that root cause. If the failure is infrastructure/toolchain/runner setup (for example sdkmanager unavailable, Android SDK setup failure, missing GitHub runner tools, Java/Gradle executable unavailable before the project build starts), DO NOT modify project files: return files:[] and explain in "answer" that the build server/workflow must be fixed. Do not return files:[] merely because a real project Gradle/compiler/resource error is uncertain; inspect the supplied project files and choose the smallest evidence-based fix.`;
+Rules: list only files that truly must change, in dependency order (models/resources/base classes before their users; for build errors the root-cause file first). Never include a file that needs no change. Existing paths must match the tree exactly. Max ${MAX_QUEUE} files. Never include file contents. If the request is a question, or needs no file change, or information needed for a safe fix is missing, return files:[] and put the reply in "answer". For BUILD ERROR FIX: the attached build log is authoritative. Identify the earliest actionable Gradle/compiler error, distinguish it from later cascading errors, and return every existing project file that must change to remove that root cause. If the failure is infrastructure/toolchain/runner setup (for example sdkmanager unavailable, Android SDK setup failure, missing GitHub runner tools, Java/Gradle executable unavailable before the project build starts), DO NOT modify project files: return files:[] and explain in "answer" that the build server/workflow must be fixed. Do not return files:[] merely because a real project Gradle/compiler/resource error is uncertain; inspect the supplied project files and choose the smallest evidence-based fix.`;
 const FILE_SYS=`You are Flay AI writing exactly ONE project file. Output ONLY the complete file content inside a single fenced block tagged flayfile. No explanations, no other text. Use only packages, classes, methods, R.id, R.layout and resources that exist in the provided project files (saved files from earlier queue steps are included); never invent identifiers. When modifying, preserve existing behavior and make the smallest correct change. For BUILD ERROR FIX, use the real build log as authoritative evidence, fix the earliest root cause rather than a later cascade, and make a concrete source/configuration change when the supplied project proves one is required. Do not merely explain the error or leave the file unchanged.`;
 async function llm(am,msgs){let buf='';
  await providerChat({provider:activeProvider(),messages:msgs,signal:S.agentAbort.signal,
@@ -1563,8 +1559,7 @@ function saveOne(p,it,content){const path=it.path;
  const ex=!!p.files[path];p.files[path]={content};return{path,action:ex?'modify':'create',ok:true};}
 async function genOne(p,am,it,i,ctx,done){let feedback='';
  for(let attempt=0;attempt<2;attempt++){
-  /* Sequential targeted reads: never reread completed files or every filename in the log. */
-  const force=[it.path,...ctx.read.filter(x=>x!==it.path).slice(0,2)].filter(x=>p.files[x]);
+  const force=[it.path,...done.slice(-4),...ctx.read.slice(0,4),...(ctx.mode==='buildfix'?errorFiles(p,ctx.errText).slice(0,4):[])].filter(x=>p.files[x]);
   const c=buildProjectContext(p,ctx.task.slice(0,2000)+' '+it.path+' '+it.reason,force,true);
   const list=am.queue.map((q,k)=>(k+1)+'. '+q.action+' '+q.path+' ['+q.status+']'+(q.reason?' - '+q.reason:'')).join('\n');
   let prompt=ctx.task+'\n\nFILE QUEUE (sequential; completed files are already saved and shown below in their saved state):\n'+list+
@@ -1641,8 +1636,7 @@ function crossCheck(p){const F=p.files,ids=new Set(),lay=new Set(),drw=new Set()
    const n=x[1].split('.').pop();if((x[1].startsWith('.')||(p.package&&x[1].startsWith(p.package)))&&!decl.has(n))add(path,'manifest component '+x[1]+' has no class');}}
  return out;}
 async function planStep(p,am,history,text,atts,mode,errText){
- const exactErrorFiles=mode==='buildfix'?errorFiles(p,errText):[];
- const pc=buildProjectContext(p,mode==='buildfix'?text:text+' '+errText.slice(0,3000),mode==='buildfix'?exactErrorFiles:[],true);
+ const pc=buildProjectContext(p,mode==='buildfix'?text:text+' '+errText.slice(0,3000),mode==='buildfix'?errorFiles(p,errText):[],mode==='buildfix');
  am.activity.push({icon:'folder',label:(mode==='buildfix'?'Read exact error file(s): ':'Read targeted file(s): ')+(pc.included.size?[...pc.included].slice(0,4).join(', ')+(pc.included.size>4?' +'+(pc.included.size-4)+' more':''):'none yet (project tree only)'),status:'done'});
  let task='USER REQUEST:\n'+(text||'Work with the attached files.');
  if(mode==='buildfix')task+='\n\nMODE: BUILD ERROR FIX. Think through the WHOLE error, find the earliest root cause from the real project files, fix only what is required so the next build passes.\n\n'+extractBuildErrors(errText);
@@ -1683,11 +1677,10 @@ async function sendAgent(){if(S.agentStreaming)return;
   if(resume){ctx=p.pendingRun;p.pendingRun=null;am.mode=ctx.mode;am.queue=ctx.items.map(i=>({...i,status:'queued'}));
    am.activity.push({icon:'history',label:'Resuming paused queue — '+am.queue.length+' file(s) remaining',status:'done'});}
   else{
-   /* Build fixes use the actual report, not a long history of unrelated messages. */
-   const be=atts.find(a=>a.kind==='builderror'),hasEditIntent=/\b(fix|update|modify|change|create|build|debug|implement|add|remove|delete|rewrite|refactor|design|generate|edit|repair|broken|doesn't work|does not work|not working|button|click|functionality|bug|issue|error|crash|fails?)\b/i.test(text)||/(কোডে|ফাইল|ফিক্স|ঠিক কর|ঠিক করে|আপডেট|পরিবর্তন|তৈরি কর|বানাও|লিখে দাও|বিল্ড কর|এরর|সমস্যা|কাজ করছে না|কাজ করে না|কাজ করছে না কেন|বাটন|বোতাম|ফাংশন|ক্লিক|চাপলে|কাজ করছে|কাজ করে না|চালু কর|কাজ করাও|ঠিকমতো কাজ|কাজ করছে না)/i.test(text),isQuestionFirst=/\?\s*$/.test(text)||/(\bcan you\b|\bcould you\b|\bwould you\b|\bwill you\b|\bcan i\b|\btell me first\b|\bbefore you\b|\bshould i\b|\bdo you\b|\bare you able\b|পারবে\??|পারবে কি|পারবেন কি|পারে কি|করে দিতে পারবে|আগে বল|আগে জানাও|সম্ভব কি|করতে পারো কি|বল তো|কি তোমার নাম|নাম কী)/i.test(text),isChat=!be&&!atts.length&&(!hasEditIntent||isQuestionFirst),mode=be?'buildfix':(isChat?'chat':'edit'),errText=be?be.content:'';
-   const history=mode==='buildfix'?[]:p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-6,-1).map(m=>({role:m.role,content:stripFences(m.content).slice(0,2500)}));
+   const history=p.agent.filter(m=>m!==am&&m.status==='done'&&m.content).slice(-9,-1).map(m=>({role:m.role,content:stripFences(m.content)}));
+   const be=atts.find(a=>a.kind==='builderror'),mode=be?'buildfix':'edit',errText=be?be.content:'';
    am.mode=mode;
-   const r=mode==='chat'?{j:{answer:await llm(am,[{role:'system',content:'You are Flay AI, the conversational AI assistant inside the user\'s existing coding app. This is a real conversation, not a project-planning step. Answer the latest user message directly and naturally, like a helpful human conversation partner, in the same language as the user (including Bengali). IMPORTANT PROJECT CONTEXT: the user is already inside an active project; its existing source files are available in the app\'s Code tab and local project state. Never ask the user to share, paste, or upload code that is already in the active project. If they ask whether you can update the current app code, answer directly that yes, you can update the code already in the Code tab, and ask what changes they want; do not claim the code is missing. If they ask whether you received the code, explain that the current project code is available in the app. Use conversation history to understand context and resolve references like “current app/code”. Do not expose internal analysis or planning, do not say “no actionable request”, do not produce numbered generic instructions unless useful, and never claim changes were made during a conversational answer. Do not use canned/demo answers: generate a relevant answer from the active AI provider. For ordinary questions (including “তুমি কি কি Code তৈরি করতে পারো”), answer the actual question clearly, usefully, and naturally in the same language the user used. Example of the intended style for that question: briefly mention that you can help create HTML/CSS/JavaScript websites and apps, debug/fix existing code, build UI, connect APIs, and explain code; then ask what they want to build. Treat this as style guidance, not a fixed response to repeat for unrelated questions. CRITICAL OUTPUT RULE: return only the user-facing answer. Never reveal or output internal reasoning, classifier decisions, planning notes, labels like “The user is asking…”, “no file changes needed”, implementation summaries, or claims like “Changes were applied directly to the project files” unless files were actually changed in this run. A question does not require file changes; simply answer it. Never append a project-change status to conversational replies. If asked your name, say “আমি Flay AI”.'},...history,{role:'user',content:text}]),summary:''},queue:[],ctx:{mode:'chat',errText:'',task:text,read:[],summary:''}}:await planStep(p,am,history,text,atts,mode,be?be.content:'');
+   const r=await planStep(p,am,history,text,atts,mode,be?be.content:'');
    ctx=r.ctx;am.queue=r.queue;
    if(!am.queue.length){am.content=String(r.j.answer||r.j.summary||'No file changes were needed.').replace(/\`\`\`[\s\S]*?\`\`\`/g,'(code omitted — code is only written to project files)');am.status='done';}
   qUpdate(am);
@@ -1706,7 +1699,7 @@ async function sendAgent(){if(S.agentStreaming)return;
   else{p.pendingRun=null;
    const bad=(p.tech==='imported'?[]:validateProject(p)).filter(x=>!x.ok);
    if(bad.length)am.activity.push({icon:'warn',label:'Project check: '+bad.map(b=>b.label).join('; '),status:'warn'});
-   if(am.mode!=='chat')am.content=(ctx.summary?ctx.summary+'\n\n':'')+(am.mode==='buildfix'?'Applied build fixes directly to the project files. Run a new build to verify.':'Changes were applied directly to the project files.')+'\n\n'+qSummary(am);
+   am.content=(ctx.summary?ctx.summary+'\n\n':'')+(am.mode==='buildfix'?'Applied build fixes directly to the project files. Run a new build to verify.':'Changes were applied directly to the project files.')+'\n\n'+qSummary(am);
    am.status='done';}}}
  catch(e){
   if(ctx&&am.queue.some(q=>q.status!=='completed'))setPending(p,am,ctx);
