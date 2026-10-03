@@ -1503,7 +1503,7 @@ async function applyOps(p,ops){const snapshot=JSON.parse(JSON.stringify(p.files)
  for(const op of ops){const rawPath=op&&op.path,path=normPath(rawPath),action=String(op&&op.action||'').toLowerCase();let prev;
   const fail=e=>results.push({path:path||String(rawPath||''),action:action||'?',ok:false,error:e});
   if(isUnsafe(path)){fail('unsafe or invalid path rejected');continue;}
-  if(action==='folder'){const base=path.replace(/\\/+$/,''),kp=base+'/.gitkeep';if(!p.files[kp])p.files[kp]={content:''};}
+  if(action==='folder'){const base=path.replace(/\/+$/,''),kp=base+'/.gitkeep';if(!p.files[kp])p.files[kp]={content:''};}
   else if(action==='delete'){if(!p.files[path]){fail('file not found');continue;}prev=p.files[path];delete p.files[path];}
   else if(action==='patch'){const cur=p.files[path];if(!cur||cur.binary){fail('file not found for patch');continue;}let next=String(cur.content||''),bad='';const edits=Array.isArray(op.edits)?op.edits:[];if(!edits.length)bad='no edits given';
    for(const ed of edits){if(bad)break;const a=ed&&ed.find,b=ed&&ed.replace;if(typeof a!=='string'||!a||typeof b!=='string'){bad='malformed edit';break;}const count=next.split(a).length-1;if(count!==1){bad=count?'patch anchor is ambiguous ('+count+' matches)':'patch anchor not found';break;}next=next.replace(a,()=>b);}
@@ -1511,7 +1511,7 @@ async function applyOps(p,ops){const snapshot=JSON.parse(JSON.stringify(p.files)
   }else if(action==='create'||action==='modify'){if(typeof(op&&op.content)!=='string'){fail('missing content');continue;}prev=p.files[path];p.files[path]={content:op.content};}
   else{fail('unsupported action');continue;}
   try{await persistProject(p);}catch(e){if(prev)p.files[path]=prev;else if(action==='folder')delete p.files[path];else delete p.files[path];fail('save failed: '+String(e&&e.message||e));continue;}
-  results.push({path:action==='folder'?path.replace(/\\/+$/,'')+'/':path,action:action==='folder'?'folder':action==='patch'?(prev?'modify':'create'):action,ok:true});
+  results.push({path:action==='folder'?path.replace(/\/+$/,'')+'/':path,action:action==='folder'?'folder':action==='patch'?(prev?'modify':'create'):action,ok:true});
  }
  return{results,snapshot};}
 function extractNeeds(content,included,p){const needs=[];const re=/(?:^|\n)NEED:\s*([^\n]+)/g;let m;
@@ -1532,7 +1532,8 @@ async function sendAgent(){if(S.agentStreaming)return;
  S.agentStreaming=true;S.agentAbort=new AbortController();updateSendBtn();
  try{
   let round=0,need=[];
-  const fixMode=S.agentMode==='buildfix'||S.agentMode==='retry',fixForce=(S.fixForce||[]).slice();S.agentMode=null;S.fixForce=null;\n  const baseMsgs=[{role:'system',content:agentSystem(p)+(fixMode?'\\n\\nTARGETED BUILD FIX MODE: Use the exact error as evidence. Read only files supplied and directly related dependencies. If another file is required, output NEED: exact/path and stop. Change only what is required, one file at a time. If this is infrastructure/network/quota rather than project code, change no files. Never claim an edit unless it is delivered in flayfiles.':'')}];
+  const fixMode=S.agentMode==='buildfix'||S.agentMode==='retry',fixForce=(S.fixForce||[]).slice();S.agentMode=null;S.fixForce=null;
+  const baseMsgs=[{role:'system',content:agentSystem(p)+(fixMode?'\n\nTARGETED BUILD FIX MODE: Use the exact error as evidence. Read only files supplied and directly related dependencies. If another file is required, output NEED: exact/path and stop. Change only what is required, one file at a time. If this is infrastructure/network/quota failure rather than project code, change no files. Never claim an edit unless it is delivered in flayfiles.':'')}];
   const history=p.agent.filter(m=>m!==am&&m.status==='done').slice(-8).filter(m=>m.content).map(m=>({role:m.role,content:stripFences(m.content)}));
   do{round++;
    const ctx=buildProjectContext(p,text+(need.length?' '+need.join(' '):''),fixMode?[...new Set([...fixForce,...need])]:need,fixMode);
