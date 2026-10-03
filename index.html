@@ -853,7 +853,8 @@ function changesCard(m){if(!m.ops)return '';
  const rows=m.ops.results.filter(r=>r.ok).map(r=>{const d=m.ops.diffs[r.path]||{ops:[],plus:0,minus:0};
   return `<div class="chg-row" data-path="${esc(r.path)}"><span class="chg-badge ${r.action==='folder'?'create':r.action}">${r.action==='create'?'A':r.action==='modify'?'M':r.action==='folder'?'F':'D'}</span><span class="chg-path" title="${esc(r.path)}">${esc(r.path)}</span><span class="chg-count"><span class="p">${d.plus?'+'+d.plus:''}</span> <span class="m">${d.minus?'\u2212'+d.minus:''}</span></span></div><div class="hidden" data-diff="${esc(r.path)}">${diffHtml(d)}</div>`;}).join('');
  const canRevert=S.project&&S.project.lastSnapshot&&S.project.lastSnapshot.messageId===m.id;
- return `<div class="card act2"><div class="card-head">${icon('edit','sm')}<b>Changes applied to project</b><span class="muted small">${m.ops.results.filter(r=>r.ok).length} file(s)</span></div>${rows}
+ const failRows=m.ops.results.filter(r=>!r.ok&&r.path&&!/^unsafe/.test(r.error||'')).map(r=>`<div class="generr"><span style="flex:1;word-break:break-all">${esc(r.path)} — ${esc(r.error||'failed')}</span><button class="btn sm" data-retryfile="${esc(r.path)}">Retry file</button></div>`).join('');
+ return `<div class="card act2"><div class="card-head">${icon('edit','sm')}<b>Changes applied to project</b><span class="muted small">${m.ops.results.filter(r=>r.ok).length} file(s)</span></div>${rows}${failRows}
  ${canRevert?`<div class="card-foot"><button class="btn sm" data-revert="${m.id}">${icon('trash','sm')}Revert changes</button></div>`:''}</div>`;}
 function diffHtml(d){if(!d||!d.ops)return '<div class="muted small" style="padding:8px 12px">No textual diff available.</div>';
  const rows=d.ops.slice(0,800).map(o=>`<span class="dl ${o.t==='+'?'plus':o.t==='-'?'minus':'ctx'}">${o.t===' '?'  ':o.t}${esc(o.s)}</span>`).join('');
@@ -1040,6 +1041,7 @@ async function sendChat(){if(S.streaming)return;
 function threadClick(sel){return e=>{
  const more=e.target.closest('[data-more]');if(more){const b=more.closest('.msg').querySelector('.bubble');const o=b.classList.toggle('open');more.textContent=o?'Less':'More';return;}
  const cp=e.target.closest('.cb-copy');if(cp){const code=cp.closest('.codeblock').querySelector('code').textContent;copyText(code).then(()=>{cp.innerHTML=icon('check','xs')+' Copied';setTimeout(()=>cp.innerHTML=icon('copy','xs')+' Copy',1400);});return;}
+ const rt=e.target.closest('[data-retryfile]');if(rt){retryFile(rt.dataset.retryfile,rt);return;}
  const rev=e.target.closest('[data-revert]');if(rev){revertChanges(rev.dataset.revert);return;}
  const gr=e.target.closest('[data-gen]');if(gr){const mid=gr.closest('[data-mid]').dataset.mid;
   const msg=(sel==='#agentMsgs'?(S.project?S.project.agent:[]):(S.chat?S.chat.messages:[])).find(x=>x.id===mid);
@@ -1820,6 +1822,14 @@ async function startBuildTerminal(){
  }finally{persistProject(p);}
 }
 
+function retryFile(path,btn){
+ if(S.agentStreaming){toast('The agent is busy - wait for the current run.','warn');return;}
+ const p=S.project;if(!p||!p.files[path]){toast('File is no longer in the project.','warn');return;}
+ if(btn)btn.disabled=true;
+ const last=[...(p.agent||[])].reverse().find(m=>m.role==='user');
+ S.agentMode='retry';S.fixForce=[path];
+ const i=$('#agentInput');i.value='Retry ONLY this file: '+path+'. Original request: '+((last&&last.content)||'')+'\nUse a minimal patch where possible. Do not modify other files. Save the corrected file to Code Tab and summarize briefly.';autoGrow(i);sendAgent();
+}
 function buildFixFromTerminal(){
  const p=S.project,err=String(S._buildFailure||S._buildLogs||'').trim();
  if(!p||!err){toast('No build error is available to fix.','warn');return;}
